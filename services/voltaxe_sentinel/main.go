@@ -153,7 +153,7 @@ func isSuspiciousParentChild(parentName string, childName string) bool {
 }
 
 func sendDataToServer(jsonData []byte, endpoint string) {
-	serverURL := "http://localhost:8001" + endpoint
+	serverURL := "http://localhost:8000" + endpoint
 	req, _ := http.NewRequest("POST", serverURL, bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
