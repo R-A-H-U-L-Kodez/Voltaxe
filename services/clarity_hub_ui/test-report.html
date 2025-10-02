@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Report Generation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div style="padding: 20px;">
+        <h1>Voltaxe Report Generation Test</h1>
+        <button onclick="testReportGeneration()" style="padding: 10px 20px; background: #D4AF37; color: black; border: none; border-radius: 5px; cursor: pointer;">
+            Test Download Report
+        </button>
+        
+        <div id="report-content" style="margin-top: 20px; padding: 20px; border: 1px solid #ccc;">
+            <h2>🛡️ VOLTAXE Security Report</h2>
+            <p>Generated: <span id="timestamp"></span></p>
+            <h3>Summary</h3>
+            <ul>
+                <li>Total Alerts: 13</li>
+                <li>Critical Vulnerabilities: 11</li>
+                <li>Monitored Endpoints: 3</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        
+        async function testReportGeneration() {
+            try {
+                const { jsPDF } = window.jspdf;
+                
+                // Create a simple PDF
+                const pdf = new jsPDF();
+                
+                // Add content
+                pdf.setFontSize(20);
+                pdf.text('🛡️ VOLTAXE Security Report', 20, 30);
+                
+                pdf.setFontSize(12);
+                pdf.text('Generated: ' + new Date().toLocaleString(), 20, 50);
+                
+                pdf.text('Summary:', 20, 70);
+                pdf.text('• Total Alerts: 13', 30, 85);
+                pdf.text('• Critical Vulnerabilities: 11', 30, 95);
+                pdf.text('• Monitored Endpoints: 3', 30, 105);
+                
+                // Download the PDF
+                const filename = `voltaxe_test_report_${new Date().toISOString().split('T')[0]}.pdf`;
+                pdf.save(filename);
+                
+                alert('✅ Test report generated successfully!');
+            } catch (error) {
+                console.error('Test failed:', error);
+                alert('❌ Test failed: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -9,5 +9,16 @@
     "python.terminal.activateEnvInCurrentTerminal": true,
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": true,
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
+    "css.validate": false,
+    "less.validate": false,
+    "scss.validate": false,
+    "css.customData": [
+        ".vscode/css_custom_data.json"
+    ],
+    "tailwindCSS.emmetCompletions": true,
+    "tailwindCSS.includeLanguages": {
+        "typescript": "typescript",
+        "typescriptreact": "typescriptreact"
+    }
 }
