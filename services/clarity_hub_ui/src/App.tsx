@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
+import { ResilienceIntelligencePage } from './pages/ResilienceIntelligencePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AlertsPage } from './pages/AlertsPage';
 import { EndpointDetailPage } from './pages/EndpointDetailPage';
@@ -14,6 +15,14 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <ResilienceIntelligencePage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/snapshots"
             element={
@@ -62,7 +71,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

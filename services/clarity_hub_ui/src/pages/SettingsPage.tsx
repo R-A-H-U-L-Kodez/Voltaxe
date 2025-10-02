@@ -135,12 +135,12 @@ export const SettingsPage = () => {
     icon: any; 
     children: React.ReactNode 
   }) => (
-    <div className="bg-card border border-border rounded-lg p-6 mb-6">
+    <div className="card p-6 mb-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-8 h-8 bg-primary-gold/20 rounded-lg flex items-center justify-center">
-          <Icon className="text-primary-gold" size={20} />
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.2)' }}>
+          <Icon size={20} style={{ color: 'hsl(var(--primary-gold))' }} />
         </div>
-        <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+        <h2 className="text-2xl font-bold text-foreground">{title}</h2>
       </div>
       <div className="space-y-4">
         {children}
@@ -161,19 +161,22 @@ export const SettingsPage = () => {
   }) => (
     <div className="flex items-center justify-between">
       <div>
-        <label className="text-foreground font-medium">{label}</label>
-        {description && <p className="text-foreground/60 text-sm mt-1">{description}</p>}
+        <label className="text-foreground font-semibold">{label}</label>
+        {description && <p className="text-muted-foreground text-sm mt-1">{description}</p>}
       </div>
       <button
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          checked ? 'bg-primary-gold' : 'bg-border'
-        }`}
+        className="relative inline-flex h-6 w-11 items-center rounded-full transition-smooth"
+        style={{
+          backgroundColor: checked ? 'hsl(var(--primary-gold))' : 'hsl(var(--border))'
+        }}
       >
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
-          }`}
+          className="inline-block h-4 w-4 transform rounded-full transition-transform"
+          style={{
+            backgroundColor: 'white',
+            transform: checked ? 'translateX(1.5rem)' : 'translateX(0.25rem)'
+          }}
         />
       </button>
     </div>
@@ -235,27 +238,36 @@ export const SettingsPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Sidebar />
 
       <main className="ml-64 p-8">
-        <div className="mb-8">
+        {/* Page Header */}
+        <div className="mb-8 animate-fadeIn">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Settings className="text-primary-gold" size={32} />
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 gradient-gold rounded-2xl flex items-center justify-center shadow-xl">
+                <Settings size={32} style={{ color: 'hsl(var(--background))' }} />
+              </div>
               <div>
-                <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-                <p className="text-foreground/70">Configure your Voltaxe Clarity Hub experience</p>
+                <h1 className="text-4xl font-bold text-gradient-gold mb-2">
+                  Settings
+                </h1>
+                <p className="text-muted-foreground flex items-center">
+                  <Settings className="h-4 w-4 mr-2" style={{ color: 'hsl(var(--primary-gold))' }} />
+                  Configure your Voltaxe Clarity Hub experience
+                </p>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
               {unsavedChanges && (
-                <span className="text-warning text-sm">Unsaved changes</span>
+                <span className="text-sm font-semibold" style={{ color: 'hsl(var(--warning))' }}>Unsaved changes</span>
               )}
               <button
                 onClick={handleReset}
-                className="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2"
+                className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
+                style={{ borderColor: 'hsl(var(--border))' }}
               >
                 <RefreshCw size={16} />
                 Reset
@@ -263,13 +275,17 @@ export const SettingsPage = () => {
               <button
                 onClick={handleSave}
                 disabled={!unsavedChanges || saving}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                  saved
-                    ? 'bg-success text-white'
+                className="px-4 py-2 rounded-lg flex items-center gap-2 font-semibold transition-smooth disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: saved
+                    ? 'hsl(var(--success))'
                     : unsavedChanges
-                    ? 'bg-primary-gold text-black hover:bg-accent-gold'
-                    : 'bg-border text-foreground/60 cursor-not-allowed'
-                }`}
+                    ? 'hsl(var(--primary-gold))'
+                    : 'hsl(var(--border))',
+                  color: saved || unsavedChanges
+                    ? 'hsl(var(--background))'
+                    : 'hsl(var(--muted-foreground))'
+                }}
               >
                 {saving ? (
                   <RefreshCw className="animate-spin" size={16} />

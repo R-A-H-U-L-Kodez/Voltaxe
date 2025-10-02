@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_, Float, Text, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_, Float, Text, Boolean, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
 from pydantic import BaseModel
@@ -46,7 +46,7 @@ class EventModel(BaseModel):
     cve: Optional[str] = None
 
 # --- Database Setup ---
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:mysecretpassword@localhost/postgres")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///voltaxe_clarity.db")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -57,6 +57,9 @@ class SnapshotDB(Base):
     hostname = Column(String, index=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     details = Column(JSON)
+    resilience_score = Column(Integer, index=True)
+    risk_category = Column(String, index=True)
+    last_scored = Column(DateTime)
 
 class EventDB(Base):
     __tablename__ = "events"
@@ -157,6 +160,27 @@ class EndpointActionResponse(BaseModel):
     action: str
     timestamp: str
 
+class ResilienceScoreResponse(BaseModel):
+    hostname: str
+    resilience_score: Optional[int] = None
+    risk_category: Optional[str] = None
+    last_scored: Optional[str] = None
+    vulnerability_count: Optional[int] = 0
+    suspicious_events_count: Optional[int] = 0
+
+class ResilienceMetricsResponse(BaseModel):
+    hostname: str
+    resilience_score: int
+    risk_category: str
+    vulnerability_count: int
+    suspicious_events_count: int
+    critical_vulnerabilities: int
+    high_vulnerabilities: int
+    medium_vulnerabilities: int
+    low_vulnerabilities: int
+    timestamp: str
+    score_details: Optional[Dict[str, Any]] = None
+
 # --- FastAPI Application ---
 app = FastAPI(
     title="Voltaxe Clarity Hub API",
@@ -175,10 +199,36 @@ def health_check():
         "timestamp": datetime.datetime.utcnow().isoformat()
     }
 
+@app.get("/debug/snapshots")
+def debug_snapshots():
+    """Debug endpoint to check snapshots"""
+    db = SessionLocal()
+    try:
+        all_snapshots = db.query(SnapshotDB).all()
+        scored_snapshots = db.query(SnapshotDB).filter(SnapshotDB.resilience_score.isnot(None)).all()
+        
+        return {
+            "total_snapshots": len(all_snapshots),
+            "scored_snapshots": len(scored_snapshots),
+            "database_url": DATABASE_URL,
+            "sample_snapshots": [
+                {
+                    "hostname": getattr(s, 'hostname', ''),
+                    "resilience_score": getattr(s, 'resilience_score', None),
+                    "risk_category": getattr(s, 'risk_category', None)
+                }
+                for s in scored_snapshots[:3]
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        db.close()
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # React dev servers
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"],  # React dev servers
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -653,3 +703,131 @@ def _format_event_details(details: Dict[str, Any], event_type: str) -> str:
         if reason:
             return f"{event_type}: {reason}"
         return f"Event: {event_type.replace('_', ' ').title()}"
+
+# --- Resilience Scoring Endpoints ---
+@app.get("/resilience/scores", response_model=List[ResilienceScoreResponse])
+def get_resilience_scores(db: Session = Depends(get_db)):
+    """Get resilience scores for all monitored endpoints"""
+    try:
+        # Get latest snapshots with resilience scores
+        snapshots = db.query(SnapshotDB).filter(
+            SnapshotDB.resilience_score.isnot(None)
+        ).all()
+        
+        return [
+            ResilienceScoreResponse(
+                hostname=snapshot.hostname,  # type: ignore
+                resilience_score=snapshot.resilience_score,  # type: ignore
+                risk_category=snapshot.risk_category,  # type: ignore
+                last_scored=snapshot.last_scored.isoformat() if snapshot.last_scored else None,  # type: ignore
+                vulnerability_count=0,  # Will be filled from metrics if available
+                suspicious_events_count=0
+            )
+            for snapshot in snapshots
+        ]
+        
+    except Exception as e:
+        print(f"Error fetching resilience scores: {e}")
+        return []
+
+@app.get("/resilience/metrics", response_model=List[ResilienceMetricsResponse]) 
+def get_resilience_metrics(limit: int = 50, db: Session = Depends(get_db)):
+    """Get detailed resilience metrics history"""
+    try:
+        # Import ResilienceMetrics from axon engine if available
+        from sqlalchemy import Table, MetaData
+        
+        # Check if resilience_metrics table exists
+        metadata = MetaData()
+        metadata.reflect(bind=engine)
+        
+        if 'resilience_metrics' not in metadata.tables:
+            return []
+        
+        # Query resilience metrics
+        query = text("""
+        SELECT hostname, resilience_score, risk_category, vulnerability_count,
+               suspicious_events_count, critical_vulnerabilities, high_vulnerabilities,
+               medium_vulnerabilities, low_vulnerabilities, timestamp, score_details
+        FROM resilience_metrics 
+        ORDER BY timestamp DESC 
+        LIMIT :limit
+        """)
+        
+        result = db.execute(query, {"limit": limit})
+        metrics = result.fetchall()
+        
+        return [
+            ResilienceMetricsResponse(
+                hostname=row[0],
+                resilience_score=row[1],
+                risk_category=row[2],
+                vulnerability_count=row[3],
+                suspicious_events_count=row[4], 
+                critical_vulnerabilities=row[5],
+                high_vulnerabilities=row[6],
+                medium_vulnerabilities=row[7],
+                low_vulnerabilities=row[8],
+                timestamp=row[9].isoformat() if row[9] else "",
+                score_details=row[10] if row[10] else {}
+            )
+            for row in metrics
+        ]
+        
+    except Exception as e:
+        print(f"Error fetching resilience metrics: {e}")
+        return []
+
+@app.get("/resilience/dashboard")
+def get_resilience_dashboard(db: Session = Depends(get_db)):
+    """Get dashboard data with resilience scoring overview"""
+    try:
+        # Get latest resilience scores - simplified query
+        snapshots = db.query(SnapshotDB).filter(
+            SnapshotDB.resilience_score.isnot(None)
+        ).all()
+        
+        # Calculate risk distribution
+        risk_distribution = {"LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
+        total_score = 0
+        scored_endpoints = 0
+        
+        for snapshot in snapshots:
+            risk = getattr(snapshot, 'risk_category', None)
+            score = getattr(snapshot, 'resilience_score', None)
+            
+            if risk and risk in risk_distribution:
+                risk_distribution[risk] += 1
+            if score:
+                total_score += score
+                scored_endpoints += 1
+        
+        average_score = total_score / scored_endpoints if scored_endpoints > 0 else 0
+        
+        # Metrics will be implemented later
+        
+        return {
+            "summary": {
+                "total_endpoints": len(snapshots),
+                "average_score": round(average_score, 1),
+                "risk_distribution": risk_distribution
+            },
+            "recent_scores": [
+                {
+                    "hostname": getattr(snapshot, 'hostname', ''),
+                    "resilience_score": getattr(snapshot, 'resilience_score', None),
+                    "risk_category": getattr(snapshot, 'risk_category', None),
+                    "last_scored": snapshot.last_scored.isoformat() if hasattr(snapshot, 'last_scored') and snapshot.last_scored is not None else None
+                }
+                for snapshot in snapshots[:10]
+            ],
+            "score_trend": []  # Will implement metrics later
+        }
+        
+    except Exception as e:
+        print(f"Error generating resilience dashboard: {e}")
+        return {
+            "summary": {"total_endpoints": 0, "average_score": 0, "risk_distribution": {}},
+            "recent_scores": [],
+            "score_trend": []
+        }

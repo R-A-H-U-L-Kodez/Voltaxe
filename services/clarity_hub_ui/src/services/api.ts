@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Snapshot, Event, Alert, EndpointDetail } from '../types';
+import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard } from '../types';
 
 const api = axios.create({
   baseURL: 'http://localhost:8000',
@@ -59,6 +59,21 @@ export const endpointService = {
 export const vulnerabilityService = {
   getCVEDetails: async (cveId: string): Promise<any> => {
     const response = await api.get(`/vulnerabilities/${cveId}`);
+    return response.data;
+  },
+};
+
+export const resilienceService = {
+  getResilienceScores: async (): Promise<ResilienceScore[]> => {
+    const response = await api.get<ResilienceScore[]>('/resilience/scores');
+    return response.data;
+  },
+  getResilienceMetrics: async (limit: number = 50): Promise<ResilienceMetrics[]> => {
+    const response = await api.get<ResilienceMetrics[]>(`/resilience/metrics?limit=${limit}`);
+    return response.data;
+  },
+  getResilienceDashboard: async (): Promise<ResilienceDashboard> => {
+    const response = await api.get<ResilienceDashboard>('/resilience/dashboard');
     return response.data;
   },
 };

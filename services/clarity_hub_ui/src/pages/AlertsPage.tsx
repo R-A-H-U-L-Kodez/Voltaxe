@@ -6,7 +6,7 @@ import { ReportGenerator } from '../components/ReportGenerator';
 import { alertService } from '../services/api';
 import { Alert } from '../types';
 import { generateSecurityReport } from '../utils/reportGenerator';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, AlertCircle } from 'lucide-react';
 
 export const AlertsPage = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -76,21 +76,32 @@ export const AlertsPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Sidebar />
 
       <main className="ml-64 p-8">
-        <div className="mb-8">
+        {/* Page Header */}
+        <div className="mb-8 animate-fadeIn">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">Security Alerts</h1>
-              <p className="text-foreground/70">Monitor and manage security events across your infrastructure</p>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 gradient-danger rounded-2xl flex items-center justify-center shadow-xl">
+                <AlertCircle size={32} style={{ color: 'hsl(var(--background))' }} />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-gradient-gold mb-2">
+                  Security Alerts
+                </h1>
+                <p className="text-muted-foreground flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-2" style={{ color: 'hsl(var(--danger))' }} />
+                  Monitor and manage security events across your infrastructure
+                </p>
+              </div>
             </div>
             <ReportGenerator onGenerateReport={handleReportGeneration} />
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-lg p-6 mb-6">
+        <div className="card p-6 mb-6">
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
@@ -136,11 +147,15 @@ export const AlertsPage = () => {
                     key={btn.value}
                     type="button"
                     onClick={() => setSelectedSeverity(btn.value)}
-                    className={`px-4 py-2 rounded-lg font-medium text-sm ${
-                      selectedSeverity === btn.value
-                        ? 'bg-primary-gold text-background'
-                        : 'bg-input text-foreground hover:bg-white/5'
-                    }`}
+                    className="px-4 py-2 rounded-lg font-medium text-sm transition-smooth"
+                    style={{
+                      backgroundColor: selectedSeverity === btn.value 
+                        ? 'hsl(var(--primary-gold))' 
+                        : 'hsl(var(--input))',
+                      color: selectedSeverity === btn.value 
+                        ? 'hsl(var(--background))' 
+                        : 'hsl(var(--foreground))'
+                    }}
                   >
                     {btn.label}
                   </button>
@@ -152,7 +167,10 @@ export const AlertsPage = () => {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="text-primary-gold animate-spin" size={48} />
+            <div className="relative inline-block">
+              <div className="animate-spin rounded-full h-16 w-16 border-4" style={{ borderColor: 'hsl(var(--border))' }}></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 absolute top-0 left-0" style={{ borderColor: 'hsl(var(--primary-gold))' }}></div>
+            </div>
           </div>
         ) : (
           <AlertsTable 

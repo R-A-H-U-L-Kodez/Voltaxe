@@ -289,3 +289,251 @@ INFO:     127.0.0.1:35984 - "GET /events HTTP/1.1" 200 OK
 [API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
 [API] ---> Returning 5 filtered alerts [API]
 INFO:     127.0.0.1:35990 - "GET /alerts HTTP/1.1" 200 OK
+
+📸 --- Receiving and Saving Snapshot --- 📸
+✅ --- Snapshot saved to database! --- ✅
+INFO:     127.0.0.1:42728 - "POST /ingest/snapshot HTTP/1.1" 200 OK
+
+🛡️🛡️ Receiving and Saving Vulnerability Event 🛡️🛡️
+INFO:     127.0.0.1:42740 - "POST /ingest/vulnerability_event HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56996 - "GET /health HTTP/1.1" 200 OK
+
+📸 --- Receiving and Saving Snapshot --- 📸
+✅ --- Snapshot saved to database! --- ✅
+INFO:     127.0.0.1:56998 - "POST /ingest/snapshot HTTP/1.1" 200 OK
+
+📸 --- Receiving and Saving Snapshot --- 📸
+✅ --- Snapshot saved to database! --- ✅
+INFO:     127.0.0.1:57010 - "POST /ingest/snapshot HTTP/1.1" 200 OK
+
+📸 --- Receiving and Saving Snapshot --- 📸
+✅ --- Snapshot saved to database! --- ✅
+INFO:     127.0.0.1:57026 - "POST /ingest/snapshot HTTP/1.1" 200 OK
+
+🛡️🛡️ Receiving and Saving Vulnerability Event 🛡️🛡️
+INFO:     127.0.0.1:57036 - "POST /ingest/vulnerability_event HTTP/1.1" 200 OK
+
+💥💥 Receiving and Saving Suspicious Behavior Event 💥💥
+INFO:     127.0.0.1:57052 - "POST /ingest/suspicious_event HTTP/1.1" 200 OK
+
+🛡️🛡️ Receiving and Saving Vulnerability Event 🛡️🛡️
+INFO:     127.0.0.1:57068 - "POST /ingest/vulnerability_event HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [286670]
+INFO:     Started server process [408218]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [408218]
+INFO:     Started server process [408333]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [408333]
+INFO:     Started server process [408425]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [408425]
+INFO:     Started server process [408470]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [408470]
+INFO:     Started server process [408511]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [408511]
+INFO:     Started server process [408550]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[AUTH] ✅ Supabase authentication enabled
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+
+[API] ---> Serving events (hostname filter: none) [API]
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     127.0.0.1:51010 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51024 - "GET /resilience/scores HTTP/1.1" 200 OK
+[API] ---> Returning 12 events [API]
+INFO:     127.0.0.1:51052 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51036 - "GET /snapshots HTTP/1.1" 200 OK
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[API] ---> Serving events (hostname filter: none) [API]
+INFO:     127.0.0.1:51024 - "GET /resilience/scores HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51010 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+[API] ---> Returning 12 events [API]
+INFO:     127.0.0.1:51052 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51036 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 12 events [API]
+INFO:     127.0.0.1:55464 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 12 events [API]
+INFO:     127.0.0.1:55464 - "GET /events HTTP/1.1" 200 OK
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     127.0.0.1:55464 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+INFO:     127.0.0.1:55480 - "GET /resilience/scores HTTP/1.1" 200 OK
+[API] ---> Returning 12 events [API]
+INFO:     127.0.0.1:55498 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55488 - "GET /snapshots HTTP/1.1" 200 OK
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     127.0.0.1:55464 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+INFO:     127.0.0.1:55480 - "GET /resilience/scores HTTP/1.1" 200 OK
+[API] ---> Returning 12 events [API]
+INFO:     127.0.0.1:55498 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55488 - "GET /snapshots HTTP/1.1" 200 OK
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     127.0.0.1:55504 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     127.0.0.1:32978 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     127.0.0.1:33554 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+
+[API] ---> Serving events (hostname filter: none) [API]
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     127.0.0.1:33864 - "GET /resilience/scores HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33850 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+[API] ---> Returning 12 events [API]
+INFO:     127.0.0.1:33870 - "GET /snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33876 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     127.0.0.1:33850 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+INFO:     127.0.0.1:33864 - "GET /resilience/scores HTTP/1.1" 200 OK
+[API] ---> Returning 12 events [API]
+INFO:     127.0.0.1:33870 - "GET /snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33876 - "GET /events HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [408550]
+INFO:     Started server process [412377]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[AUTH] ✅ Supabase authentication enabled
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+Error generating resilience dashboard: (sqlite3.OperationalError) no such column: resilience_score
+[SQL: 
+        SELECT hostname, resilience_score, risk_category, last_scored
+        FROM snapshots 
+        WHERE resilience_score IS NOT NULL
+        ORDER BY last_scored DESC
+        ]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     127.0.0.1:34778 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34782 - "GET /resilience/scores HTTP/1.1" 200 OK
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+INFO:     127.0.0.1:49476 - "GET /resilience/scores HTTP/1.1" 200 OK
+Error generating resilience dashboard: 'str' object has no attribute 'isoformat'
+INFO:     127.0.0.1:49464 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+Error generating resilience dashboard: 'str' object has no attribute 'isoformat'
+INFO:     127.0.0.1:39314 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+INFO:     127.0.0.1:57432 - "GET /resilience/scores HTTP/1.1" 200 OK
+Error generating resilience dashboard: 'str' object has no attribute 'isoformat'
+INFO:     127.0.0.1:57420 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+Error fetching resilience scores: type object 'SnapshotDB' has no attribute 'resilience_score'
+INFO:     127.0.0.1:37190 - "GET /resilience/scores HTTP/1.1" 200 OK
+Error generating resilience dashboard: 'str' object has no attribute 'isoformat'
+INFO:     127.0.0.1:37188 - "GET /resilience/dashboard HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [412377]
+INFO:     Stopping reloader process [286607]

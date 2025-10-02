@@ -10,5 +10,16 @@ Port 5175 is in use, trying another one...
   VITE v5.4.20  ready in 170 ms
 
   ➜  LocaBrowserslist: caniuse-lite is outdated. Please run:
-  npx update-browserslist-db@latest
-  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+  npx update-browserslist-db@late12:53:13 AM [vite] page reload src/types/index.ts
+12:53:25 AM [vite] hmr update /src/pages/AlertsPage.tsx, /src/index.css, /src/pages/Da12:53:25 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css, /src/pages/AlertsPage.tsx, /src/pages/LiveEventFeedPage.tsx, /src/pages/Endpoin12:53:41 AM [vite] hmr update /src/pages/AlertsPage.tsx, /src/index.css, /src/pages/Da12:53:41 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css, /src/pages/AlertsPage.tsx, /src/pages/LiveEventFeedPage.tsx, /src/pages/Endpoin12:54:45 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css
+12:55:00 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css
+1:09:56 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css
+1:09:56 AM [vite] hmr update /src/pages/AlertsPage.tsx, /src/index.css, /src/pages/DashboardPage.tsx, /src/pages/EndpointDetailPage.tsx, /src/pages/LiveEventFeedPage.tsx, /src/components/AlertsTable.tsx, /src/components/CVEDetailsModal.tsx
+1:09:56 AM [vite] page reload src/types/index.ts
+1:28:54 AM [vite] hmr update /src/index.css
+1:31:14 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css
+1:31:40 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css
+1:32:11 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css
+1:32:19 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css
+c/index.css
+1:32:19 AM [vite] hmr update /src/pages/DashboardPage.tsx, /src/index.css
