@@ -1,4 +1,3 @@
-# In: services/clarity_hub_api/main.py
 from fastapi import FastAPI, Depends
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON
 from sqlalchemy.orm import sessionmaker, Session
@@ -9,7 +8,7 @@ from typing import List, Optional
 
 # --- Pydantic Models ---
 class ProcessInfo(BaseModel):
-    pid: int  # <<< THIS LINE IS NOW CORRECTED
+    pid: int
     name: str
 
 class SoftwareInfo(BaseModel):
@@ -49,26 +48,22 @@ class SnapshotDB(Base):
     __tablename__ = "snapshots"
     id = Column(Integer, primary_key=True, index=True)
     hostname = Column(String, index=True)
-    os = Column(String)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
-    hardware_info = Column(JSON)
-    processes = Column(JSON)
-    installed_software = Column(JSON)
+    details = Column(JSON)
 
 class EventDB(Base):
     __tablename__ = "events"
     id = Column(Integer, primary_key=True, index=True)
     hostname = Column(String, index=True)
-    event_type = Column(String)
+    event_type = Column(String, index=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     details = Column(JSON)
 
 Base.metadata.create_all(bind=engine)
 
 # --- FastAPI Application ---
-app = FastAPI()
+app = FastAPI(title="Voltaxe Clarity Hub API")
 
-# THIS IS THE CORRECTED FUNCTION
 def get_db():
     db = SessionLocal()
     try:
@@ -80,21 +75,28 @@ def get_db():
 @app.post("/ingest/snapshot")
 def create_snapshot(snapshot: SystemInfoSnapshot, db: Session = Depends(get_db)):
     print("\n📸 --- Receiving and Saving Snapshot --- 📸")
-    db_snapshot = SnapshotDB(hostname=snapshot.hostname, os=snapshot.os, hardware_info=snapshot.hardware_info.dict(), processes=[p.dict() for p in snapshot.processes], installed_software=[s.dict() for s in snapshot.installed_software])
+    db_snapshot = SnapshotDB(hostname=snapshot.hostname, details=snapshot.dict())
     db.add(db_snapshot); db.commit(); db.refresh(db_snapshot)
     print("✅ --- Snapshot saved to database! --- ✅")
     return {"status": "success", "snapshot_id": db_snapshot.id}
 
-@app.post("/ingest/vulnerability_event")
-def create_vulnerability_event(event: EventModel, db: Session = Depends(get_db)):
-    print("\n🛡️🛡️ Saving Vulnerability Event 🛡️🛡️")
+@app.post("/ingest/event")
+def create_event(event: EventModel, db: Session = Depends(get_db)):
+    print("\n🚨 --- Receiving and Saving Real-Time Event --- 🚨")
     db_event = EventDB(hostname=event.hostname, event_type=event.event_type, details=event.dict())
     db.add(db_event); db.commit(); db.refresh(db_event)
     return {"status": "success", "event_id": db_event.id}
 
 @app.post("/ingest/suspicious_event")
 def create_suspicious_event(event: EventModel, db: Session = Depends(get_db)):
-    print("\n💥💥 Saving Suspicious Behavior Event 💥💥")
+    print("\n💥💥 Receiving and Saving Suspicious Behavior Event 💥💥")
+    db_event = EventDB(hostname=event.hostname, event_type=event.event_type, details=event.dict())
+    db.add(db_event); db.commit(); db.refresh(db_event)
+    return {"status": "success", "event_id": db_event.id}
+
+@app.post("/ingest/vulnerability_event")
+def create_vulnerability_event(event: EventModel, db: Session = Depends(get_db)):
+    print("\n🛡️🛡️ Receiving and Saving Vulnerability Event 🛡️🛡️")
     db_event = EventDB(hostname=event.hostname, event_type=event.event_type, details=event.dict())
     db.add(db_event); db.commit(); db.refresh(db_event)
     return {"status": "success", "event_id": db_event.id}

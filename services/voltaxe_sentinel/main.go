@@ -64,40 +64,26 @@ func main() {
 	startRealtimeMonitoring(snapshot.Processes)
 }
 
-// THIS FUNCTION NOW INCLUDES DOCKER DESKTOP TO ENSURE A MATCH
 func getInstalledSoftware() []SoftwareInfo {
 	return []SoftwareInfo{
 		{Name: "Google Chrome", Version: "128.0.6613.119"},
 		{Name: "VS Code", Version: "1.92.0"},
-		{Name: "Docker Desktop", Version: "4.28.0"}, // <<< THIS ENTRY IS CRUCIAL FOR THE TEST
+		{Name: "Docker Desktop", Version: "4.28.0"},
 	}
 }
 
 func analyzeVulnerabilities(snapshot SystemInfoSnapshot) {
 	fmt.Println("Analyzing software inventory for known vulnerabilities...")
-	// Our mock DB is looking for Docker Desktop
-	mockVulnerabilityDB := map[string]string{
-		"Docker Desktop": "CVE-2024-12345",
-	}
-
+	mockVulnerabilityDB := map[string]string{"Docker Desktop": "CVE-2024-12345"}
 	for _, sw := range snapshot.InstalledSoftware {
 		if cve, found := mockVulnerabilityDB[sw.Name]; found {
-			fmt.Printf("🛡️ Vulnerability Found: %s is vulnerable (%s)\n", sw.Name, cve)
-			event := VulnerabilityEvent{
-				Hostname:     snapshot.Hostname,
-				EventType:    "VULNERABILITY_DETECTED",
-				VulnerableSW: sw,
-				Reason:       fmt.Sprintf("Installed version %s is known to be vulnerable.", sw.Version),
-				CVE:          cve,
-			}
+			fmt.Printf("??????? Vulnerability Found: %s is vulnerable (%s)\n", sw.Name, cve)
+			event := VulnerabilityEvent{Hostname: snapshot.Hostname, EventType: "VULNERABILITY_DETECTED", VulnerableSW: sw, Reason: fmt.Sprintf("Installed version %s is known to be vulnerable.", sw.Version), CVE: cve}
 			eventJSON, _ := json.Marshal(event)
 			sendDataToServer(eventJSON, "/ingest/vulnerability_event")
 		}
 	}
 }
-
-// --- Other functions (collectSnapshotData, startRealtimeMonitoring, etc.) are below ---
-// NOTE: The following functions are unchanged from the previous version, but included here for a complete file.
 
 func collectSnapshotData() SystemInfoSnapshot {
 	hostname, _ := os.Hostname()
@@ -132,7 +118,7 @@ func startRealtimeMonitoring(initialProcesses []ProcessInfo) {
 				if parentProc, err := p.Parent(); err == nil {
 					parentName, _ := parentProc.Name()
 					if isSuspiciousParentChild(parentName, processName) {
-						fmt.Printf("💥 Suspicious Behavior Detected: Parent '%s' started Child '%s'\n", parentName, processName)
+						fmt.Printf("???? Suspicious Behavior Detected: Parent '%s' started Child '%s'\n", parentName, processName)
 						event := SuspiciousProcessEvent{Hostname: hostname, EventType: "SUSPICIOUS_PARENT_CHILD_PROCESS", ChildProcess: ProcessInfo{PID: p.Pid, Name: processName}, ParentProcess: ProcessInfo{PID: parentProc.Pid, Name: parentName}}
 						eventJSON, _ := json.Marshal(event)
 						sendDataToServer(eventJSON, "/ingest/suspicious_event")

@@ -1,0 +1,13 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/services/clarity_hub_api/venv/bin/python",
+    "python.pythonPath": "${workspaceFolder}/services/clarity_hub_api/venv/bin/python",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/services/clarity_hub_api",
+        "${workspaceFolder}/services/clarity_hub_api/venv/lib/python3.13/site-packages"
+    ],
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python-envs.pythonProjects": []
+}
