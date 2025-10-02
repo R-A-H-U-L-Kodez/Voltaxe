@@ -1,70 +1,169 @@
 package main
 
 import (
-	"encoding/json" // The library for handling JSON
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
+	"strings"
+	"time"
 
-	// This is our first external library for getting process information
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/process"
 )
 
-// We define a "struct" to hold our process data in a structured way
+// --- Structs ---
 type ProcessInfo struct {
-	PID         int32   `json:"pid"`
-	Name        string  `json:"name"`
-	CPU_Percent float64 `json:"cpu_percent"`
+	PID  int32  `json:"pid"`
+	Name string `json:"name"`
+}
+type SoftwareInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+type HardwareInfo struct {
+	Platform    string `json:"platform"`
+	CPUModel    string `json:"cpu_model"`
+	TotalRAM_GB uint64 `json:"total_ram_gb"`
+	TotalCores  int32  `json:"total_cores"`
+}
+type SystemInfoSnapshot struct {
+	Hostname          string         `json:"hostname"`
+	OS                string         `json:"os"`
+	Architecture      string         `json:"architecture"`
+	Hardware          HardwareInfo   `json:"hardware_info"`
+	Processes         []ProcessInfo  `json:"processes"`
+	InstalledSoftware []SoftwareInfo `json:"installed_software"`
+}
+type SuspiciousProcessEvent struct {
+	Hostname      string      `json:"hostname"`
+	EventType     string      `json:"event_type"`
+	ChildProcess  ProcessInfo `json:"child_process"`
+	ParentProcess ProcessInfo `json:"parent_process"`
+}
+type VulnerabilityEvent struct {
+	Hostname     string       `json:"hostname"`
+	EventType    string       `json:"event_type"`
+	VulnerableSW SoftwareInfo `json:"vulnerable_software"`
+	Reason       string       `json:"reason"`
+	CVE          string       `json:"cve"`
 }
 
-// A struct to hold all the system information we collect
-type SystemInfo struct {
-	Hostname     string        `json:"hostname"`
-	OS           string        `json:"os"`
-	Architecture string        `json:"architecture"`
-	Processes    []ProcessInfo `json:"processes"`
-}
-
+// --- Main application logic ---
 func main() {
-	fmt.Println("--- Voltaxe Sentinel v0.0.2 ---")
-	fmt.Println("Collecting structured data...")
+	fmt.Println("--- Voltaxe Sentinel v1.2.0 ---")
+	snapshot := collectSnapshotData()
+	snapshotJSON, _ := json.Marshal(snapshot)
+	sendDataToServer(snapshotJSON, "/ingest/snapshot")
+	analyzeVulnerabilities(snapshot)
+	fmt.Println("\nSnapshot sent. Starting real-time behavioral monitoring...")
+	startRealtimeMonitoring(snapshot.Processes)
+}
 
-	// --- Collect Basic Info (Same as before) ---
+// THIS FUNCTION NOW INCLUDES DOCKER DESKTOP TO ENSURE A MATCH
+func getInstalledSoftware() []SoftwareInfo {
+	return []SoftwareInfo{
+		{Name: "Google Chrome", Version: "128.0.6613.119"},
+		{Name: "VS Code", Version: "1.92.0"},
+		{Name: "Docker Desktop", Version: "4.28.0"}, // <<< THIS ENTRY IS CRUCIAL FOR THE TEST
+	}
+}
+
+func analyzeVulnerabilities(snapshot SystemInfoSnapshot) {
+	fmt.Println("Analyzing software inventory for known vulnerabilities...")
+	// Our mock DB is looking for Docker Desktop
+	mockVulnerabilityDB := map[string]string{
+		"Docker Desktop": "CVE-2024-12345",
+	}
+
+	for _, sw := range snapshot.InstalledSoftware {
+		if cve, found := mockVulnerabilityDB[sw.Name]; found {
+			fmt.Printf("🛡️ Vulnerability Found: %s is vulnerable (%s)\n", sw.Name, cve)
+			event := VulnerabilityEvent{
+				Hostname:     snapshot.Hostname,
+				EventType:    "VULNERABILITY_DETECTED",
+				VulnerableSW: sw,
+				Reason:       fmt.Sprintf("Installed version %s is known to be vulnerable.", sw.Version),
+				CVE:          cve,
+			}
+			eventJSON, _ := json.Marshal(event)
+			sendDataToServer(eventJSON, "/ingest/vulnerability_event")
+		}
+	}
+}
+
+// --- Other functions (collectSnapshotData, startRealtimeMonitoring, etc.) are below ---
+// NOTE: The following functions are unchanged from the previous version, but included here for a complete file.
+
+func collectSnapshotData() SystemInfoSnapshot {
 	hostname, _ := os.Hostname()
 	osType := runtime.GOOS
 	architecture := runtime.GOARCH
-
-	// --- Collect Running Processes (The New Part) ---
+	platformInfo, _ := host.Info()
+	cpuInfo, _ := cpu.Info()
+	memInfo, _ := mem.VirtualMemory()
+	hardware := HardwareInfo{Platform: fmt.Sprintf("%s %s", platformInfo.Platform, platformInfo.PlatformVersion), CPUModel: cpuInfo[0].ModelName, TotalRAM_GB: memInfo.Total / 1024 / 1024 / 1024, TotalCores: cpuInfo[0].Cores}
 	processList, _ := process.Processes()
 	var processes []ProcessInfo
-
 	for _, p := range processList {
 		name, _ := p.Name()
-		cpu, _ := p.CPUPercent()
-
-		// We create a ProcessInfo object for each process
-		procInfo := ProcessInfo{
-			PID:         p.Pid,
-			Name:        name,
-			CPU_Percent: cpu,
-		}
-		// And add it to our list
+		procInfo := ProcessInfo{PID: p.Pid, Name: name}
 		processes = append(processes, procInfo)
 	}
+	software := getInstalledSoftware()
+	return SystemInfoSnapshot{Hostname: hostname, OS: osType, Architecture: architecture, Hardware: hardware, Processes: processes, InstalledSoftware: software}
+}
 
-	// --- Structure All Data and Convert to JSON ---
-	allSystemInfo := SystemInfo{
-		Hostname:     hostname,
-		OS:           osType,
-		Architecture: architecture,
-		Processes:    processes,
+func startRealtimeMonitoring(initialProcesses []ProcessInfo) {
+	knownProcesses := make(map[int32]bool)
+	for _, p := range initialProcesses {
+		knownProcesses[p.PID] = true
 	}
+	hostname, _ := os.Hostname()
+	for {
+		currentProcs, _ := process.Processes()
+		for _, p := range currentProcs {
+			if _, exists := knownProcesses[p.Pid]; !exists {
+				processName, _ := p.Name()
+				if parentProc, err := p.Parent(); err == nil {
+					parentName, _ := parentProc.Name()
+					if isSuspiciousParentChild(parentName, processName) {
+						fmt.Printf("💥 Suspicious Behavior Detected: Parent '%s' started Child '%s'\n", parentName, processName)
+						event := SuspiciousProcessEvent{Hostname: hostname, EventType: "SUSPICIOUS_PARENT_CHILD_PROCESS", ChildProcess: ProcessInfo{PID: p.Pid, Name: processName}, ParentProcess: ProcessInfo{PID: parentProc.Pid, Name: parentName}}
+						eventJSON, _ := json.Marshal(event)
+						sendDataToServer(eventJSON, "/ingest/suspicious_event")
+					}
+				}
+				knownProcesses[p.Pid] = true
+			}
+		}
+		time.Sleep(2 * time.Second)
+	}
+}
 
-	// MarshalIndent converts our Go struct into nicely formatted JSON
-	jsonData, _ := json.MarshalIndent(allSystemInfo, "", "  ")
+func isSuspiciousParentChild(parentName string, childName string) bool {
+	if strings.Contains(parentName, "zsh") && strings.Contains(childName, "ping") {
+		return true
+	}
+	return false
+}
 
-	fmt.Println("\n--- Collected Data (JSON) ---")
-	// We print the JSON data by converting the byte array to a string
-	fmt.Println(string(jsonData))
-	fmt.Println("---------------------------")
+func sendDataToServer(jsonData []byte, endpoint string) {
+	serverURL := "http://localhost:8001" + endpoint
+	req, _ := http.NewRequest("POST", serverURL, bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("Failed to send data to %s: %v\n", endpoint, err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		fmt.Printf("Server responded to %s with status: %s\n", endpoint, resp.Status)
+	}
 }

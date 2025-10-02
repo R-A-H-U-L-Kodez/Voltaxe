@@ -4,16 +4,36 @@ import json
 
 app = FastAPI()
 
-# This endpoint will listen for POST requests at the "/ingest" URL
-@app.post("/ingest")
-async def receive_data(request: Request):
-    # We get the raw JSON data sent by the Sentinel
+@app.post("/ingest/snapshot")
+async def receive_snapshot(request: Request):
     data = await request.json()
+    print("\n📸 --- FULL SYSTEM SNAPSHOT Received --- 📸")
+    print(json.dumps(data, indent=2))
+    print("-------------------------------------------\n")
+    return {"status": "success", "message": "Snapshot received"}
 
-    # Print a success message and the data to the console
-    print("\n✅ --- Data Received from a Sentinel Agent --- ✅")
-    # Use json.dumps for pretty-printing the received JSON
+@app.post("/ingest/event")
+async def receive_event(request: Request):
+    data = await request.json()
+    print("\n🚨 --- Real-Time Event Received --- 🚨")
+    print(json.dumps(data, indent=2))
+    print("--------------------------------------\n")
+    return {"status": "success", "message": "Event received"}
+
+# THE MISSING ENDPOINT IS HERE
+@app.post("/ingest/suspicious_event")
+async def receive_suspicious_event(request: Request):
+    data = await request.json()
+    print("\n💥💥 HIGH-PRIORITY SUSPICIOUS BEHAVIOR DETECTED! 💥💥")
+    print(json.dumps(data, indent=2))
+    print("------------------------------------------------------\n")
+    return {"status": "success", "message": "Suspicious event received"}
+
+# NEW ENDPOINT FOR VULNERABILITY ALERTS
+@app.post("/ingest/vulnerability_event")
+async def receive_vulnerability_event(request: Request):
+    data = await request.json()
+    print("\n🛡️🛡️ SECURITY VULNERABILITY DETECTED! 🛡️🛡️")
     print(json.dumps(data, indent=2))
     print("--------------------------------------------------\n")
-
-    return {"status": "success", "message": "Data received"}
+    return {"status": "success", "message": "Vulnerability event received"}
