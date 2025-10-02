@@ -1,11 +1,17 @@
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_, Float, Text, Boolean
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
 from pydantic import BaseModel
 import datetime
+import os
 from typing import List, Optional, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
+from auth_service import auth_service, get_current_user, LoginRequest, RegisterRequest, LoginResponse, RegisterResponse
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # --- Pydantic Models ---
 class ProcessInfo(BaseModel):
@@ -40,7 +46,7 @@ class EventModel(BaseModel):
     cve: Optional[str] = None
 
 # --- Database Setup ---
-DATABASE_URL = "postgresql://postgres:mysecretpassword@localhost/postgres"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:mysecretpassword@localhost/postgres")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -59,6 +65,31 @@ class EventDB(Base):
     event_type = Column(String, index=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     details = Column(JSON)
+
+class CVEDB(Base):
+    """CVE Database Model for real vulnerability data"""
+    __tablename__ = "cve_database"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    cve_id = Column(String, unique=True, index=True, nullable=False)
+    description = Column(Text)
+    cvss_v3_score = Column(Float)
+    cvss_v3_vector = Column(String)
+    cvss_v2_score = Column(Float)
+    cvss_v2_vector = Column(String)
+    severity = Column(String, index=True)
+    attack_vector = Column(String)
+    published_date = Column(DateTime, index=True)
+    last_modified = Column(DateTime, index=True)
+    references = Column(JSON)
+    cpe_configurations = Column(JSON)
+    affected_products = Column(JSON)
+    exploitability_score = Column(Float)
+    impact_score = Column(Float)
+    weaknesses = Column(JSON)
+    vendor_comments = Column(JSON)
+    is_active = Column(Boolean, default=True, index=True)
+    sync_timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
 
@@ -159,6 +190,60 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# --- Authentication Endpoints ---
+@app.post("/auth/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    """Authenticate user with Supabase or fallback system"""
+    print(f"[AUTH] Login attempt for: {request.email}")
+    
+    try:
+        auth_result = await auth_service.authenticate_user(request.email, request.password)
+        
+        return LoginResponse(
+            access_token=auth_result["access_token"],
+            refresh_token=auth_result["refresh_token"],
+            user={
+                "id": auth_result["user_id"],
+                "email": auth_result["email"],
+                "provider": auth_result["provider"]
+            }
+        )
+    except HTTPException as e:
+        print(f"[AUTH] Login failed for {request.email}: {e.detail}")
+        raise e
+
+@app.post("/auth/register", response_model=RegisterResponse)
+async def register(request: RegisterRequest):
+    """Register new user with Supabase"""
+    print(f"[AUTH] Registration attempt for: {request.email}")
+    
+    try:
+        result = await auth_service.register_user(request.email, request.password, request.name)
+        return RegisterResponse(
+            message=result["message"],
+            user_id=result.get("user_id")
+        )
+    except HTTPException as e:
+        print(f"[AUTH] Registration failed for {request.email}: {e.detail}")
+        raise e
+
+@app.post("/auth/refresh")
+async def refresh_token(refresh_token: str):
+    """Refresh access token"""
+    try:
+        result = await auth_service.refresh_token(refresh_token)
+        return result
+    except HTTPException as e:
+        raise e
+
+@app.get("/auth/me")
+async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Get current authenticated user information"""
+    return {
+        "user": current_user,
+        "authenticated": True
+    }
 
 # --- API Endpoints ---
 @app.post("/ingest/snapshot")
@@ -310,59 +395,101 @@ def acknowledge_alert(alert_id: str, db: Session = Depends(get_db)):
     return {"status": "success", "message": f"Alert {alert_id} acknowledged"}
 
 @app.get("/vulnerabilities/{cve_id}", response_model=CVEDetailsResponse)
-def get_vulnerability_details(cve_id: str, db: Session = Depends(get_db)):
+def get_vulnerability_details(cve_id: str, db: Session = Depends(get_db), current_user: Dict[str, Any] = Depends(get_current_user)):
     """
-    Get detailed vulnerability information for CVE intelligence.
-    In production, this would query NIST NVD API or local CVE database.
+    Get detailed vulnerability information from real CVE database.
+    Protected endpoint requiring authentication.
     """
-    print(f"\n[API] ---> Fetching vulnerability details for {cve_id} [API]")
+    print(f"\n[API] ---> Fetching vulnerability details for {cve_id} by user {current_user.get('email', 'unknown')} [API]")
     
-    # Mock CVE database - in production, integrate with NIST NVD
-    cve_database = {
-        "CVE-2024-12345": {
-            "id": "CVE-2024-12345",
-            "cvssScore": 9.8,
-            "severity": "Critical",
-            "attackVector": "Remote Code Execution via Network",
-            "summary": "Docker Desktop for Windows allows attackers to overwrite any file through the hyperv/create Docker API by controlling the DataFolder parameter in the POST request, enabling local privilege escalation.",
-            "publishedDate": "2024-09-15",
-            "lastModified": "2024-09-20",
-            "references": [
-                "https://nvd.nist.gov/vuln/detail/CVE-2024-12345",
-                "https://www.docker.com/security-advisory"
-            ]
-        },
-        "CVE-2023-45678": {
-            "id": "CVE-2023-45678",
-            "cvssScore": 7.5,
-            "severity": "High",
-            "attackVector": "Information Disclosure via Local Access",
-            "summary": "A vulnerability in the system configuration allows local users to access sensitive information through improper file permissions.",
-            "publishedDate": "2023-11-10",
-            "lastModified": "2023-11-15",
-            "references": [
-                "https://nvd.nist.gov/vuln/detail/CVE-2023-45678"
-            ]
+    # Query real CVE database first
+    cve_record = db.query(CVEDB).filter(
+        CVEDB.cve_id == cve_id,
+        CVEDB.is_active == True
+    ).first()
+    
+    if cve_record:
+        # Real CVE data from database
+        print(f"[API] ---> Found CVE in real database [API]")
+        
+        # Extract references from JSON
+        references = []
+        references_data = getattr(cve_record, 'references', None)
+        if references_data:
+            references = [ref.get("url", "") for ref in references_data if ref.get("url")]
+        
+        # Find affected endpoints by querying events
+        affected_events = db.query(EventDB).filter(
+            EventDB.event_type == 'VULNERABILITY_DETECTED',
+            EventDB.details.op('->>')('cve') == cve_id
+        ).all()
+        
+        affected_endpoints = list(set([str(event.hostname) for event in affected_events]))
+        
+        # Safely format dates
+        published_date = getattr(cve_record, 'published_date', None)
+        last_modified = getattr(cve_record, 'last_modified', None)
+        
+        return CVEDetailsResponse(
+            id=getattr(cve_record, 'cve_id', cve_id),
+            cvssScore=getattr(cve_record, 'cvss_v3_score', None) or getattr(cve_record, 'cvss_v2_score', None) or 0.0,
+            severity=getattr(cve_record, 'severity', None) or "UNKNOWN",
+            attackVector=getattr(cve_record, 'attack_vector', None) or "Unknown",
+            summary=getattr(cve_record, 'description', None) or "No description available",
+            affectedEndpoints=affected_endpoints,
+            publishedDate=published_date.strftime("%Y-%m-%d") if published_date else "Unknown",
+            lastModified=last_modified.strftime("%Y-%m-%d") if last_modified else "Unknown",
+            references=references
+        )
+    else:
+        # Fallback to mock data for development/demo
+        print(f"[API] ---> CVE not found in database, using fallback data [API]")
+        
+        mock_cve_database = {
+            "CVE-2024-12345": {
+                "id": "CVE-2024-12345",
+                "cvssScore": 9.8,
+                "severity": "Critical",
+                "attackVector": "Remote Code Execution via Network",
+                "summary": "Docker Desktop for Windows allows attackers to overwrite any file through the hyperv/create Docker API by controlling the DataFolder parameter in the POST request, enabling local privilege escalation.",
+                "publishedDate": "2024-09-15",
+                "lastModified": "2024-09-20",
+                "references": [
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-12345",
+                    "https://www.docker.com/security-advisory"
+                ]
+            },
+            "CVE-2023-45678": {
+                "id": "CVE-2023-45678",
+                "cvssScore": 7.5,
+                "severity": "High",
+                "attackVector": "Information Disclosure via Local Access",
+                "summary": "A vulnerability in the system configuration allows local users to access sensitive information through improper file permissions.",
+                "publishedDate": "2023-11-10",
+                "lastModified": "2023-11-15",
+                "references": [
+                    "https://nvd.nist.gov/vuln/detail/CVE-2023-45678"
+                ]
+            }
         }
-    }
-    
-    if cve_id not in cve_database:
-        raise HTTPException(status_code=404, detail=f"CVE {cve_id} not found in database")
-    
-    cve_data = cve_database[cve_id]
-    
-    # Find affected endpoints by querying events
-    affected_events = db.query(EventDB).filter(
-        EventDB.event_type == 'VULNERABILITY_DETECTED',
-        EventDB.details.op('->>')('cve') == cve_id
-    ).all()
-    
-    affected_endpoints = list(set([str(event.hostname) for event in affected_events]))
-    
-    return CVEDetailsResponse(
-        **cve_data,
-        affectedEndpoints=affected_endpoints
-    )
+        
+        if cve_id not in mock_cve_database:
+            raise HTTPException(status_code=404, detail=f"CVE {cve_id} not found in database")
+        
+        cve_data = mock_cve_database[cve_id]
+        
+        # Find affected endpoints by querying events
+        affected_events = db.query(EventDB).filter(
+            EventDB.event_type == 'VULNERABILITY_DETECTED',
+            EventDB.details.op('->>')('cve') == cve_id
+        ).all()
+        
+        affected_endpoints = list(set([str(event.hostname) for event in affected_events]))
+        
+        return CVEDetailsResponse(
+            **cve_data,
+            affectedEndpoints=affected_endpoints
+        )
 
 @app.post("/endpoints/{hostname}/isolate", response_model=EndpointActionResponse)
 def isolate_endpoint(hostname: str, db: Session = Depends(get_db)):
