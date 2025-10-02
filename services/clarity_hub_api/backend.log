@@ -1,0 +1,250 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/home/rahul/Voltaxe/Voltaxe/services/clarity_hub_api']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [286607] using WatchFiles
+INFO:     Started server process [286670]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[AUTH] ✅ Supabase authentication enabled
+INFO:     127.0.0.1:40212 - "GET / HTTP/1.1" 404 Not Found
+
+[API] ---> Serving events (hostname filter: none) [API]
+INFO:     127.0.0.1:39616 - "GET /snapshots HTTP/1.1" 200 OK
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:39624 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:39616 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39624 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:39616 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:39616 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 0 filtered alerts [API]
+INFO:     127.0.0.1:39616 - "GET /alerts HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 0 filtered alerts [API]
+INFO:     127.0.0.1:39616 - "GET /alerts HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:39624 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39616 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:39624 - "GET /snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39616 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:39672 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39664 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:39672 - "GET /snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39676 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:54542 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:54542 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 0 filtered alerts [API]
+INFO:     127.0.0.1:54542 - "GET /alerts HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 0 filtered alerts [API]
+INFO:     127.0.0.1:54542 - "GET /alerts HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:54542 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:54542 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:54542 - "GET /snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54554 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 0 events [API]
+INFO:     127.0.0.1:54542 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54558 - "GET /snapshots HTTP/1.1" 200 OK
+
+📸 --- Receiving and Saving Snapshot --- 📸
+✅ --- Snapshot saved to database! --- ✅
+INFO:     127.0.0.1:37234 - "POST /ingest/snapshot HTTP/1.1" 200 OK
+
+🛡️🛡️ Receiving and Saving Vulnerability Event 🛡️🛡️
+INFO:     127.0.0.1:37236 - "POST /ingest/vulnerability_event HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:37252 - "GET /snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37262 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:37262 - "GET /snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37252 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Fetching endpoint details for 'kali' [API]
+INFO:     127.0.0.1:37252 - "GET /endpoints/kali HTTP/1.1" 200 OK
+
+[API] ---> Fetching endpoint details for 'kali' [API]
+INFO:     127.0.0.1:37252 - "GET /endpoints/kali HTTP/1.1" 200 OK
+
+🚨🚨 ACTION: Isolation requested for 'kali' 🚨🚨
+[SECURITY ACTION] 2025-10-02T18:25:13.054138: Endpoint 'kali' has been isolated from network
+[AUDIT LOG] Isolation action logged for compliance and forensics
+INFO:     127.0.0.1:56524 - "POST /endpoints/kali/isolate HTTP/1.1" 200 OK
+
+[API] ---> Fetching endpoint details for 'kali' [API]
+INFO:     127.0.0.1:56524 - "GET /endpoints/kali HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:41600 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56524 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:56524 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41600 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Fetching endpoint details for 'kali' [API]
+INFO:     127.0.0.1:56524 - "GET /endpoints/kali HTTP/1.1" 200 OK
+
+[API] ---> Fetching endpoint details for 'kali' [API]
+INFO:     127.0.0.1:56524 - "GET /endpoints/kali HTTP/1.1" 200 OK
+
+🔍🔍 ACTION: Security scan requested for 'kali' 🔍🔍
+[SECURITY SCAN] 2025-10-02T18:25:25.690413: Security scan initiated for 'kali'
+[AGENT COMMAND] Scan request sent to Voltaxe Sentinel on 'kali'
+INFO:     127.0.0.1:56524 - "POST /endpoints/kali/scan HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:57184 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56524 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:56524 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57184 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+INFO:     127.0.0.1:44490 - "GET /snapshots HTTP/1.1" 200 OK
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:44506 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:44490 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44506 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:44490 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 1 events [API]
+INFO:     127.0.0.1:44506 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 1 filtered alerts [API]
+INFO:     127.0.0.1:44506 - "GET /alerts HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 1 filtered alerts [API]
+INFO:     127.0.0.1:44490 - "GET /alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46978 - "GET /health HTTP/1.1" 200 OK
+
+📸 --- Receiving and Saving Snapshot --- 📸
+✅ --- Snapshot saved to database! --- ✅
+INFO:     127.0.0.1:46984 - "POST /ingest/snapshot HTTP/1.1" 200 OK
+
+📸 --- Receiving and Saving Snapshot --- 📸
+✅ --- Snapshot saved to database! --- ✅
+INFO:     127.0.0.1:46996 - "POST /ingest/snapshot HTTP/1.1" 200 OK
+
+📸 --- Receiving and Saving Snapshot --- 📸
+✅ --- Snapshot saved to database! --- ✅
+INFO:     127.0.0.1:47000 - "POST /ingest/snapshot HTTP/1.1" 200 OK
+
+🛡️🛡️ Receiving and Saving Vulnerability Event 🛡️🛡️
+INFO:     127.0.0.1:47006 - "POST /ingest/vulnerability_event HTTP/1.1" 200 OK
+
+💥💥 Receiving and Saving Suspicious Behavior Event 💥💥
+INFO:     127.0.0.1:47022 - "POST /ingest/suspicious_event HTTP/1.1" 200 OK
+
+🛡️🛡️ Receiving and Saving Vulnerability Event 🛡️🛡️
+INFO:     127.0.0.1:47024 - "POST /ingest/vulnerability_event HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53060 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 4 events [API]
+INFO:     127.0.0.1:53072 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 4 events [API]
+INFO:     127.0.0.1:44012 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44002 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+INFO:     127.0.0.1:44012 - "GET /snapshots HTTP/1.1" 200 OK
+[API] ---> Returning 4 events [API]
+INFO:     127.0.0.1:44026 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Fetching endpoint details for 'laptop-03.voltaxe.local' [API]
+INFO:     127.0.0.1:44028 - "GET /endpoints/laptop-03.voltaxe.local HTTP/1.1" 200 OK
+
+[API] ---> Fetching endpoint details for 'laptop-03.voltaxe.local' [API]
+INFO:     127.0.0.1:44038 - "GET /endpoints/laptop-03.voltaxe.local HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 4 events [API]
+INFO:     127.0.0.1:44028 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44038 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+INFO:     127.0.0.1:44028 - "GET /snapshots HTTP/1.1" 200 OK
+[API] ---> Returning 4 events [API]
+INFO:     127.0.0.1:44038 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Fetching endpoint details for 'server-02.voltaxe.local' [API]
+INFO:     127.0.0.1:44038 - "GET /endpoints/server-02.voltaxe.local HTTP/1.1" 200 OK
+
+[API] ---> Fetching endpoint details for 'server-02.voltaxe.local' [API]
+INFO:     127.0.0.1:44038 - "GET /endpoints/server-02.voltaxe.local HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 4 events [API]
+INFO:     127.0.0.1:35410 - "GET /events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44038 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+INFO:     127.0.0.1:35410 - "GET /snapshots HTTP/1.1" 200 OK
+[API] ---> Returning 4 events [API]
+INFO:     127.0.0.1:44038 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 4 filtered alerts [API]
+INFO:     127.0.0.1:56744 - "GET /alerts HTTP/1.1" 200 OK
