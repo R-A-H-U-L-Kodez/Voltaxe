@@ -1,0 +1,14 @@
+nohup: ignoring input
+/home/rahul/Voltaxe/Voltaxe/services/cve_sync_service/main.py:26: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+  Base = declarative_base()
+2025-10-03 00:10:21 [info     ] 🚀 Starting Voltaxe CVE Synchronization Service
+2025-10-03 00:10:21 [info     ] ✅ NVD API key configured. Using authenticated rate limits.
+2025-10-03 00:10:21 [info     ] 🔄 Starting CVE database synchronization...
+2025-10-03 00:10:21 [info     ] 📅 Performing incremental sync from 2025-10-02 18:37:54.904422
+/home/rahul/Voltaxe/Voltaxe/services/cve_sync_service/main.py:135: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  "lastModEndDate": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+2025-10-03 00:10:21 [info     ] 📥 Fetching CVEs (offset: 0)...
+2025-10-03 00:10:23 [info     ] 📭 No more CVEs to process
+2025-10-03 00:10:23 [info     ] ✅ CVE sync completed in 1.85s  errors=0 new_cves=0 total_processed=0 updated_cves=0
+2025-10-03 00:10:23 [info     ] ✅ CVE sync completed successfully duration_seconds=1.849475383758545 errors=0 new_cves=0 status=success total_processed=0 updated_cves=0
+2025-10-03 00:10:23 [info     ] 😴 Sleeping for 24 hours...

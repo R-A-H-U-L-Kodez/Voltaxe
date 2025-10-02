@@ -248,3 +248,44 @@ INFO:     127.0.0.1:44038 - "GET /events HTTP/1.1" 200 OK
 [API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
 [API] ---> Returning 4 filtered alerts [API]
 INFO:     127.0.0.1:56744 - "GET /alerts HTTP/1.1" 200 OK
+
+📸 --- Receiving and Saving Snapshot --- 📸
+✅ --- Snapshot saved to database! --- ✅
+INFO:     127.0.0.1:51092 - "POST /ingest/snapshot HTTP/1.1" 200 OK
+
+🛡️🛡️ Receiving and Saving Vulnerability Event 🛡️🛡️
+INFO:     127.0.0.1:51094 - "POST /ingest/vulnerability_event HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54036 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38140 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38156 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 5 events [API]
+INFO:     127.0.0.1:38160 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 5 filtered alerts [API]
+INFO:     127.0.0.1:38168 - "GET /alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42016 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42020 - "GET /vulnerabilities/CVE-2024-12345 HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:42028 - "GET /vulnerabilities/CVE-2023-45678 HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:42042 - "GET /vulnerabilities/CVE-2024-0001 HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:42054 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 5 events [API]
+INFO:     127.0.0.1:42056 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 5 filtered alerts [API]
+INFO:     127.0.0.1:42068 - "GET /alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35966 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35980 - "GET /snapshots HTTP/1.1" 200 OK
+
+[API] ---> Serving events (hostname filter: none) [API]
+[API] ---> Returning 5 events [API]
+INFO:     127.0.0.1:35984 - "GET /events HTTP/1.1" 200 OK
+
+[API] ---> Serving filtered alerts (search=None, severity=None, dates=None-None)... [API]
+[API] ---> Returning 5 filtered alerts [API]
+INFO:     127.0.0.1:35990 - "GET /alerts HTTP/1.1" 200 OK

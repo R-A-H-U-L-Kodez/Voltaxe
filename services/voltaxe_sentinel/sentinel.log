@@ -1,0 +1,6 @@
+nohup: ignoring input
+--- Voltaxe Sentinel v1.2.0 ---
+Analyzing software inventory for known vulnerabilities...
+??????? Vulnerability Found: Docker Desktop is vulnerable (CVE-2024-12345)
+
+Snapshot sent. Starting real-time behavioral monitoring...
