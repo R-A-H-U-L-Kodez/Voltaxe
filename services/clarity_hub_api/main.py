@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_, Float, Text, Boolean, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
@@ -831,3 +831,355 @@ def get_resilience_dashboard(db: Session = Depends(get_db)):
             "recent_scores": [],
             "score_trend": []
         }
+
+# ============================================
+# MALWARE SCANNING ENDPOINTS
+# ============================================
+
+# Database model for scan results
+class MalwareScanDB(Base):
+    __tablename__ = "malware_scans"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    file_name = Column(String, index=True)
+    file_size = Column(Integer)
+    md5_hash = Column(String, index=True)
+    sha1_hash = Column(String, index=True)
+    sha256_hash = Column(String, index=True)
+    scan_time = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    is_malicious = Column(Boolean, index=True)
+    threat_level = Column(String, index=True)  # clean, low, medium, high, critical
+    matches = Column(JSON)  # YARA rule matches
+    error = Column(Text)
+    hostname = Column(String, index=True)  # Which endpoint submitted the file
+    uploaded_by = Column(String)  # User who uploaded
+
+# Create the table
+Base.metadata.create_all(bind=engine)
+
+# Pydantic models for malware scanning
+class MalwareScanResponse(BaseModel):
+    scan_id: int
+    file_name: str
+    file_size: int
+    md5_hash: str
+    sha1_hash: str
+    sha256_hash: str
+    scan_time: str
+    is_malicious: bool
+    threat_level: str
+    matches: List[Dict]
+    error: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class MalwareScanSummaryResponse(BaseModel):
+    total_scans: int
+    malicious_files: int
+    clean_files: int
+    threat_distribution: Dict[str, int]
+    recent_threats: List[MalwareScanResponse]
+
+# Helper function to convert DB model to Pydantic response
+def db_to_response(scan_db: MalwareScanDB) -> MalwareScanResponse:
+    """Convert SQLAlchemy model to Pydantic model"""
+    return MalwareScanResponse(
+        scan_id=scan_db.id,  # pyright: ignore[reportArgumentType]
+        file_name=scan_db.file_name,  # pyright: ignore[reportArgumentType]
+        file_size=scan_db.file_size,  # pyright: ignore[reportArgumentType]
+        md5_hash=scan_db.md5_hash,  # pyright: ignore[reportArgumentType]
+        sha1_hash=scan_db.sha1_hash,  # pyright: ignore[reportArgumentType]
+        sha256_hash=scan_db.sha256_hash,  # pyright: ignore[reportArgumentType]
+        scan_time=scan_db.scan_time.isoformat(),  # pyright: ignore[reportArgumentType]
+        is_malicious=scan_db.is_malicious,  # pyright: ignore[reportArgumentType]
+        threat_level=scan_db.threat_level,  # pyright: ignore[reportArgumentType]
+        matches=scan_db.matches,  # pyright: ignore[reportArgumentType]
+        error=scan_db.error  # pyright: ignore[reportArgumentType]
+    )
+
+# Import scanner (will fail gracefully if YARA not available)
+scanner: Optional["MalwareScanner"] = None  # Type hint declared here
+try:
+    from malware_scanner import MalwareScanner
+    scanner = MalwareScanner()
+    SCANNER_AVAILABLE = True
+except Exception as e:
+    print(f"Warning: Malware scanner not available: {e}")
+    SCANNER_AVAILABLE = False
+
+@app.post("/malware/scan", response_model=MalwareScanResponse)
+async def scan_file_for_malware(
+    file: UploadFile = File(...),
+    hostname: Optional[str] = None,
+    current_user: Dict = Depends(get_current_user),
+    db: Session = Depends(lambda: SessionLocal())
+):
+    """
+    Scan an uploaded file for malware using YARA rules
+    
+    - **file**: File to scan (max 100MB)
+    - **hostname**: Optional hostname of the endpoint this file came from
+    
+    Returns scan results including threat level and matched signatures
+    """
+    if not SCANNER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Malware scanner is not available. YARA library may not be installed."
+        )
+    
+    try:
+        # Read file data
+        file_data = await file.read()
+        
+        # Check file size (100MB limit)
+        max_size = 100 * 1024 * 1024  # 100MB
+        if len(file_data) > max_size:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum size is {max_size / 1024 / 1024}MB"
+            )
+        
+        # Scan the file
+        if scanner is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Malware scanner is not available"
+            )
+        scan_result = scanner.scan_bytes(file_data, file.filename or "unknown")
+        
+        # Save scan result to database
+        scan_db = MalwareScanDB(
+            file_name=scan_result.file_name,
+            file_size=scan_result.file_size,
+            md5_hash=scan_result.md5_hash,
+            sha1_hash=scan_result.sha1_hash,
+            sha256_hash=scan_result.sha256_hash,
+            scan_time=datetime.datetime.fromisoformat(scan_result.scan_time),
+            is_malicious=scan_result.is_malicious,
+            threat_level=scan_result.threat_level,
+            matches=[m.to_dict() for m in scan_result.matches],
+            error=scan_result.error,
+            hostname=hostname,
+            uploaded_by=current_user.get("email", "unknown")
+        )
+        
+        db.add(scan_db)
+        db.commit()
+        db.refresh(scan_db)
+        
+        return db_to_response(scan_db)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error scanning file: {str(e)}")
+    finally:
+        db.close()
+
+@app.get("/malware/test-eicar", response_model=MalwareScanResponse)
+def test_eicar_detection(
+    current_user: Dict = Depends(get_current_user),
+    db: Session = Depends(lambda: SessionLocal())
+):
+    """
+    Test malware scanner with EICAR test file
+    
+    EICAR is a standard test file used to verify antivirus/anti-malware systems.
+    This endpoint should always detect the EICAR signature.
+    """
+    if not SCANNER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Malware scanner is not available. YARA library may not be installed."
+        )
+    
+    if scanner is None:
+        raise HTTPException(status_code=503, detail="Scanner not initialized")
+    
+    try:
+        # Scan EICAR test string
+        scan_result = scanner.test_eicar()
+        
+        # Save to database
+        scan_db = MalwareScanDB(
+            file_name="eicar_test.com",
+            file_size=scan_result.file_size,
+            md5_hash=scan_result.md5_hash,
+            sha1_hash=scan_result.sha1_hash,
+            sha256_hash=scan_result.sha256_hash,
+            scan_time=datetime.datetime.fromisoformat(scan_result.scan_time),
+            is_malicious=scan_result.is_malicious,
+            threat_level=scan_result.threat_level,
+            matches=[m.to_dict() for m in scan_result.matches],
+            error=scan_result.error,
+            hostname="test",
+            uploaded_by=current_user.get("email", "system")
+        )
+        
+        db.add(scan_db)
+        db.commit()
+        db.refresh(scan_db)
+        
+        return db_to_response(scan_db)
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error testing EICAR: {str(e)}")
+    finally:
+        db.close()
+
+@app.get("/malware/scans", response_model=List[MalwareScanResponse])
+def get_malware_scans(
+    limit: int = 100,
+    malicious_only: bool = False,
+    current_user: Dict = Depends(get_current_user),
+    db: Session = Depends(lambda: SessionLocal())
+):
+    """
+    Get malware scan history
+    
+    - **limit**: Maximum number of scans to return (default 100)
+    - **malicious_only**: If true, only return scans that detected malware
+    """
+    try:
+        query = db.query(MalwareScanDB).order_by(MalwareScanDB.scan_time.desc())
+        
+        if malicious_only:
+            query = query.filter(MalwareScanDB.is_malicious == True)
+        
+        scans = query.limit(limit).all()
+        
+        return [db_to_response(scan) for scan in scans]
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching scans: {str(e)}")
+    finally:
+        db.close()
+
+@app.get("/malware/scans/{scan_id}", response_model=MalwareScanResponse)
+def get_malware_scan_details(
+    scan_id: int,
+    current_user: Dict = Depends(get_current_user),
+    db: Session = Depends(lambda: SessionLocal())
+):
+    """
+    Get detailed information about a specific malware scan
+    """
+    try:
+        scan = db.query(MalwareScanDB).filter(MalwareScanDB.id == scan_id).first()
+        
+        if not scan:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        
+        return db_to_response(scan)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching scan details: {str(e)}")
+    finally:
+        db.close()
+
+@app.get("/malware/summary", response_model=MalwareScanSummaryResponse)
+def get_malware_scan_summary(
+    current_user: Dict = Depends(get_current_user),
+    db: Session = Depends(lambda: SessionLocal())
+):
+    """
+    Get summary statistics for malware scans
+    """
+    try:
+        # Get all scans
+        all_scans = db.query(MalwareScanDB).all()
+        
+        # Calculate statistics - using filter to avoid type errors
+        total_scans = len(all_scans)
+        malicious_scans = [scan for scan in all_scans if getattr(scan, 'is_malicious', False)]
+        malicious_files = len(malicious_scans)
+        clean_files = total_scans - malicious_files
+        
+        # Threat distribution
+        threat_distribution = {
+            "clean": 0,
+            "low": 0,
+            "medium": 0,
+            "high": 0,
+            "critical": 0
+        }
+        
+        for scan in all_scans:
+            threat_level_val = getattr(scan, 'threat_level', None)
+            level = threat_level_val.lower() if threat_level_val else "clean"
+            if level in threat_distribution:
+                threat_distribution[level] += 1
+        
+        # Get recent malicious scans
+        recent_threats = db.query(MalwareScanDB)\
+            .filter(MalwareScanDB.is_malicious == True)\
+            .order_by(MalwareScanDB.scan_time.desc())\
+            .limit(10)\
+            .all()
+        
+        return MalwareScanSummaryResponse(
+            total_scans=total_scans,
+            malicious_files=malicious_files,
+            clean_files=clean_files,
+            threat_distribution=threat_distribution,
+            recent_threats=[db_to_response(scan) for scan in recent_threats]
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
+    finally:
+        db.close()
+
+@app.get("/malware/rules")
+def get_available_yara_rules(current_user: Dict = Depends(get_current_user)):
+    """
+    Get list of available YARA rules loaded in the scanner
+    """
+    if not SCANNER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Malware scanner is not available. YARA library may not be installed."
+        )
+    
+    if scanner is None:
+        raise HTTPException(status_code=503, detail="Scanner not initialized")
+    
+    try:
+        rules = scanner.get_available_rules()
+        return {
+            "total_rules": len(rules),
+            "rules": rules
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching rules: {str(e)}")
+
+@app.post("/malware/reload-rules")
+def reload_yara_rules(current_user: Dict = Depends(get_current_user)):
+    """
+    Reload YARA rules from the rules file
+    Useful after updating rules without restarting the server
+    """
+    if not SCANNER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Malware scanner is not available. YARA library may not be installed."
+        )
+    
+    if scanner is None:
+        raise HTTPException(status_code=503, detail="Scanner not initialized")
+    
+    try:
+        scanner.reload_rules()
+        rules = scanner.get_available_rules()
+        return {
+            "status": "success",
+            "message": "YARA rules reloaded successfully",
+            "total_rules": len(rules),
+            "timestamp": datetime.datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reloading rules: {str(e)}")

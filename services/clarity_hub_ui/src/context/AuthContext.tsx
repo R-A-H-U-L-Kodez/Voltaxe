@@ -1,24 +1,35 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { AuthContextType } from '../types';
+import axios from 'axios';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return !!localStorage.getItem('voltaxe_token');
+    return !!localStorage.getItem('token');
   });
 
   const login = async (email: string, password: string): Promise<void> => {
-    if (email === 'admin@voltaxe.com' && password === 'password') {
-      const mockToken = 'mock_jwt_token_' + Date.now();
-      localStorage.setItem('voltaxe_token', mockToken);
+    try {
+      // Call the real login API
+      const response = await axios.post('http://localhost:8000/auth/login', {
+        email,
+        password
+      });
+
+      // Store the real JWT token
+      const { access_token } = response.data;
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('voltaxe_token', access_token); // Keep for backward compatibility
       setIsAuthenticated(true);
-    } else {
-      throw new Error('Invalid credentials');
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      throw new Error(error.response?.data?.detail || 'Invalid credentials');
     }
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     localStorage.removeItem('voltaxe_token');
     setIsAuthenticated(false);
   };

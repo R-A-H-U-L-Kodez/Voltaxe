@@ -25,6 +25,9 @@ structlog>=23.0.0
 # Security
 cryptography>=3.0.0
 
+# Malware Scanning
+yara-python>=4.3.0
+
 # Testing (optional)
 pytest>=7.0.0
 pytest-asyncio>=0.21.0

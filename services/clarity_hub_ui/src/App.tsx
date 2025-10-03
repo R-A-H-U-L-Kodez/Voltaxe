@@ -7,6 +7,7 @@ import { AlertsPage } from './pages/AlertsPage';
 import { EndpointDetailPage } from './pages/EndpointDetailPage';
 import { LiveEventFeedPage } from './pages/LiveEventFeedPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { MalwareScannerPage } from './pages/MalwareScannerPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -68,6 +69,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/malware"
+            element={
+              <ProtectedRoute>
+                <MalwareScannerPage />
               </ProtectedRoute>
             }
           />

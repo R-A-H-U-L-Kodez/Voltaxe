@@ -6,7 +6,8 @@ import {
   Activity, 
   LogOut, 
   Settings, 
-  Shield
+  Shield,
+  FileWarning
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -91,13 +92,31 @@ export const Sidebar = () => {
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
             }`
           }
-          style={({ isActive }) => ({
+          style={({ isActive}) => ({
             color: isActive ? 'hsl(var(--primary-gold))' : undefined,
             backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
           })}
         >
           <AlertTriangle size={20} />
           <span>Alerts</span>
+        </NavLink>
+
+        <NavLink
+          to="/malware"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+              isActive
+                ? 'bg-primary-gold/10 text-primary-gold'
+                : 'text-foreground hover:text-accent-gold hover:bg-white/5'
+            }`
+          }
+          style={({ isActive }) => ({
+            color: isActive ? 'hsl(var(--primary-gold))' : undefined,
+            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
+          })}
+        >
+          <FileWarning size={20} />
+          <span>Malware Scanner</span>
         </NavLink>
 
         <NavLink

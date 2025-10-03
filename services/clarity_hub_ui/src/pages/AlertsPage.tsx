@@ -6,7 +6,7 @@ import { ReportGenerator } from '../components/ReportGenerator';
 import { alertService } from '../services/api';
 import { Alert } from '../types';
 import { generateSecurityReport } from '../utils/reportGenerator';
-import { Search, Loader2, AlertCircle } from 'lucide-react';
+import { Search, AlertCircle } from 'lucide-react';
 
 export const AlertsPage = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
