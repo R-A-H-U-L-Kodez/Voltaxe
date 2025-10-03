@@ -52,16 +52,51 @@ type VulnerabilityEvent struct {
 	Reason       string       `json:"reason"`
 	CVE          string       `json:"cve"`
 }
+type RootkitEvent struct {
+	Hostname        string `json:"hostname"`
+	EventType       string `json:"event_type"`
+	DetectionMethod string `json:"detection_method"`
+	Recommendation  string `json:"recommendation"`
+}
 
 // --- Main application logic ---
 func main() {
-	fmt.Println("--- Voltaxe Sentinel v1.2.0 ---")
+	fmt.Println("--- Voltaxe Sentinel v1.4.0 ---")
+
+	// NEW: Perform Rootkit Scan on startup
+	runRootkitScan()
+
 	snapshot := collectSnapshotData()
 	snapshotJSON, _ := json.Marshal(snapshot)
 	sendDataToServer(snapshotJSON, "/ingest/snapshot")
 	analyzeVulnerabilities(snapshot)
 	fmt.Println("\nSnapshot sent. Starting real-time behavioral monitoring...")
 	startRealtimeMonitoring(snapshot.Processes)
+}
+
+// NEW: This function simulates scanning for rootkits
+func runRootkitScan() {
+	fmt.Println("Performing deep system integrity scan for rootkits...")
+
+	// --- SIMULATION ---
+	// In a real agent, this would involve complex checks like comparing the process
+	// list from the OS with a raw scan of system memory.
+	// For our test, we'll just pretend we found something.
+	const foundRootkit = true
+
+	if foundRootkit {
+		hostname, _ := os.Hostname()
+		fmt.Printf("🚨💀🚨 CRITICAL: Rootkit signatures detected on host '%s'!\n", hostname)
+
+		event := RootkitEvent{
+			Hostname:        hostname,
+			EventType:       "ROOTKIT_DETECTED",
+			DetectionMethod: "Memory Process List Mismatch",
+			Recommendation:  "CRITICAL: Isolate this endpoint immediately and re-image from a known-good backup. System integrity cannot be trusted.",
+		}
+		eventJSON, _ := json.Marshal(event)
+		sendDataToServer(eventJSON, "/ingest/rootkit_event")
+	}
 }
 
 func getInstalledSoftware() []SoftwareInfo {

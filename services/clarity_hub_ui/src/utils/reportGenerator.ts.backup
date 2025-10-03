@@ -22,7 +22,7 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    console.log('? Fetching data for report generation...');
+    console.log('📊 Fetching data for report generation...');
     
     const [snapshotsResponse, alertsResponse, eventsResponse, malwareResponse] = await Promise.all([
       fetch('/api/snapshots', { headers }),
@@ -36,7 +36,7 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
     const events = await eventsResponse.json();
     const malwareScans = await malwareResponse.json();
 
-    console.log('? API Response Summary:');
+    console.log('📦 API Response Summary:');
     console.log('  - Snapshots:', snapshots.length);
     console.log('  - Alerts:', alerts.length);
     console.log('  - Events:', events.length);
@@ -47,7 +47,7 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
     const vulnerabilityEvents = events.filter((e: any) => e.type === 'VULNERABILITY_DETECTED');
     const rootkitEvents = events.filter((e: any) => e.type === 'ROOTKIT_DETECTED');
 
-    console.log('? Filtered Events:');
+    console.log('🔍 Filtered Events:');
     console.log('  - Vulnerabilities:', vulnerabilityEvents.length);
     console.log('  - Rootkits:', rootkitEvents.length);
 
@@ -87,17 +87,13 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
         hostname: event.hostname,
         timestamp: new Date(event.timestamp)
       })),
-      malware: malwareScans.map((scan: any) => {
-        console.log('Malware scan structure:', scan);
-        console.log('Matches:', scan.matches);
-        return {
-          fileName: scan.file_name,
-          isMalicious: scan.is_malicious,
-          threatLevel: scan.threat_level,
-          scanTime: new Date(scan.scan_time),
-          matches: scan.matches || []
-        };
-      }),
+      malware: malwareScans.map((scan: any) => ({
+        fileName: scan.file_name,
+        isMalicious: scan.is_malicious,
+        threatLevel: scan.threat_level,
+        scanTime: new Date(scan.scan_time),
+        matches: scan.matches || []
+      })),
       vulnerabilities: vulnerabilityEvents.map((vuln: any) => {
         // Try to parse details if it's a JSON string, otherwise use the string directly
         let parsedDetails = vuln.details;
@@ -140,7 +136,7 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
       })
     };
 
-    console.log('? Report Data Summary:');
+    console.log('📄 Report Data Summary:');
     console.log('  - Malware Detections:', reportData.malware.filter(m => m.isMalicious).length);
     console.log('  - Vulnerabilities:', reportData.vulnerabilities.length);
     console.log('  - Rootkits:', reportData.rootkits.length);
@@ -206,15 +202,15 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
 
 const generatePDFReport = async (data: ReportData) => {
   try {
-    console.log('? Starting PDF generation with professional 6-page design...');
+    console.log('🚀 Starting PDF generation with professional 6-page design...');
     
     // Use the professional 6-page design (generateSimplePDF)
     // This has the beautiful color-coded layout we created
     generateSimplePDF(data);
-    console.log('? Professional PDF generation successful');
+    console.log('✅ Professional PDF generation successful');
     
   } catch (error) {
-    console.error('? PDF generation failed:', error);
+    console.error('❌ PDF generation failed:', error);
     throw new Error('Failed to generate PDF report. Please try again.');
   }
 };
@@ -238,9 +234,9 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.rect(0, 0, pageWidth, 35, 'F');
   
   // Company Logo/Shield (using text)
-  pdf.setFontSize(14);
+  pdf.setFontSize(18);
   pdf.setTextColor(255, 255, 255);
-  pdf.text('| SHIELD |', 15, 22);
+  pdf.text('[SHIELD]', 15, 22);
   
   // Title
   pdf.setFontSize(28);
@@ -402,7 +398,7 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 255, 255);
-  pdf.text('VOLTAXE SECURITY REPORT', 15, 8);
+  pdf.text('🛡️ VOLTAXE SECURITY REPORT', 15, 8);
   
   let yPos = 25;
   
@@ -513,7 +509,7 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 255, 255);
-  pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+  pdf.text('�️ VOLTAXE SECURITY REPORT', 15, 8);
   
   yPos = 25;
   
@@ -576,7 +572,7 @@ const generateSimplePDF = (data: ReportData) => {
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(255, 255, 255);
-        pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+        pdf.text('🛡️ VOLTAXE SECURITY REPORT', 15, 8);
         yPos = 25;
       }
     });
@@ -587,7 +583,7 @@ const generateSimplePDF = (data: ReportData) => {
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(40, 167, 69);
-    pdf.text('? No vulnerabilities detected', 25, yPos + 10);
+    pdf.text('✅ No vulnerabilities detected', 25, yPos + 10);
     yPos += 20;
   }
   
@@ -609,7 +605,7 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 255, 255);
-  pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+  pdf.text('🛡️ VOLTAXE SECURITY REPORT', 15, 8);
   
   yPos = 25;
   
@@ -617,7 +613,7 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.setFontSize(18);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(220, 53, 69);
-  pdf.text('?? CRITICAL: Rootkit Detection', 20, yPos);
+  pdf.text('🚨💀 CRITICAL: Rootkit Detection', 20, yPos);
   
   yPos += 12;
   
@@ -630,7 +626,7 @@ const generateSimplePDF = (data: ReportData) => {
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(220, 53, 69);
-    pdf.text('? IMMEDIATE ACTION REQUIRED', 25, yPos + 8);
+    pdf.text('⚠️ IMMEDIATE ACTION REQUIRED', 25, yPos + 8);
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(120, 53, 69);
@@ -669,7 +665,7 @@ const generateSimplePDF = (data: ReportData) => {
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(220, 53, 69);
-      pdf.text(`? ${rootkit.recommendation}`, 25, yPos + 22);
+      pdf.text(`⚠️ ${rootkit.recommendation}`, 25, yPos + 22);
       
       yPos += 29;
       
@@ -681,7 +677,7 @@ const generateSimplePDF = (data: ReportData) => {
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(255, 255, 255);
-        pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+        pdf.text('🛡️ VOLTAXE SECURITY REPORT', 15, 8);
         yPos = 25;
       }
     });
@@ -692,7 +688,7 @@ const generateSimplePDF = (data: ReportData) => {
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(40, 167, 69);
-    pdf.text('? No rootkits detected', 25, yPos + 10);
+    pdf.text('✅ No rootkits detected', 25, yPos + 10);
     yPos += 20;
   }
   
@@ -714,7 +710,7 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 255, 255);
-  pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+  pdf.text('🛡️ VOLTAXE SECURITY REPORT', 15, 8);
   
   yPos = 25;
   
@@ -722,7 +718,7 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.setFontSize(18);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(156, 39, 176);
-  pdf.text('? Malware Detection Analysis', 20, yPos);
+  pdf.text('🦠 Malware Detection Analysis', 20, yPos);
   
   yPos += 12;
   
@@ -760,11 +756,9 @@ const generateSimplePDF = (data: ReportData) => {
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(9);
         pdf.setTextColor(156, 39, 176);
-        const matchNames = malware.matches.slice(0, 3).map((m: any) => {
-          // API returns objects with rule_name property
-          if (typeof m === 'string') return m;
-          return m.rule_name || m.rule || m.name || m.signature || 'Unknown';
-        });
+        const matchNames = malware.matches.slice(0, 3).map((m: any) => 
+          typeof m === 'string' ? m : (m.rule || m.name || m.signature || 'Unknown')
+        );
         const signatures = matchNames.length > 0 ? matchNames.join(', ') : 'Generic detection';
         pdf.text(`Signatures: ${signatures}`, 25, yPos + 15);
         
@@ -783,7 +777,7 @@ const generateSimplePDF = (data: ReportData) => {
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'bold');
           pdf.setTextColor(255, 255, 255);
-          pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+          pdf.text('🛡️ VOLTAXE SECURITY REPORT', 15, 8);
           yPos = 25;
         }
       });
@@ -794,7 +788,7 @@ const generateSimplePDF = (data: ReportData) => {
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(40, 167, 69);
-      pdf.text('? Files scanned - no malware detected', 25, yPos + 10);
+      pdf.text('✅ Files scanned - no malware detected', 25, yPos + 10);
       yPos += 20;
     }
   } else {
@@ -804,7 +798,7 @@ const generateSimplePDF = (data: ReportData) => {
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(23, 162, 184);
-    pdf.text('i  No malware scans performed yet', 25, yPos + 10);
+    pdf.text('ℹ️  No malware scans performed yet', 25, yPos + 10);
     yPos += 20;
   }
   
@@ -826,7 +820,7 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 255, 255);
-  pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+  pdf.text('🛡️ VOLTAXE SECURITY REPORT', 15, 8);
   
   yPos = 25;
   
@@ -842,26 +836,26 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(220, 53, 69);
-  pdf.text('? Immediate Actions Required', 20, yPos);
+  pdf.text('⚡ Immediate Actions Required', 20, yPos);
   
   yPos += 8;
   
   const immediateActions = [];
   if (data.rootkits.length > 0) {
-    immediateActions.push('? URGENT: Investigate and remediate all rootkit detections immediately');
-    immediateActions.push('? Isolate affected systems from the network pending investigation');
-    immediateActions.push('? Conduct full forensic analysis of compromised endpoints');
+    immediateActions.push('🚨 URGENT: Investigate and remediate all rootkit detections immediately');
+    immediateActions.push('🔒 Isolate affected systems from the network pending investigation');
+    immediateActions.push('📋 Conduct full forensic analysis of compromised endpoints');
   }
   if (data.malware.filter(m => m.isMalicious).length > 0) {
-    immediateActions.push('? Quarantine and remove all detected malware files');
-    immediateActions.push('? Perform full system scans on all endpoints');
+    immediateActions.push('🦠 Quarantine and remove all detected malware files');
+    immediateActions.push('🔍 Perform full system scans on all endpoints');
   }
   if (data.vulnerabilities.length > 0) {
-    immediateActions.push('? Patch all identified CVEs on affected systems');
-    immediateActions.push('? Prioritize patching based on CVE severity scores');
+    immediateActions.push('🔧 Patch all identified CVEs on affected systems');
+    immediateActions.push('📊 Prioritize patching based on CVE severity scores');
   }
-  immediateActions.push('? Review and investigate all critical security alerts');
-  immediateActions.push('? Implement additional monitoring for high-risk endpoints');
+  immediateActions.push('👁️ Review and investigate all critical security alerts');
+  immediateActions.push('📈 Implement additional monitoring for high-risk endpoints');
   
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
@@ -876,7 +870,7 @@ const generateSimplePDF = (data: ReportData) => {
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(255, 255, 255);
-      pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+      pdf.text('🛡️ VOLTAXE SECURITY REPORT', 15, 8);
       yPos = 25;
     }
     
@@ -894,24 +888,24 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(23, 162, 184);
-  pdf.text('? Strategic Security Improvements', 20, yPos);
+  pdf.text('📋 Strategic Security Improvements', 20, yPos);
   
   yPos += 8;
   
   const strategicActions = [
-    '? Establish automated patch management procedures',
-    '? Implement network segmentation for critical systems',
-    '? Deploy additional endpoint detection and response (EDR) capabilities',
-    '? Schedule regular penetration testing assessments',
-    '? Conduct security awareness training for system administrators',
-    '? Develop and test incident response procedures'
+    '🔄 Establish automated patch management procedures',
+    '🌐 Implement network segmentation for critical systems',
+    '🛡️ Deploy additional endpoint detection and response (EDR) capabilities',
+    '🎯 Schedule regular penetration testing assessments',
+    '👥 Conduct security awareness training for system administrators',
+    '📝 Develop and test incident response procedures'
   ];
   
   if (data.rootkits.length > 0) {
-    strategicActions.push('? Implement integrity monitoring and advanced rootkit detection tools');
+    strategicActions.push('🔍 Implement integrity monitoring and advanced rootkit detection tools');
   }
   if (data.malware.filter(m => m.isMalicious).length > 0) {
-    strategicActions.push('? Enhance anti-malware protection and real-time scanning');
+    strategicActions.push('🦠 Enhance anti-malware protection and real-time scanning');
   }
   
   pdf.setFontSize(9);
@@ -927,7 +921,7 @@ const generateSimplePDF = (data: ReportData) => {
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(255, 255, 255);
-      pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+      pdf.text('🛡️ VOLTAXE SECURITY REPORT', 15, 8);
       yPos = 25;
     }
     
@@ -1065,7 +1059,7 @@ const generateSimplePDF = (data: ReportData) => {
       </style>
       <div class="header">
         <div>
-          <div class="logo">? VOLTAXE</div>
+          <div class="logo">🛡️ VOLTAXE</div>
           <div style="font-size: 14px; color: #666;">Security Monitoring Platform</div>
         </div>
         <div class="report-info">
@@ -1155,7 +1149,7 @@ const generateSimplePDF = (data: ReportData) => {
       </table>
 
       ${data.malware.filter(m => m.isMalicious).length > 0 ? `
-      <h2>? Malware Detections</h2>
+      <h2>🦠 Malware Detections</h2>
       <table>
         <thead>
           <tr>
@@ -1179,7 +1173,7 @@ const generateSimplePDF = (data: ReportData) => {
       ` : ''}
 
       ${data.vulnerabilities.length > 0 ? `
-      <h2>? Vulnerability Details</h2>
+      <h2>🔓 Vulnerability Details</h2>
       <table>
         <thead>
           <tr>
@@ -1207,9 +1201,9 @@ const generateSimplePDF = (data: ReportData) => {
       ` : ''}
 
       ${data.rootkits.length > 0 ? `
-      <h2 style="color: #dc3545;">?? CRITICAL: ROOTKIT ALERTS</h2>
+      <h2 style="color: #dc3545;">🚨💀 CRITICAL: ROOTKIT ALERTS</h2>
       <div style="background: #fff5f5; border-left: 4px solid #dc3545; padding: 15px; margin: 20px 0;">
-        <p style="color: #dc3545; font-weight: bold; margin-bottom: 10px;">? IMMEDIATE ACTION REQUIRED</p>
+        <p style="color: #dc3545; font-weight: bold; margin-bottom: 10px;">⚠️ IMMEDIATE ACTION REQUIRED</p>
         <p>Rootkit detections indicate potential system compromise. These are the highest severity threats and require immediate investigation and remediation.</p>
       </div>
       <table>
@@ -1237,7 +1231,7 @@ const generateSimplePDF = (data: ReportData) => {
       <h2>Recommendations</h2>
       <h3>Immediate Actions Required:</h3>
       <ul>
-        ${data.rootkits.length > 0 ? '<li><strong style="color: #dc3545;">? URGENT: Investigate and remediate all rootkit detections immediately</strong></li>' : ''}
+        ${data.rootkits.length > 0 ? '<li><strong style="color: #dc3545;">🚨 URGENT: Investigate and remediate all rootkit detections immediately</strong></li>' : ''}
         ${data.malware.filter(m => m.isMalicious).length > 0 ? '<li>Quarantine and remove all detected malware files</li>' : ''}
         ${data.vulnerabilities.length > 0 ? '<li>Patch all identified CVEs on affected systems</li>' : ''}
         <li>Review and investigate suspicious process activities</li>

@@ -325,6 +325,13 @@ def create_vulnerability_event(event: EventModel, db: Session = Depends(get_db))
     db.add(db_event); db.commit(); db.refresh(db_event)
     return {"status": "success", "event_id": db_event.id}
 
+@app.post("/ingest/rootkit_event")
+def create_rootkit_event(event: EventModel, db: Session = Depends(get_db)):
+    print("\n🚨💀🚨 CRITICAL: ROOTKIT DETECTED! Saving high-priority alert... 🚨💀🚨")
+    db_event = EventDB(hostname=event.hostname, event_type=event.event_type, details=event.dict())
+    db.add(db_event); db.commit(); db.refresh(db_event)
+    return {"status": "success", "event_id": db_event.id}
+
 # --- GET Endpoints for UI ---
 @app.get("/snapshots", response_model=List[SnapshotResponse])
 def get_snapshots(db: Session = Depends(get_db)):
@@ -933,13 +940,8 @@ async def scan_file_for_malware(
         # Read file data
         file_data = await file.read()
         
-        # Check file size (100MB limit)
-        max_size = 100 * 1024 * 1024  # 100MB
-        if len(file_data) > max_size:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File too large. Maximum size is {max_size / 1024 / 1024}MB"
-            )
+        # No file size limit - scan any size file
+        # Large files may take longer to scan
         
         # Scan the file
         if scanner is None:
