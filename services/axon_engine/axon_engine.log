@@ -870,31 +870,31 @@
 2025-10-03 01:54:47 [info     ] 🎯 Endpoint scored successfully hostname=web-server-02.voltaxe.com risk=LOW score=85
 2025-10-03 01:54:47 [info     ] ✅ Scoring cycle completed      duration_seconds=0.02 scored_endpoints=3 total_endpoints=3
 2025-10-03 01:54:47 [info     ] 😴 Sleeping for 60 seconds until next cycle
-2025-10-03 01:51:55 [info     ] 🔥 Starting Voltaxe Axon Engine scoring cycle
-2025-10-03 01:51:55 [info     ] 📡 Found 3 active endpoints     endpoints=['database-server-03.voltaxe.com', 'production-server-01.voltaxe.com', 'web-server-02.voltaxe.com'] threshold_hours=24
-2025-10-03 01:51:55 [info     ] 🎯 Calculating resilience score for 'database-server-03.voltaxe.com'
-2025-10-03 01:51:55 [info     ] 🔍 Vulnerability analysis for database-server-03.voltaxe.com breakdown={'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'unknown': 0} deduction=0 total_vulns=0
-2025-10-03 01:51:55 [info     ] 🕵️ Behavioral analysis for database-server-03.voltaxe.com deduction=0 suspicious_events=0
-2025-10-03 01:51:55 [info     ] 📊 Resilience score calculated for 'database-server-03.voltaxe.com' behavioral_deduction=0 final_score=100 risk_category=LOW vuln_deduction=0
-2025-10-03 01:51:55 [info     ] ✅ Updated snapshot score for 'database-server-03.voltaxe.com' risk=LOW score=100 snapshot_id=3
-2025-10-03 01:51:55 [info     ] 💾 Saved resilience metrics for 'database-server-03.voltaxe.com' score=100
-2025-10-03 01:51:55 [info     ] 🎯 Endpoint scored successfully hostname=database-server-03.voltaxe.com risk=LOW score=100
-2025-10-03 01:51:55 [info     ] 🎯 Calculating resilience score for 'production-server-01.voltaxe.com'
-2025-10-03 01:51:55 [info     ] 🔍 Vulnerability analysis for production-server-01.voltaxe.com breakdown={'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'unknown': 1} deduction=15 total_vulns=1
-2025-10-03 01:51:55 [info     ] 🕵️ Behavioral analysis for production-server-01.voltaxe.com deduction=5 suspicious_events=1
-2025-10-03 01:51:55 [info     ] 📊 Resilience score calculated for 'production-server-01.voltaxe.com' behavioral_deduction=5 final_score=80 risk_category=MEDIUM vuln_deduction=15
-2025-10-03 01:51:55 [info     ] ✅ Updated snapshot score for 'production-server-01.voltaxe.com' risk=MEDIUM score=80 snapshot_id=1
-2025-10-03 01:51:55 [info     ] 💾 Saved resilience metrics for 'production-server-01.voltaxe.com' score=80
-2025-10-03 01:51:55 [info     ] 🎯 Endpoint scored successfully hostname=production-server-01.voltaxe.com risk=MEDIUM score=80
-2025-10-03 01:51:55 [info     ] 🎯 Calculating resilience score for 'web-server-02.voltaxe.com'
-2025-10-03 01:51:55 [info     ] 🔍 Vulnerability analysis for web-server-02.voltaxe.com breakdown={'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'unknown': 1} deduction=15 total_vulns=1
-2025-10-03 01:51:55 [info     ] 🕵️ Behavioral analysis for web-server-02.voltaxe.com deduction=0 suspicious_events=0
-2025-10-03 01:51:55 [info     ] 📊 Resilience score calculated for 'web-server-02.voltaxe.com' behavioral_deduction=0 final_score=85 risk_category=LOW vuln_deduction=15
-2025-10-03 01:51:55 [info     ] ✅ Updated snapshot score for 'web-server-02.voltaxe.com' risk=LOW score=85 snapshot_id=2
-2025-10-03 01:51:55 [info     ] 💾 Saved resilience metrics for 'web-server-02.voltaxe.com' score=85
-2025-10-03 01:51:55 [info     ] 🎯 Endpoint scored successfully hostname=web-server-02.voltaxe.com risk=LOW score=85
-2025-10-03 01:51:55 [info     ] ✅ Scoring cycle completed      duration_seconds=0.02 scored_endpoints=3 total_endpoints=3
-2025-10-03 01:51:55 [info     ] 😴 Sleeping for 60 seconds until next cycle
+2025-10-03 01:55:47 [info     ] 🔥 Starting Voltaxe Axon Engine scoring cycle
+2025-10-03 01:55:47 [info     ] 📡 Found 3 active endpoints     endpoints=['database-server-03.voltaxe.com', 'production-server-01.voltaxe.com', 'web-server-02.voltaxe.com'] threshold_hours=24
+2025-10-03 01:55:47 [info     ] 🎯 Calculating resilience score for 'database-server-03.voltaxe.com'
+2025-10-03 01:55:47 [info     ] 🔍 Vulnerability analysis for database-server-03.voltaxe.com breakdown={'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'unknown': 0} deduction=0 total_vulns=0
+2025-10-03 01:55:47 [info     ] 🕵️ Behavioral analysis for database-server-03.voltaxe.com deduction=0 suspicious_events=0
+2025-10-03 01:55:47 [info     ] 📊 Resilience score calculated for 'database-server-03.voltaxe.com' behavioral_deduction=0 final_score=100 risk_category=LOW vuln_deduction=0
+2025-10-03 01:55:47 [info     ] ✅ Updated snapshot score for 'database-server-03.voltaxe.com' risk=LOW score=100 snapshot_id=3
+2025-10-03 01:55:47 [info     ] 💾 Saved resilience metrics for 'database-server-03.voltaxe.com' score=100
+2025-10-03 01:55:47 [info     ] 🎯 Endpoint scored successfully hostname=database-server-03.voltaxe.com risk=LOW score=100
+2025-10-03 01:55:47 [info     ] 🎯 Calculating resilience score for 'production-server-01.voltaxe.com'
+2025-10-03 01:55:47 [info     ] 🔍 Vulnerability analysis for production-server-01.voltaxe.com breakdown={'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'unknown': 1} deduction=15 total_vulns=1
+2025-10-03 01:55:47 [info     ] 🕵️ Behavioral analysis for production-server-01.voltaxe.com deduction=5 suspicious_events=1
+2025-10-03 01:55:47 [info     ] 📊 Resilience score calculated for 'production-server-01.voltaxe.com' behavioral_deduction=5 final_score=80 risk_category=MEDIUM vuln_deduction=15
+2025-10-03 01:55:47 [info     ] ✅ Updated snapshot score for 'production-server-01.voltaxe.com' risk=MEDIUM score=80 snapshot_id=1
+2025-10-03 01:55:47 [info     ] 💾 Saved resilience metrics for 'production-server-01.voltaxe.com' score=80
+2025-10-03 01:55:47 [info     ] 🎯 Endpoint scored successfully hostname=production-server-01.voltaxe.com risk=MEDIUM score=80
+2025-10-03 01:55:47 [info     ] 🎯 Calculating resilience score for 'web-server-02.voltaxe.com'
+2025-10-03 01:55:47 [info     ] 🔍 Vulnerability analysis for web-server-02.voltaxe.com breakdown={'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'unknown': 1} deduction=15 total_vulns=1
+2025-10-03 01:55:47 [info     ] 🕵️ Behavioral analysis for web-server-02.voltaxe.com deduction=0 suspicious_events=0
+2025-10-03 01:55:47 [info     ] 📊 Resilience score calculated for 'web-server-02.voltaxe.com' behavioral_deduction=0 final_score=85 risk_category=LOW vuln_deduction=15
+2025-10-03 01:55:47 [info     ] ✅ Updated snapshot score for 'web-server-02.voltaxe.com' risk=LOW score=85 snapshot_id=2
+2025-10-03 01:55:47 [info     ] 💾 Saved resilience metrics for 'web-server-02.voltaxe.com' score=85
+2025-10-03 01:55:47 [info     ] 🎯 Endpoint scored successfully hostname=web-server-02.voltaxe.com risk=LOW score=85
+2025-10-03 01:55:47 [info     ] ✅ Scoring cycle completed      duration_seconds=0.02 scored_endpoints=3 total_endpoints=3
+2025-10-03 01:55:47 [info     ] 😴 Sleeping for 60 seconds until next cycle
 2025-10-03 01:52:55 [info     ] 🔥 Starting Voltaxe Axon Engine scoring cycle
 2025-10-03 01:52:55 [info     ] 📡 Found 3 active endpoints     endpoints=['database-server-03.voltaxe.com', 'production-server-01.voltaxe.com', 'web-server-02.voltaxe.com'] threshold_hours=24
 2025-10-03 01:52:55 [info     ] 🎯 Calculating resilience score for 'database-server-03.voltaxe.com'
