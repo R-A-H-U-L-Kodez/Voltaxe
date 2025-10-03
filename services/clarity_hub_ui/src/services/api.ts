@@ -2,7 +2,7 @@ import axios from 'axios';
 import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard } from '../types';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },

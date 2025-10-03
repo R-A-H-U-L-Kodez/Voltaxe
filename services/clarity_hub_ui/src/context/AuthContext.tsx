@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string): Promise<void> => {
     try {
       // Call the real login API
-      const response = await axios.post('http://localhost:8000/auth/login', {
+      const response = await axios.post('/api/auth/login', {
         email,
         password
       });

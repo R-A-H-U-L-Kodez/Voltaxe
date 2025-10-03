@@ -14,9 +14,9 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
   try {
     // Fetch real data from your API
     const [snapshotsResponse, alertsResponse, eventsResponse] = await Promise.all([
-      fetch('http://localhost:8000/snapshots'),
-      fetch('http://localhost:8000/alerts'),
-      fetch('http://localhost:8000/events')
+      fetch('/api/snapshots'),
+      fetch('/api/alerts'),
+      fetch('/api/events')
     ]);
 
     const snapshots = await snapshotsResponse.json();
