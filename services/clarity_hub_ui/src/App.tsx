@@ -10,6 +10,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { MalwareScannerPage } from './pages/MalwareScannerPage';
 import { TeamManagementPage } from './pages/TeamManagementPage';
 import { AddEndpointPage } from './pages/AddEndpointPage';
+import { IncidentsPage } from './pages/IncidentsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -95,6 +96,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AddEndpointPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/incidents"
+            element={
+              <ProtectedRoute>
+                <IncidentsPage />
               </ProtectedRoute>
             }
           />

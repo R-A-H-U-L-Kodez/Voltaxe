@@ -8,6 +8,20 @@ const api = axios.create({
   },
 });
 
+// Add request interceptor to include auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export const snapshotService = {
   getSnapshots: async (): Promise<Snapshot[]> => {
     const response = await api.get<Snapshot[]>('/snapshots');
@@ -74,6 +88,26 @@ export const resilienceService = {
   },
   getResilienceDashboard: async (): Promise<ResilienceDashboard> => {
     const response = await api.get<ResilienceDashboard>('/resilience/dashboard');
+    return response.data;
+  },
+};
+
+export const incidentService = {
+  getIncidents: async (params?: {
+    status?: string;
+    severity?: string;
+    hours?: number;
+    limit?: number;
+  }): Promise<any> => {
+    const response = await api.get('/incidents/', { params });
+    return response.data;
+  },
+  getIncidentDetails: async (incidentId: string): Promise<any> => {
+    const response = await api.get(`/incidents/${incidentId}`);
+    return response.data;
+  },
+  getIncidentStats: async (hours: number = 24): Promise<any> => {
+    const response = await api.get('/incidents/stats/summary', { params: { hours } });
     return response.data;
   },
 };

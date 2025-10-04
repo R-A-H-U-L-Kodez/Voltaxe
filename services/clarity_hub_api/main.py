@@ -190,8 +190,10 @@ app = FastAPI(
 # Include routers
 from routers.team import router as team_router
 from routers.search import router as search_router
+from routers.incidents import router as incidents_router
 app.include_router(team_router)
 app.include_router(search_router)
+app.include_router(incidents_router)
 
 # Health check endpoint
 @app.get("/health")
@@ -233,7 +235,13 @@ def debug_snapshots():
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"],  # React dev servers
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:5173", 
+        "http://localhost:5174",
+        "http://localhost",
+        "http://localhost:80"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
