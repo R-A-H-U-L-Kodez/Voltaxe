@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
-import { ReportGenerator } from '../components/ReportGenerator';
 import { snapshotService, eventService } from '../services/api';
-import { generateSecurityReport } from '../utils/reportGenerator';
 import { Snapshot, Event } from '../types';
 import { Server, AlertCircle, Activity, ArrowRight, TrendingUp, Camera } from 'lucide-react';
 
@@ -39,15 +37,6 @@ export const DashboardPage = () => {
     fetchData();
   }, []);
 
-  const handleReportGeneration = async (reportType: string, timeRange: string) => {
-    try {
-      await generateSecurityReport(reportType, timeRange);
-    } catch (error) {
-      console.error('Failed to generate report:', error);
-      alert('Failed to generate report. Please try again.');
-    }
-  };
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Sidebar />
@@ -70,7 +59,6 @@ export const DashboardPage = () => {
                 </p>
               </div>
             </div>
-            <ReportGenerator onGenerateReport={handleReportGeneration} />
           </div>
         </div>
 

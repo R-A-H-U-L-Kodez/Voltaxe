@@ -2,10 +2,8 @@ import { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { AlertsTable } from '../components/AlertsTable';
 import { CVEDetailsModal } from '../components/CVEDetailsModal';
-import { ReportGenerator } from '../components/ReportGenerator';
 import { alertService } from '../services/api';
 import { Alert } from '../types';
-import { generateSecurityReport } from '../utils/reportGenerator';
 import { Search, AlertCircle } from 'lucide-react';
 
 export const AlertsPage = () => {
@@ -59,15 +57,6 @@ export const AlertsPage = () => {
     setIsCVEModalOpen(true);
   };
 
-  const handleReportGeneration = async (reportType: string, timeRange: string) => {
-    try {
-      await generateSecurityReport(reportType, timeRange);
-    } catch (error) {
-      console.error('Failed to generate report:', error);
-      alert('Failed to generate report. Please try again.');
-    }
-  };
-
   const severityButtons: Array<{ value: string; label: string }> = [
     { value: 'all', label: 'All' },
     { value: 'critical', label: 'Critical' },
@@ -97,7 +86,6 @@ export const AlertsPage = () => {
                 </p>
               </div>
             </div>
-            <ReportGenerator onGenerateReport={handleReportGeneration} />
           </div>
         </div>
 

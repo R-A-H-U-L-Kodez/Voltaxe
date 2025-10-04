@@ -202,15 +202,36 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
 
 const generatePDFReport = async (data: ReportData) => {
   try {
-    console.log('[*] Starting PDF generation with professional 6-page design...');
+    console.log('[*] Starting PDF generation...');
+    console.log('[*] Report Type:', data.reportType);
     
-    // Use the professional 6-page design (generateSimplePDF)
-    // This has the beautiful color-coded layout we created
-    generateSimplePDF(data);
+    // Route to different report generators based on report type
+    switch (data.reportType) {
+      case 'security-summary':
+        console.log('[*] Generating Security Summary Report');
+        generateSecuritySummaryPDF(data);
+        break;
+      case 'vulnerability-report':
+        console.log('[*] Generating Vulnerability Assessment Report');
+        generateVulnerabilityReportPDF(data);
+        break;
+      case 'alerts-analysis':
+        console.log('[*] Generating Alerts Analysis Report');
+        generateAlertsAnalysisPDF(data);
+        break;
+      case 'compliance-report':
+        console.log('[*] Generating Compliance Status Report');
+        generateComplianceReportPDF(data);
+        break;
+      default:
+        console.log('[*] Generating Default Security Summary Report');
+        generateSecuritySummaryPDF(data);
+    }
+    
     console.log('[+] Professional PDF generation successful');
     
   } catch (error) {
-    console.error('? PDF generation failed:', error);
+    console.error('[X] PDF generation failed:', error);
     throw new Error('Failed to generate PDF report. Please try again.');
   }
 };
@@ -223,7 +244,8 @@ const generatePDFReport = async (data: ReportData) => {
 //   ... (commented out - see git history for full code)
 // };
 
-const generateSimplePDF = (data: ReportData) => {
+// ============= SECURITY SUMMARY REPORT (DEFAULT - COMPREHENSIVE) =============
+const generateSecuritySummaryPDF = (data: ReportData) => {
   const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.getWidth();
   
@@ -1077,6 +1099,839 @@ const generateSimplePDF = (data: ReportData) => {
   const filename = `voltaxe_${reportTypeSlug}_${timestamp}.pdf`;
   
   pdf.save(filename);
+};
+
+// ============= VULNERABILITY ASSESSMENT REPORT (FOCUSED ON CVEs) =============
+const generateVulnerabilityReportPDF = (data: ReportData) => {
+  const pdf = new jsPDF();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  
+  // Cover Page
+  pdf.setFillColor(25, 35, 65);
+  pdf.rect(0, 0, pageWidth, 45, 'F');
+  pdf.setFillColor(212, 175, 55);
+  pdf.rect(0, 42, pageWidth, 3, 'F');
+  
+  pdf.setFillColor(212, 175, 55);
+  pdf.roundedRect(12, 12, 22, 22, 2, 2, 'F');
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(25, 35, 65);
+  pdf.text('SHIELD', 23, 26, { align: 'center' });
+  
+  pdf.setFontSize(32);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('VOLTAXE', 42, 26);
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(200, 200, 200);
+  pdf.text('VULNERABILITY ASSESSMENT', 42, 34);
+  
+  // Title
+  pdf.setFontSize(26);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(25, 35, 65);
+  const titleWidth = pdf.getTextWidth('Vulnerability Assessment Report');
+  pdf.text('Vulnerability Assessment Report', (pageWidth - titleWidth) / 2, 70);
+  
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(2);
+  pdf.line(50, 75, pageWidth - 50, 75);
+  
+  // Metadata
+  const timeRangeText = {
+    '1d': 'Last 24 Hours',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days'
+  }[data.timeRange] || 'Custom Range';
+  
+  pdf.setFillColor(250, 252, 255);
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(0.8);
+  pdf.roundedRect(25, 90, pageWidth - 50, 50, 4, 4, 'FD');
+  
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(80, 80, 80);
+  pdf.text('Report Period:', 40, 100);
+  pdf.text('Generated:', 40, 110);
+  pdf.text('Focus:', 40, 120);
+  
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(60, 60, 60);
+  pdf.text(timeRangeText, 80, 100);
+  pdf.text(data.generatedAt.toLocaleString(), 80, 110);
+  pdf.text('CVE Detection & Patch Management', 80, 120);
+  
+  // Executive Summary
+  pdf.setFontSize(20);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 193, 7);
+  pdf.text('Vulnerability Overview', 20, 155);
+  
+  const totalVulns = data.vulnerabilities.length;
+  const criticalVulns = data.vulnerabilities.filter(v => v.reason?.includes('Critical') || v.cve?.includes('CRITICAL')).length;
+  const highVulns = data.vulnerabilities.filter(v => v.reason?.includes('High')).length;
+  
+  // Metrics
+  const metricsY = 175;
+  const cardWidth = 60;
+  const cardSpacing = 3;
+  
+  // Total Vulnerabilities
+  let cardX = 15;
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, 38, 4, 4, 'F');
+  pdf.setFillColor(255, 193, 7);
+  pdf.roundedRect(cardX, metricsY, cardWidth, 38, 4, 4, 'F');
+  pdf.setFontSize(28);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(totalVulns), cardX + cardWidth/2, metricsY + 20, { align: 'center' });
+  pdf.setFontSize(8);
+  pdf.text('TOTAL CVEs', cardX + cardWidth/2, metricsY + 30, { align: 'center' });
+  
+  // Critical
+  cardX += cardWidth + cardSpacing;
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, 38, 4, 4, 'F');
+  pdf.setFillColor(220, 53, 69);
+  pdf.roundedRect(cardX, metricsY, cardWidth, 38, 4, 4, 'F');
+  pdf.setFontSize(28);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(criticalVulns), cardX + cardWidth/2, metricsY + 20, { align: 'center' });
+  pdf.setFontSize(8);
+  pdf.text('CRITICAL', cardX + cardWidth/2, metricsY + 30, { align: 'center' });
+  
+  // High
+  cardX += cardWidth + cardSpacing;
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, 38, 4, 4, 'F');
+  pdf.setFillColor(255, 152, 0);
+  pdf.roundedRect(cardX, metricsY, cardWidth, 38, 4, 4, 'F');
+  pdf.setFontSize(28);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(highVulns), cardX + cardWidth/2, metricsY + 20, { align: 'center' });
+  pdf.setFontSize(8);
+  pdf.text('HIGH', cardX + cardWidth/2, metricsY + 30, { align: 'center' });
+  
+  // Patch Priority
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(220, 53, 69);
+  pdf.text('[!] Patching Priority: IMMEDIATE', 20, 230);
+  
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(100, 100, 100);
+  pdf.text('All identified vulnerabilities require immediate attention and remediation.', 20, 240, { maxWidth: 170 });
+  
+  // Footer
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(0.3);
+  pdf.line(20, 275, pageWidth - 20, 275);
+  pdf.setFontSize(8);
+  pdf.setTextColor(120, 120, 120);
+  pdf.text('Voltaxe Vulnerability Assessment Report', 20, 282);
+  pdf.text('Page 1', pageWidth - 30, 282);
+  
+  // Page 2+: Detailed CVE Listings
+  pdf.addPage();
+  pdf.setFillColor(212, 175, 55);
+  pdf.rect(0, 0, pageWidth, 12, 'F');
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('VULNERABILITY ASSESSMENT REPORT', 15, 8);
+  
+  let yPos = 25;
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 193, 7);
+  pdf.text('Detailed CVE Analysis', 20, yPos);
+  yPos += 15;
+  
+  if (data.vulnerabilities.length > 0) {
+    data.vulnerabilities.forEach((vuln) => {
+      if (yPos > 250) {
+        pdf.addPage();
+        pdf.setFillColor(212, 175, 55);
+        pdf.rect(0, 0, pageWidth, 12, 'F');
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('VULNERABILITY ASSESSMENT REPORT', 15, 8);
+        yPos = 25;
+      }
+      
+      // CVE Card
+      pdf.setFillColor(255, 249, 235);
+      pdf.setDrawColor(255, 193, 7);
+      pdf.setLineWidth(0.5);
+      pdf.roundedRect(20, yPos, pageWidth - 40, 32, 2, 2, 'FD');
+      
+      // CVE Badge
+      pdf.setFillColor(220, 53, 69);
+      pdf.roundedRect(25, yPos + 4, 50, 8, 1, 1, 'F');
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text(vuln.cve, 50, yPos + 10, { align: 'center' });
+      
+      // Hostname
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(40, 40, 40);
+      pdf.text(`Host: ${vuln.hostname}`, 80, yPos + 10);
+      
+      // Software
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(`Affected: ${vuln.software} ${vuln.version}`, 25, yPos + 18);
+      
+      // Description
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      const reason = vuln.reason.length > 100 ? vuln.reason.substring(0, 97) + '...' : vuln.reason;
+      pdf.text(reason, 25, yPos + 24, { maxWidth: pageWidth - 50 });
+      
+      yPos += 36;
+    });
+  } else {
+    pdf.setFillColor(236, 253, 245);
+    pdf.setDrawColor(40, 167, 69);
+    pdf.roundedRect(20, yPos, pageWidth - 40, 15, 2, 2, 'FD');
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(40, 167, 69);
+    pdf.text('[OK] No vulnerabilities detected', 25, yPos + 10);
+  }
+  
+  // Final page footer
+  const pageCount = pdf.getNumberOfPages();
+  for (let i = 2; i <= pageCount; i++) {
+    pdf.setPage(i);
+    pdf.setDrawColor(212, 175, 55);
+    pdf.setLineWidth(0.3);
+    pdf.line(20, 275, pageWidth - 20, 275);
+    pdf.setFontSize(8);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text('Voltaxe Vulnerability Assessment Report', 20, 282);
+    pdf.text(`Page ${i}`, pageWidth - 30, 282);
+  }
+  
+  const timestamp = data.generatedAt.toISOString().split('T')[0];
+  pdf.save(`voltaxe_vulnerability_assessment_${timestamp}.pdf`);
+};
+
+// ============= ALERTS ANALYSIS REPORT (FOCUSED ON SECURITY ALERTS) =============
+const generateAlertsAnalysisPDF = (data: ReportData) => {
+  const pdf = new jsPDF();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  
+  // Cover Page
+  pdf.setFillColor(25, 35, 65);
+  pdf.rect(0, 0, pageWidth, 45, 'F');
+  pdf.setFillColor(212, 175, 55);
+  pdf.rect(0, 42, pageWidth, 3, 'F');
+  
+  pdf.setFillColor(212, 175, 55);
+  pdf.roundedRect(12, 12, 22, 22, 2, 2, 'F');
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(25, 35, 65);
+  pdf.text('SHIELD', 23, 26, { align: 'center' });
+  
+  pdf.setFontSize(32);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('VOLTAXE', 42, 26);
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(200, 200, 200);
+  pdf.text('SECURITY ALERTS ANALYSIS', 42, 34);
+  
+  // Title
+  pdf.setFontSize(26);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(25, 35, 65);
+  const titleWidth = pdf.getTextWidth('Security Alerts Analysis');
+  pdf.text('Security Alerts Analysis', (pageWidth - titleWidth) / 2, 70);
+  
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(2);
+  pdf.line(50, 75, pageWidth - 50, 75);
+  
+  // Metadata
+  const timeRangeText = {
+    '1d': 'Last 24 Hours',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days'
+  }[data.timeRange] || 'Custom Range';
+  
+  pdf.setFillColor(250, 252, 255);
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(0.8);
+  pdf.roundedRect(25, 90, pageWidth - 50, 50, 4, 4, 'FD');
+  
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(80, 80, 80);
+  pdf.text('Report Period:', 40, 100);
+  pdf.text('Generated:', 40, 110);
+  pdf.text('Focus:', 40, 120);
+  
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(60, 60, 60);
+  pdf.text(timeRangeText, 80, 100);
+  pdf.text(data.generatedAt.toLocaleString(), 80, 110);
+  pdf.text('Alert Trends & Incident Response', 80, 120);
+  
+  // Alert Statistics
+  pdf.setFontSize(20);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(220, 53, 69);
+  pdf.text('Alert Overview', 20, 155);
+  
+  const criticalAlerts = data.alerts.filter(a => a.type === 'Critical').length;
+  const warningAlerts = data.alerts.filter(a => a.type === 'Warning').length;
+  const totalAlerts = data.alerts.length;
+  const rootkitAlerts = data.rootkits.length;
+  
+  // Metrics
+  const metricsY = 175;
+  const cardWidth = 46;
+  const cardSpacing = 2;
+  
+  // Critical
+  let cardX = 15;
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, 38, 4, 4, 'F');
+  pdf.setFillColor(220, 53, 69);
+  pdf.roundedRect(cardX, metricsY, cardWidth, 38, 4, 4, 'F');
+  pdf.setFontSize(28);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(criticalAlerts), cardX + cardWidth/2, metricsY + 20, { align: 'center' });
+  pdf.setFontSize(8);
+  pdf.text('CRITICAL', cardX + cardWidth/2, metricsY + 30, { align: 'center' });
+  
+  // Warning
+  cardX += cardWidth + cardSpacing;
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, 38, 4, 4, 'F');
+  pdf.setFillColor(255, 193, 7);
+  pdf.roundedRect(cardX, metricsY, cardWidth, 38, 4, 4, 'F');
+  pdf.setFontSize(28);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(warningAlerts), cardX + cardWidth/2, metricsY + 20, { align: 'center' });
+  pdf.setFontSize(8);
+  pdf.text('WARNING', cardX + cardWidth/2, metricsY + 30, { align: 'center' });
+  
+  // Total
+  cardX += cardWidth + cardSpacing;
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, 38, 4, 4, 'F');
+  pdf.setFillColor(23, 162, 184);
+  pdf.roundedRect(cardX, metricsY, cardWidth, 38, 4, 4, 'F');
+  pdf.setFontSize(28);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(totalAlerts), cardX + cardWidth/2, metricsY + 20, { align: 'center' });
+  pdf.setFontSize(8);
+  pdf.text('TOTAL', cardX + cardWidth/2, metricsY + 30, { align: 'center' });
+  
+  // Rootkits
+  cardX += cardWidth + cardSpacing;
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, 38, 4, 4, 'F');
+  pdf.setFillColor(111, 66, 193);
+  pdf.roundedRect(cardX, metricsY, cardWidth, 38, 4, 4, 'F');
+  pdf.setFontSize(28);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(rootkitAlerts), cardX + cardWidth/2, metricsY + 20, { align: 'center' });
+  pdf.setFontSize(8);
+  pdf.text('ROOTKITS', cardX + cardWidth/2, metricsY + 30, { align: 'center' });
+  
+  // Alert Trend
+  pdf.setFontSize(14);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(220, 53, 69);
+  const alertTrend = criticalAlerts > 5 ? 'HIGH ACTIVITY' : criticalAlerts > 0 ? 'MODERATE' : 'LOW';
+  pdf.text(`Alert Activity: ${alertTrend}`, 20, 230);
+  
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(100, 100, 100);
+  pdf.text('Continuous monitoring detected the above security events requiring investigation.', 20, 240, { maxWidth: 170 });
+  
+  // Footer
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(0.3);
+  pdf.line(20, 275, pageWidth - 20, 275);
+  pdf.setFontSize(8);
+  pdf.setTextColor(120, 120, 120);
+  pdf.text('Voltaxe Security Alerts Analysis', 20, 282);
+  pdf.text('Page 1', pageWidth - 30, 282);
+  
+  // Page 2+: Detailed Alert Listings
+  pdf.addPage();
+  pdf.setFillColor(212, 175, 55);
+  pdf.rect(0, 0, pageWidth, 12, 'F');
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('SECURITY ALERTS ANALYSIS', 15, 8);
+  
+  let yPos = 25;
+  
+  // Critical Alerts First
+  if (criticalAlerts > 0) {
+    pdf.setFontSize(18);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(220, 53, 69);
+    pdf.text('[!] Critical Alerts', 20, yPos);
+    yPos += 12;
+    
+    data.alerts.filter(a => a.type === 'Critical').forEach(alert => {
+      if (yPos > 250) {
+        pdf.addPage();
+        pdf.setFillColor(212, 175, 55);
+        pdf.rect(0, 0, pageWidth, 12, 'F');
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('SECURITY ALERTS ANALYSIS', 15, 8);
+        yPos = 25;
+      }
+      
+      // Alert Card
+      pdf.setFillColor(254, 242, 242);
+      pdf.setDrawColor(220, 53, 69);
+      pdf.setLineWidth(0.8);
+      pdf.roundedRect(20, yPos, pageWidth - 40, 18, 2, 2, 'FD');
+      
+      // Type Badge
+      pdf.setFillColor(220, 53, 69);
+      pdf.roundedRect(25, yPos + 4, 28, 7, 1, 1, 'F');
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('CRITICAL', 39, yPos + 9, { align: 'center' });
+      
+      // Description
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(60, 60, 60);
+      const desc = alert.description.length > 85 ? alert.description.substring(0, 82) + '...' : alert.description;
+      pdf.text(desc, 58, yPos + 9);
+      
+      // Timestamp
+      pdf.setFontSize(7);
+      pdf.setTextColor(120, 120, 120);
+      pdf.text(alert.timestamp.toLocaleString(), 25, yPos + 15);
+      
+      yPos += 22;
+    });
+  }
+  
+  // Rootkit Alerts
+  if (rootkitAlerts > 0) {
+    yPos += 5;
+    pdf.setFontSize(18);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(111, 66, 193);
+    pdf.text('[!] Rootkit Detections', 20, yPos);
+    yPos += 12;
+    
+    data.rootkits.forEach(rootkit => {
+      if (yPos > 250) {
+        pdf.addPage();
+        pdf.setFillColor(212, 175, 55);
+        pdf.rect(0, 0, pageWidth, 12, 'F');
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('SECURITY ALERTS ANALYSIS', 15, 8);
+        yPos = 25;
+      }
+      
+      pdf.setFillColor(255, 245, 255);
+      pdf.setDrawColor(111, 66, 193);
+      pdf.setLineWidth(0.8);
+      pdf.roundedRect(20, yPos, pageWidth - 40, 15, 2, 2, 'FD');
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(111, 66, 193);
+      pdf.text(`Host: ${rootkit.hostname}`, 25, yPos + 7);
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(`Method: ${rootkit.detectionMethod}`, 25, yPos + 12);
+      
+      yPos += 18;
+    });
+  }
+  
+  // Warning Alerts
+  if (warningAlerts > 0) {
+    yPos += 5;
+    pdf.setFontSize(18);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(255, 193, 7);
+    pdf.text('[!] Warning Alerts', 20, yPos);
+    yPos += 12;
+    
+    data.alerts.filter(a => a.type === 'Warning').slice(0, 10).forEach(alert => {
+      if (yPos > 250) {
+        pdf.addPage();
+        pdf.setFillColor(212, 175, 55);
+        pdf.rect(0, 0, pageWidth, 12, 'F');
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('SECURITY ALERTS ANALYSIS', 15, 8);
+        yPos = 25;
+      }
+      
+      pdf.setFillColor(255, 251, 235);
+      pdf.setDrawColor(255, 193, 7);
+      pdf.setLineWidth(0.5);
+      pdf.roundedRect(20, yPos, pageWidth - 40, 15, 2, 2, 'FD');
+      
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(60, 60, 60);
+      const desc = alert.description.length > 80 ? alert.description.substring(0, 77) + '...' : alert.description;
+      pdf.text(desc, 25, yPos + 9);
+      
+      yPos += 18;
+    });
+  }
+  
+  // Final page footer
+  const pageCount = pdf.getNumberOfPages();
+  for (let i = 2; i <= pageCount; i++) {
+    pdf.setPage(i);
+    pdf.setDrawColor(212, 175, 55);
+    pdf.setLineWidth(0.3);
+    pdf.line(20, 275, pageWidth - 20, 275);
+    pdf.setFontSize(8);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text('Voltaxe Security Alerts Analysis', 20, 282);
+    pdf.text(`Page ${i}`, pageWidth - 30, 282);
+  }
+  
+  const timestamp = data.generatedAt.toISOString().split('T')[0];
+  pdf.save(`voltaxe_alerts_analysis_${timestamp}.pdf`);
+};
+
+// ============= COMPLIANCE REPORT (FOCUSED ON COMPLIANCE STATUS) =============
+const generateComplianceReportPDF = (data: ReportData) => {
+  const pdf = new jsPDF();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  
+  // Cover Page
+  pdf.setFillColor(25, 35, 65);
+  pdf.rect(0, 0, pageWidth, 45, 'F');
+  pdf.setFillColor(212, 175, 55);
+  pdf.rect(0, 42, pageWidth, 3, 'F');
+  
+  pdf.setFillColor(212, 175, 55);
+  pdf.roundedRect(12, 12, 22, 22, 2, 2, 'F');
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(25, 35, 65);
+  pdf.text('SHIELD', 23, 26, { align: 'center' });
+  
+  pdf.setFontSize(32);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('VOLTAXE', 42, 26);
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(200, 200, 200);
+  pdf.text('COMPLIANCE STATUS REPORT', 42, 34);
+  
+  // Title
+  pdf.setFontSize(26);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(25, 35, 65);
+  const titleWidth = pdf.getTextWidth('Compliance Status Report');
+  pdf.text('Compliance Status Report', (pageWidth - titleWidth) / 2, 70);
+  
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(2);
+  pdf.line(50, 75, pageWidth - 50, 75);
+  
+  // Metadata
+  const timeRangeText = {
+    '1d': 'Last 24 Hours',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days'
+  }[data.timeRange] || 'Custom Range';
+  
+  pdf.setFillColor(250, 252, 255);
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(0.8);
+  pdf.roundedRect(25, 90, pageWidth - 50, 50, 4, 4, 'FD');
+  
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(80, 80, 80);
+  pdf.text('Report Period:', 40, 100);
+  pdf.text('Generated:', 40, 110);
+  pdf.text('Standards:', 40, 120);
+  
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(60, 60, 60);
+  pdf.text(timeRangeText, 80, 100);
+  pdf.text(data.generatedAt.toLocaleString(), 80, 110);
+  pdf.text('Security Best Practices & Industry Standards', 80, 120);
+  
+  // Compliance Score
+  const totalVulns = data.vulnerabilities.length;
+  const rootkitCount = data.rootkits.length;
+  const malwareCount = data.malware.filter(m => m.isMalicious).length;
+  const criticalAlerts = data.alerts.filter(a => a.type === 'Critical').length;
+  
+  // Calculate compliance score (100 - penalties)
+  let complianceScore = 100;
+  complianceScore -= totalVulns * 5; // -5 per vulnerability
+  complianceScore -= rootkitCount * 20; // -20 per rootkit
+  complianceScore -= malwareCount * 10; // -10 per malware
+  complianceScore -= criticalAlerts * 8; // -8 per critical alert
+  complianceScore = Math.max(0, Math.min(100, complianceScore));
+  
+  pdf.setFontSize(20);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(23, 162, 184);
+  pdf.text('Compliance Score', 20, 155);
+  
+  // Score Display
+  const scoreColor: [number, number, number] = complianceScore >= 80 ? [40, 167, 69] :
+                       complianceScore >= 60 ? [255, 193, 7] : [220, 53, 69];
+  
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(21, 166, 80, 45, 4, 4, 'F');
+  pdf.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+  pdf.roundedRect(20, 165, 80, 45, 4, 4, 'F');
+  
+  pdf.setFontSize(48);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(complianceScore), 60, 195, { align: 'center' });
+  pdf.setFontSize(12);
+  pdf.text('/100', 60, 205, { align: 'center' });
+  
+  // Status Badge
+  const statusText = complianceScore >= 80 ? 'COMPLIANT' :
+                     complianceScore >= 60 ? 'NEEDS IMPROVEMENT' : 'NON-COMPLIANT';
+  
+  pdf.setFillColor(250, 252, 255);
+  pdf.setDrawColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+  pdf.setLineWidth(1.5);
+  pdf.roundedRect(110, 165, 80, 20, 3, 3, 'FD');
+  
+  pdf.setFontSize(14);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+  pdf.text(statusText, 150, 178, { align: 'center' });
+  
+  // Compliance Factors
+  pdf.setFontSize(14);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(80, 80, 80);
+  pdf.text('Contributing Factors:', 110, 195);
+  
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(100, 100, 100);
+  let factorY = 202;
+  pdf.text(`[*] ${totalVulns} Vulnerabilities (-${totalVulns * 5} pts)`, 110, factorY);
+  factorY += 6;
+  pdf.text(`[*] ${rootkitCount} Rootkits (-${rootkitCount * 20} pts)`, 110, factorY);
+  factorY += 6;
+  pdf.text(`[*] ${malwareCount} Malware (-${malwareCount * 10} pts)`, 110, factorY);
+  factorY += 6;
+  pdf.text(`[*] ${criticalAlerts} Critical Alerts (-${criticalAlerts * 8} pts)`, 110, factorY);
+  
+  // Footer
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(0.3);
+  pdf.line(20, 275, pageWidth - 20, 275);
+  pdf.setFontSize(8);
+  pdf.setTextColor(120, 120, 120);
+  pdf.text('Voltaxe Compliance Status Report', 20, 282);
+  pdf.text('Page 1', pageWidth - 30, 282);
+  
+  // Page 2: Compliance Requirements
+  pdf.addPage();
+  pdf.setFillColor(212, 175, 55);
+  pdf.rect(0, 0, pageWidth, 12, 'F');
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('COMPLIANCE STATUS REPORT', 15, 8);
+  
+  let yPos = 25;
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(23, 162, 184);
+  pdf.text('Security Requirements Assessment', 20, yPos);
+  yPos += 15;
+  
+  // Requirement Checks
+  const requirements = [
+    {
+      name: 'Vulnerability Management',
+      status: totalVulns === 0,
+      description: 'All systems must be free of known vulnerabilities'
+    },
+    {
+      name: 'Malware Protection',
+      status: malwareCount === 0,
+      description: 'No malware detections on monitored systems'
+    },
+    {
+      name: 'Rootkit Detection',
+      status: rootkitCount === 0,
+      description: 'System integrity maintained, no rootkit activity'
+    },
+    {
+      name: 'Critical Alert Response',
+      status: criticalAlerts === 0,
+      description: 'All critical security alerts resolved'
+    },
+    {
+      name: 'Continuous Monitoring',
+      status: data.snapshots.length > 0,
+      description: 'Active monitoring of all endpoints'
+    },
+    {
+      name: 'Incident Documentation',
+      status: data.events.length >= 0,
+      description: 'Security events logged and tracked'
+    }
+  ];
+  
+  requirements.forEach(req => {
+    const reqColor: [number, number, number] = req.status ? [40, 167, 69] : [220, 53, 69];
+    const reqIcon = req.status ? '[OK]' : '[X]';
+    
+    pdf.setFillColor(req.status ? 236 : 254, req.status ? 253 : 242, req.status ? 245 : 242);
+    pdf.setDrawColor(reqColor[0], reqColor[1], reqColor[2]);
+    pdf.setLineWidth(0.8);
+    pdf.roundedRect(20, yPos, pageWidth - 40, 20, 2, 2, 'FD');
+    
+    // Status Icon
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(reqColor[0], reqColor[1], reqColor[2]);
+    pdf.text(reqIcon, 25, yPos + 8);
+    
+    // Requirement Name
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(40, 40, 40);
+    pdf.text(req.name, 38, yPos + 8);
+    
+    // Description
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(req.description, 25, yPos + 15);
+    
+    yPos += 24;
+    
+    if (yPos > 250) {
+      pdf.addPage();
+      pdf.setFillColor(212, 175, 55);
+      pdf.rect(0, 0, pageWidth, 12, 'F');
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('COMPLIANCE STATUS REPORT', 15, 8);
+      yPos = 25;
+    }
+  });
+  
+  // Page 3: Recommendations
+  pdf.addPage();
+  pdf.setFillColor(212, 175, 55);
+  pdf.rect(0, 0, pageWidth, 12, 'F');
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('COMPLIANCE STATUS REPORT', 15, 8);
+  
+  yPos = 25;
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(212, 175, 55);
+  pdf.text('Compliance Recommendations', 20, yPos);
+  yPos += 15;
+  
+  const recommendations = [
+    '[+] Implement automated vulnerability scanning and patch management',
+    '[+] Establish regular security audit schedules',
+    '[+] Deploy endpoint detection and response (EDR) solutions',
+    '[+] Create and maintain incident response procedures',
+    '[+] Conduct regular security awareness training',
+    '[+] Implement multi-factor authentication (MFA)',
+    '[+] Maintain comprehensive security event logging',
+    '[+] Perform regular backup and disaster recovery testing',
+    '[+] Establish network segmentation for critical systems',
+    '[+] Conduct periodic penetration testing and security assessments'
+  ];
+  
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(60, 60, 60);
+  
+  recommendations.forEach(rec => {
+    const lines = pdf.splitTextToSize(rec, pageWidth - 55);
+    lines.forEach((line: string) => {
+      if (yPos > 265) {
+        pdf.addPage();
+        pdf.setFillColor(212, 175, 55);
+        pdf.rect(0, 0, pageWidth, 12, 'F');
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('COMPLIANCE STATUS REPORT', 15, 8);
+        yPos = 25;
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(60, 60, 60);
+      }
+      pdf.text(line, 30, yPos);
+      yPos += 5;
+    });
+    yPos += 2;
+  });
+  
+  // Final page footer
+  const pageCount = pdf.getNumberOfPages();
+  for (let i = 2; i <= pageCount; i++) {
+    pdf.setPage(i);
+    pdf.setDrawColor(212, 175, 55);
+    pdf.setLineWidth(0.3);
+    pdf.line(20, 275, pageWidth - 20, 275);
+    pdf.setFontSize(8);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text('Voltaxe Compliance Status Report', 20, 282);
+    pdf.text(`Page ${i}`, pageWidth - 30, 282);
+  }
+  
+  const timestamp = data.generatedAt.toISOString().split('T')[0];
+  pdf.save(`voltaxe_compliance_report_${timestamp}.pdf`);
 };
 
 // Legacy HTML report generator (disabled - using professional 6-page PDF design instead)
