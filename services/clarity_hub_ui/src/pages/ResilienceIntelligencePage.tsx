@@ -1,5 +1,6 @@
 import { Sidebar } from '../components/Sidebar';
 import { ResilienceDashboardComponent } from '../components/ResilienceDashboard';
+import { ResilienceScoreWidget } from '../components/ResilienceScoreWidget';
 import { Shield, TrendingUp } from 'lucide-react';
 
 export const ResilienceIntelligencePage = () => {
@@ -24,6 +25,11 @@ export const ResilienceIntelligencePage = () => {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Prominent Resilience Score Widget */}
+        <div className="mb-8 animate-fadeIn">
+          <ResilienceScoreWidget />
         </div>
 
         {/* Resilience Dashboard - All resilience related cards */}

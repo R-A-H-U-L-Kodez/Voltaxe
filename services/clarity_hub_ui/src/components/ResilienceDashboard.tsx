@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { resilienceService } from '../services/api';
 import { ResilienceScore, ResilienceDashboard } from '../types';
-import { Shield, TrendingUp, AlertTriangle, CheckCircle, Clock, Activity, Zap } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { getRiskColor } from '../theme';
 
 interface ResilienceDashboardComponentProps {
@@ -81,62 +81,6 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
 
   return (
     <div className={`space-y-6 animate-fadeIn ${className}`}>
-      {/* Hero Header */}
-      <div className="relative overflow-hidden gradient-gold rounded-2xl shadow-2xl glow-gold p-8">
-        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl"></div>
-        
-        <div className="relative z-10">
-          <div className="flex items-center mb-4">
-            <div className="p-3 bg-black bg-opacity-20 rounded-xl backdrop-blur-sm">
-              <Shield className="h-10 w-10 text-background" />
-            </div>
-            <div className="ml-4">
-              <h2 className="text-3xl font-bold text-background">Resilience Intelligence</h2>
-              <p className="text-background/80 flex items-center mt-1">
-                <Zap className="h-4 w-4 mr-1" />
-                Powered by Voltaxe Axon Engine
-              </p>
-            </div>
-          </div>
-          
-          {dashboard && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-              <div className="glass rounded-xl p-4 border-white border-opacity-20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-background/80 text-sm font-medium">Average Score</p>
-                    <p className="text-4xl font-bold text-background mt-1">{dashboard.summary.average_score}</p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-background/60" />
-                </div>
-              </div>
-              
-              <div className="glass rounded-xl p-4 border-white border-opacity-20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-background/80 text-sm font-medium">Endpoints</p>
-                    <p className="text-4xl font-bold text-background mt-1">{dashboard.summary.total_endpoints}</p>
-                  </div>
-                  <Activity className="h-8 w-8 text-background/60" />
-                </div>
-              </div>
-              
-              <div className="glass rounded-xl p-4 border-white border-opacity-20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-background/80 text-sm font-medium">At Risk</p>
-                    <p className="text-4xl font-bold text-background mt-1">
-                      {dashboard.summary.risk_distribution.HIGH + dashboard.summary.risk_distribution.CRITICAL}
-                    </p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-background/60" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
       {/* Risk Distribution Cards */}
       {dashboard && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
