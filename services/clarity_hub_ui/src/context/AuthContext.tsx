@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { AuthContextType } from '../types';
 import axios from 'axios';
 
@@ -8,6 +8,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return !!localStorage.getItem('token');
   });
+
+  // Initialize theme on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('voltaxe_settings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        const theme = parsed.theme || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (error) {
+        console.error('Failed to load theme:', error);
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
     try {

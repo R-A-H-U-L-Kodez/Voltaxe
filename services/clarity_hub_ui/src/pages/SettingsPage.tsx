@@ -12,7 +12,13 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
-  Check
+  Check,
+  Copy,
+  Key,
+  Download,
+  Upload,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 
 interface SettingsData {
@@ -80,6 +86,10 @@ export const SettingsPage = () => {
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [apiKey, setApiKey] = useState('vltx_1234567890abcdef_prod_key_secure');
+  const [copiedApiKey, setCopiedApiKey] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -92,7 +102,23 @@ export const SettingsPage = () => {
         console.error('Failed to load settings:', error);
       }
     }
+    
+    // Load API key
+    const savedApiKey = localStorage.getItem('voltaxe_api_key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    } else {
+      // Generate initial API key if none exists
+      const initialKey = `vltx_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}_${Date.now()}`;
+      setApiKey(initialKey);
+      localStorage.setItem('voltaxe_api_key', initialKey);
+    }
   }, []);
+
+  // Apply theme when settings change
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', settings.theme);
+  }, [settings.theme]);
 
   // Track unsaved changes
   useEffect(() => {
@@ -120,6 +146,81 @@ export const SettingsPage = () => {
     setSettings(defaultSettings);
     localStorage.removeItem('voltaxe_settings');
     setUnsavedChanges(false);
+  };
+
+  const generateNewApiKey = () => {
+    const newKey = `vltx_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}_${Date.now()}`;
+    setApiKey(newKey);
+    localStorage.setItem('voltaxe_api_key', newKey);
+  };
+
+  const copyApiKey = () => {
+    navigator.clipboard.writeText(apiKey);
+    setCopiedApiKey(true);
+    setTimeout(() => setCopiedApiKey(false), 2000);
+  };
+
+  const testConnection = async () => {
+    setTestingConnection(true);
+    setConnectionStatus('idle');
+    
+    try {
+      const response = await fetch(`${settings.apiEndpoint}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(settings.timeout * 1000)
+      });
+      
+      if (response.ok) {
+        setConnectionStatus('success');
+      } else {
+        setConnectionStatus('error');
+      }
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      setConnectionStatus('error');
+    } finally {
+      setTestingConnection(false);
+      setTimeout(() => setConnectionStatus('idle'), 3000);
+    }
+  };
+
+  const downloadSettings = () => {
+    const dataStr = JSON.stringify(settings, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `voltaxe-settings-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const importSettings = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const importedSettings = JSON.parse(event.target?.result as string);
+            setSettings({ ...defaultSettings, ...importedSettings });
+          } catch (error) {
+            console.error('Failed to import settings:', error);
+            alert('Invalid settings file. Please check the file format.');
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
   };
 
   const updateSetting = (key: keyof SettingsData, value: any) => {
@@ -264,6 +365,24 @@ export const SettingsPage = () => {
               {unsavedChanges && (
                 <span className="text-sm font-semibold" style={{ color: 'hsl(var(--warning))' }}>Unsaved changes</span>
               )}
+              <button
+                onClick={importSettings}
+                className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
+                style={{ borderColor: 'hsl(var(--border))' }}
+                title="Import settings from JSON file"
+              >
+                <Upload size={16} />
+                Import
+              </button>
+              <button
+                onClick={downloadSettings}
+                className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
+                style={{ borderColor: 'hsl(var(--border))' }}
+                title="Export settings to JSON file"
+              >
+                <Download size={16} />
+                Export
+              </button>
               <button
                 onClick={handleReset}
                 className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
@@ -484,6 +603,45 @@ export const SettingsPage = () => {
               onChange={(value) => updateSetting('apiEndpoint', value)}
               description="Base URL for the Clarity Hub API"
             />
+            
+            {/* Test Connection Button */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={testConnection}
+                disabled={testingConnection}
+                className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth disabled:opacity-50"
+                style={{ borderColor: 'hsl(var(--border))' }}
+              >
+                {testingConnection ? (
+                  <>
+                    <RefreshCw className="animate-spin" size={16} />
+                    Testing...
+                  </>
+                ) : connectionStatus === 'success' ? (
+                  <>
+                    <CheckCircle size={16} className="text-green-500" />
+                    Connected
+                  </>
+                ) : connectionStatus === 'error' ? (
+                  <>
+                    <AlertCircle size={16} className="text-red-500" />
+                    Failed
+                  </>
+                ) : (
+                  <>
+                    <Database size={16} />
+                    Test Connection
+                  </>
+                )}
+              </button>
+              {connectionStatus === 'success' && (
+                <span className="text-sm text-green-500">API endpoint is reachable</span>
+              )}
+              {connectionStatus === 'error' && (
+                <span className="text-sm text-red-500">Cannot reach API endpoint</span>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InputField
                 label="Request Timeout"
@@ -508,7 +666,7 @@ export const SettingsPage = () => {
               <div className="flex items-center gap-2">
                 <input
                   type={showApiKey ? 'text' : 'password'}
-                  value="vltx_1234567890abcdef_prod_key_secure"
+                  value={apiKey}
                   readOnly
                   className="flex-1 px-4 py-2 bg-input border border-border rounded-lg text-foreground font-mono"
                 />
@@ -519,7 +677,25 @@ export const SettingsPage = () => {
                 >
                   {showApiKey ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
+                <button
+                  onClick={copyApiKey}
+                  className="p-2 border border-border rounded-lg text-foreground hover:bg-white/5"
+                  title="Copy API key"
+                >
+                  {copiedApiKey ? <Check size={20} className="text-green-500" /> : <Copy size={20} />}
+                </button>
+                <button
+                  onClick={generateNewApiKey}
+                  className="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2"
+                  title="Generate new API key"
+                >
+                  <Key size={16} />
+                  Generate New
+                </button>
               </div>
+              <p className="text-foreground/40 text-xs mt-2">
+                ⚠️ Generating a new key will invalidate the current one
+              </p>
             </div>
           </SettingsSection>
         </div>

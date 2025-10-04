@@ -49,7 +49,7 @@ export const EndpointDetailPage = () => {
     try {
       const result = await endpointService.scanEndpoint(hostname);
       alert(`✅ ${result.message}`);
-      console.log('✅ Scan initiated successfully:', result);
+      console.log('[+] Scan initiated successfully:', result);
     } catch (error: any) {
       console.error('Scan failed:', error);
       const errorMessage = error.response?.data?.detail || 'Failed to initiate scan. Please try again.';

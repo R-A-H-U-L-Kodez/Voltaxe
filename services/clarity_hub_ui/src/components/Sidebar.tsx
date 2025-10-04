@@ -7,7 +7,9 @@ import {
   LogOut, 
   Settings, 
   Shield,
-  FileWarning
+  FileWarning,
+  Users,
+  PlusCircle
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -117,6 +119,42 @@ export const Sidebar = () => {
         >
           <FileWarning size={20} />
           <span>Malware Scanner</span>
+        </NavLink>
+
+        <NavLink
+          to="/team"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+              isActive
+                ? 'bg-primary-gold/10 text-primary-gold'
+                : 'text-foreground hover:text-accent-gold hover:bg-white/5'
+            }`
+          }
+          style={({ isActive }) => ({
+            color: isActive ? 'hsl(var(--primary-gold))' : undefined,
+            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
+          })}
+        >
+          <Users size={20} />
+          <span>Team</span>
+        </NavLink>
+
+        <NavLink
+          to="/add-endpoint"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+              isActive
+                ? 'bg-primary-gold/10 text-primary-gold'
+                : 'text-foreground hover:text-accent-gold hover:bg-white/5'
+            }`
+          }
+          style={({ isActive }) => ({
+            color: isActive ? 'hsl(var(--primary-gold))' : undefined,
+            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
+          })}
+        >
+          <PlusCircle size={20} />
+          <span>Add Endpoint</span>
         </NavLink>
 
         <NavLink

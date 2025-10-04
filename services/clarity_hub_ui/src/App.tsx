@@ -8,6 +8,8 @@ import { EndpointDetailPage } from './pages/EndpointDetailPage';
 import { LiveEventFeedPage } from './pages/LiveEventFeedPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MalwareScannerPage } from './pages/MalwareScannerPage';
+import { TeamManagementPage } from './pages/TeamManagementPage';
+import { AddEndpointPage } from './pages/AddEndpointPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -77,6 +79,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <MalwareScannerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/team"
+            element={
+              <ProtectedRoute>
+                <TeamManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/add-endpoint"
+            element={
+              <ProtectedRoute>
+                <AddEndpointPage />
               </ProtectedRoute>
             }
           />

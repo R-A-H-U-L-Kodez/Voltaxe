@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_, Float, Text, Boolean, text
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.ext.declarative import declarative_base
 from pydantic import BaseModel
 import datetime
 import os
@@ -9,6 +8,10 @@ from typing import List, Optional, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 from auth_service import auth_service, get_current_user, LoginRequest, RegisterRequest, LoginResponse, RegisterResponse
 from dotenv import load_dotenv
+from database import Base, engine, SessionLocal, get_db, DATABASE_URL
+
+# Import team management models
+from models.team import TeamMemberDB, AuditLogDB
 
 # Load environment variables
 load_dotenv()
@@ -45,12 +48,7 @@ class EventModel(BaseModel):
     reason: Optional[str] = None
     cve: Optional[str] = None
 
-# --- Database Setup ---
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///voltaxe_clarity.db")
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
+# --- Database Models ---
 class SnapshotDB(Base):
     __tablename__ = "snapshots"
     id = Column(Integer, primary_key=True, index=True)
@@ -94,6 +92,7 @@ class CVEDB(Base):
     is_active = Column(Boolean, default=True, index=True)
     sync_timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
+# Create all database tables (including team management tables)
 Base.metadata.create_all(bind=engine)
 
 # --- Response Models for UI ---
@@ -187,6 +186,10 @@ app = FastAPI(
     description="Professional cybersecurity monitoring and threat intelligence platform",
     version="2.0.0"
 )
+
+# Include routers
+from routers.team import router as team_router
+app.include_router(team_router)
 
 # Health check endpoint
 @app.get("/health")

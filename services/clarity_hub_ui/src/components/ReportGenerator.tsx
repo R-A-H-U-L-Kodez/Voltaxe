@@ -16,7 +16,7 @@ export const ReportGenerator = ({ onGenerateReport }: ReportGeneratorProps) => {
     try {
       await onGenerateReport(reportType, timeRange);
       // Success feedback could be added here
-      console.log('✅ Report generated successfully!');
+      console.log('[+] Report generated successfully!');
     } catch (error) {
       console.error('Failed to generate report:', error);
       alert('Failed to generate report. Please try again.');
