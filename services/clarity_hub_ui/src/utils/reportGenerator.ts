@@ -87,17 +87,13 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
         hostname: event.hostname,
         timestamp: new Date(event.timestamp)
       })),
-      malware: malwareScans.map((scan: any) => {
-        console.log('Malware scan structure:', scan);
-        console.log('Matches:', scan.matches);
-        return {
-          fileName: scan.file_name,
-          isMalicious: scan.is_malicious,
-          threatLevel: scan.threat_level,
-          scanTime: new Date(scan.scan_time),
-          matches: scan.matches || []
-        };
-      }),
+      malware: malwareScans.map((scan: any) => ({
+        fileName: scan.file_name,
+        isMalicious: scan.is_malicious,
+        threatLevel: scan.threat_level,
+        scanTime: new Date(scan.scan_time),
+        matches: scan.matches || []
+      })),
       vulnerabilities: vulnerabilityEvents.map((vuln: any) => {
         // Try to parse details if it's a JSON string, otherwise use the string directly
         let parsedDetails = vuln.details;
@@ -233,29 +229,38 @@ const generateSimplePDF = (data: ReportData) => {
   
   // ============= PAGE 1: COVER PAGE =============
   
-  // Background accent bar at top
-  pdf.setFillColor(212, 175, 55); // Gold
-  pdf.rect(0, 0, pageWidth, 35, 'F');
+  // Enhanced gradient background header
+  pdf.setFillColor(25, 35, 65); // Dark navy blue
+  pdf.rect(0, 0, pageWidth, 45, 'F');
   
-  // Company Logo/Shield (using text)
-  pdf.setFontSize(14);
-  pdf.setTextColor(255, 255, 255);
-  pdf.text('| SHIELD |', 15, 22);
+  // Accent stripe
+  pdf.setFillColor(212, 175, 55); // Gold accent
+  pdf.rect(0, 42, pageWidth, 3, 'F');
   
-  // Title
-  pdf.setFontSize(28);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 255, 255);
-  pdf.text('VOLTAXE', 35, 22);
+  // Company Logo/Shield with better styling
+  pdf.setFillColor(212, 175, 55); // Gold background for shield
+  pdf.roundedRect(12, 12, 22, 22, 2, 2, 'F');
   
   pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('Security Monitoring Platform', 35, 29);
-  
-  // Report Title - Centered
-  pdf.setFontSize(24);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(40, 40, 40);
+  pdf.setTextColor(25, 35, 65); // Dark text on gold background
+  pdf.text('SHIELD', 23, 26, { align: 'center' });
+  
+  // Title with better spacing
+  pdf.setFontSize(32);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('VOLTAXE', 42, 26);
+  
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(200, 200, 200);
+  pdf.text('SECURITY MONITORING PLATFORM', 42, 34);
+  
+  // Report Title Section with enhanced design
+  pdf.setFontSize(26);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(25, 35, 65);
   
   const reportTypeText = {
     'security-summary': 'Security Summary Report',
@@ -265,17 +270,28 @@ const generateSimplePDF = (data: ReportData) => {
   }[data.reportType] || 'Security Report';
   
   const titleWidth = pdf.getTextWidth(reportTypeText);
-  pdf.text(reportTypeText, (pageWidth - titleWidth) / 2, 65);
+  pdf.text(reportTypeText, (pageWidth - titleWidth) / 2, 70);
   
-  // Decorative line
+  // Enhanced decorative elements
   pdf.setDrawColor(212, 175, 55);
-  pdf.setLineWidth(0.5);
-  pdf.line(40, 70, pageWidth - 40, 70);
+  pdf.setLineWidth(2);
+  pdf.line(50, 75, pageWidth - 50, 75);
   
-  // Report Metadata Box
-  pdf.setFillColor(248, 249, 250); // Light gray background
-  pdf.setDrawColor(200, 200, 200);
-  pdf.roundedRect(30, 85, pageWidth - 60, 45, 3, 3, 'FD');
+  // Subtitle accent line
+  pdf.setLineWidth(0.5);
+  pdf.setDrawColor(180, 180, 180);
+  pdf.line(60, 78, pageWidth - 60, 78);
+  
+  // Enhanced Report Metadata Box
+  pdf.setFillColor(250, 252, 255); // Very light blue background
+  pdf.setDrawColor(212, 175, 55); // Gold border
+  pdf.setLineWidth(0.8);
+  pdf.roundedRect(25, 90, pageWidth - 50, 50, 4, 4, 'FD');
+  
+  // Inner accent border
+  pdf.setDrawColor(25, 35, 65);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(27, 92, pageWidth - 54, 46, 3, 3, 'D');
   
   const timeRangeText = {
     '1d': 'Last 24 Hours',
@@ -297,65 +313,99 @@ const generateSimplePDF = (data: ReportData) => {
   pdf.text(data.generatedAt.toLocaleString(), 80, 105);
   pdf.text('CONFIDENTIAL - INTERNAL USE ONLY', 80, 115);
   
-  // Executive Summary Section
-  pdf.setFontSize(18);
+  // Enhanced Executive Summary Section
+  pdf.setFontSize(20);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(212, 175, 55);
-  pdf.text('Executive Summary', 20, 150);
+  pdf.setTextColor(25, 35, 65);
+  pdf.text('Executive Summary', 20, 155);
   
-  // Metrics Cards
+  // Decorative underline
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(1.5);
+  pdf.line(20, 158, 90, 158);
+  
+  // Enhanced Metrics Cards with shadows and better design
   const totalVulns = data.snapshots.reduce((sum, s) => sum + s.vulnerabilities, 0);
   const malwareCount = data.malware.filter(m => m.isMalicious).length;
   const rootkitCount = data.rootkits.length;
   const criticalAlerts = data.alerts.filter(a => a.type === 'Critical').length;
   
-  const metricsY = 165;
-  const cardWidth = 50;
-  const cardHeight = 30;
-  const cardSpacing = 10;
+  const metricsY = 175;
+  const cardWidth = 52;
+  const cardHeight = 38;
+  const cardSpacing = 6;
   
-  // Metric 1: Critical Alerts
-  let cardX = 20;
-  pdf.setFillColor(220, 53, 69); // Red
-  pdf.roundedRect(cardX, metricsY, cardWidth, cardHeight, 2, 2, 'F');
-  pdf.setFontSize(20);
+  // Metric 1: Critical Alerts with shadow effect
+  let cardX = 18;
+  // Shadow
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, cardHeight, 4, 4, 'F');
+  
+  // Main card
+  pdf.setFillColor(220, 53, 69); // Enhanced red
+  pdf.roundedRect(cardX, metricsY, cardWidth, cardHeight, 4, 4, 'F');
+  
+  // Card border highlight
+  pdf.setDrawColor(255, 255, 255, 0.3);
+  pdf.setLineWidth(0.5);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth - 2, cardHeight - 2, 3, 3, 'D');
+  
+  pdf.setFontSize(24);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 255, 255);
-  pdf.text(String(criticalAlerts + rootkitCount), cardX + cardWidth/2, metricsY + 12, { align: 'center' });
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('CRITICAL', cardX + cardWidth/2, metricsY + 20, { align: 'center' });
-  pdf.text('ALERTS', cardX + cardWidth/2, metricsY + 26, { align: 'center' });
+  pdf.text(String(criticalAlerts + rootkitCount), cardX + cardWidth/2, metricsY + 18, { align: 'center' });
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('CRITICAL', cardX + cardWidth/2, metricsY + 26, { align: 'center' });
+  pdf.text('ALERTS', cardX + cardWidth/2, metricsY + 31, { align: 'center' });
   
-  // Metric 2: Vulnerabilities
+  // Metric 2: Vulnerabilities with shadow
   cardX += cardWidth + cardSpacing;
-  pdf.setFillColor(255, 193, 7); // Orange
-  pdf.roundedRect(cardX, metricsY, cardWidth, cardHeight, 2, 2, 'F');
-  pdf.setFontSize(20);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text(String(totalVulns), cardX + cardWidth/2, metricsY + 12, { align: 'center' });
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('VULNERABILITIES', cardX + cardWidth/2, metricsY + 20, { align: 'center' });
-  pdf.text('FOUND', cardX + cardWidth/2, metricsY + 26, { align: 'center' });
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, cardHeight, 4, 4, 'F');
   
-  // Metric 3: Malware
+  pdf.setFillColor(255, 193, 7); // Enhanced orange
+  pdf.roundedRect(cardX, metricsY, cardWidth, cardHeight, 4, 4, 'F');
+  
+  pdf.setDrawColor(255, 255, 255, 0.3);
+  pdf.setLineWidth(0.5);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth - 2, cardHeight - 2, 3, 3, 'D');
+  
+  pdf.setFontSize(24);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(totalVulns), cardX + cardWidth/2, metricsY + 18, { align: 'center' });
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('VULNERABILITIES', cardX + cardWidth/2, metricsY + 26, { align: 'center' });
+  pdf.text('FOUND', cardX + cardWidth/2, metricsY + 31, { align: 'center' });
+  
+  // Metric 3: Malware with shadow
   cardX += cardWidth + cardSpacing;
-  pdf.setFillColor(156, 39, 176); // Purple
-  pdf.roundedRect(cardX, metricsY, cardWidth, cardHeight, 2, 2, 'F');
-  pdf.setFontSize(20);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text(String(malwareCount), cardX + cardWidth/2, metricsY + 12, { align: 'center' });
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('MALWARE', cardX + cardWidth/2, metricsY + 20, { align: 'center' });
-  pdf.text('DETECTED', cardX + cardWidth/2, metricsY + 26, { align: 'center' });
+  pdf.setFillColor(0, 0, 0, 0.1);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth, cardHeight, 4, 4, 'F');
   
-  // Security Posture Assessment
-  pdf.setFontSize(14);
+  pdf.setFillColor(111, 66, 193); // Enhanced purple
+  pdf.roundedRect(cardX, metricsY, cardWidth, cardHeight, 4, 4, 'F');
+  
+  pdf.setDrawColor(255, 255, 255, 0.3);
+  pdf.setLineWidth(0.5);
+  pdf.roundedRect(cardX + 1, metricsY + 1, cardWidth - 2, cardHeight - 2, 3, 3, 'D');
+  
+  pdf.setFontSize(24);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(40, 40, 40);
-  pdf.text('Security Posture Assessment', 20, 215);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(malwareCount), cardX + cardWidth/2, metricsY + 18, { align: 'center' });
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('MALWARE', cardX + cardWidth/2, metricsY + 26, { align: 'center' });
+  pdf.text('DETECTED', cardX + cardWidth/2, metricsY + 31, { align: 'center' });
+  
+  // Enhanced Security Posture Assessment
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(25, 35, 65);
+  pdf.text('Security Posture Assessment', 20, 230);
   
   const threatScore = criticalAlerts + rootkitCount + (totalVulns / 5) + (malwareCount * 2);
   let postureStatus = 'EXCELLENT';
@@ -372,17 +422,28 @@ const generateSimplePDF = (data: ReportData) => {
     postureColor = [23, 162, 184]; // Blue
   }
   
+  // Enhanced status badge with shadow and highlight
+  pdf.setFillColor(0, 0, 0, 0.15);
+  pdf.roundedRect(21, 241, 160, 16, 3, 3, 'F');
+  
+  // Main status badge
   pdf.setFillColor(postureColor[0], postureColor[1], postureColor[2]);
-  pdf.roundedRect(20, 220, 80, 15, 2, 2, 'F');
+  pdf.roundedRect(20, 240, 160, 16, 3, 3, 'F');
+  
+  // Status badge highlight
+  pdf.setFillColor(255, 255, 255, 0.2);
+  pdf.roundedRect(20, 240, 160, 8, 3, 3, 'F');
+  
   pdf.setFontSize(12);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 255, 255);
-  pdf.text(`STATUS: ${postureStatus}`, 60, 230, { align: 'center' });
+  pdf.text(`STATUS: ${postureStatus}`, 100, 250, { align: 'center' });
   
-  pdf.setFontSize(10);
+  // Enhanced description with better typography
+  pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(80, 80, 80);
-  pdf.text('Based on current threat analysis, vulnerability assessment, and security monitoring data.', 20, 245, { maxWidth: 170 });
+  pdf.setTextColor(100, 100, 100);
+  pdf.text('Based on current threat analysis, vulnerability assessment, and security monitoring data.', 20, 265, { maxWidth: 170 });
   
   // Footer
   pdf.setDrawColor(212, 175, 55);
@@ -396,58 +457,89 @@ const generateSimplePDF = (data: ReportData) => {
   // ============= PAGE 2: ENDPOINT & ALERTS =============
   pdf.addPage();
   
-  // Page header
-  pdf.setFillColor(212, 175, 55);
-  pdf.rect(0, 0, pageWidth, 12, 'F');
+  // Enhanced page header with gradient
+  pdf.setFillColor(25, 35, 65); // Dark navy
+  pdf.rect(0, 0, pageWidth, 15, 'F');
+  pdf.setFillColor(212, 175, 55); // Gold accent
+  pdf.rect(0, 12, pageWidth, 3, 'F');
+  
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('VOLTAXE SECURITY REPORT', 15, 10);
+  
+  let yPos = 30;
+  
+  // Enhanced Endpoint Security Status section
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(25, 35, 65);
+  pdf.text('Monitored Endpoints Status', 20, yPos);
+  
+  // Section underline
+  pdf.setDrawColor(212, 175, 55);
+  pdf.setLineWidth(1.5);
+  pdf.line(20, yPos + 2, 120, yPos + 2);
+  
+  yPos += 15;
+  
+  // Enhanced table header with gradient
+  pdf.setFillColor(25, 35, 65); // Dark header
+  pdf.roundedRect(20, yPos, pageWidth - 40, 12, 2, 2, 'F');
+  
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 255, 255);
-  pdf.text('VOLTAXE SECURITY REPORT', 15, 8);
+  pdf.text('Hostname', 25, yPos + 8);
+  pdf.text('Vulnerabilities', 90, yPos + 8);
+  pdf.text('Risk Level', 140, yPos + 8);
   
-  let yPos = 25;
+  yPos += 12;
   
-  // Endpoint Security Status
-  pdf.setFontSize(16);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(212, 175, 55);
-  pdf.text('Monitored Endpoints Status', 20, yPos);
-  
-  yPos += 10;
-  
-  // Table header
-  pdf.setFillColor(248, 249, 250);
-  pdf.rect(20, yPos, pageWidth - 40, 10, 'F');
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(60, 60, 60);
-  pdf.text('Hostname', 25, yPos + 7);
-  pdf.text('Vulnerabilities', 90, yPos + 7);
-  pdf.text('Risk Level', 140, yPos + 7);
-  
-  yPos += 10;
-  
-  // Table rows
+  // Enhanced table rows with better styling
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9);
   data.snapshots.slice(0, 8).forEach((snapshot, index) => {
-    const riskLevel = snapshot.vulnerabilities > 2 ? 'High' : snapshot.vulnerabilities > 0 ? 'Medium' : 'Low';
+    const riskLevel = snapshot.vulnerabilities > 2 ? 'HIGH' : snapshot.vulnerabilities > 0 ? 'MEDIUM' : 'LOW';
     const riskColor: [number, number, number] = snapshot.vulnerabilities > 2 ? [220, 53, 69] : 
                      snapshot.vulnerabilities > 0 ? [255, 193, 7] : [40, 167, 69];
     
-    // Alternating row colors
+    // Enhanced alternating row colors with subtle borders
     if (index % 2 === 0) {
-      pdf.setFillColor(252, 252, 252);
-      pdf.rect(20, yPos - 5, pageWidth - 40, 8, 'F');
+      pdf.setFillColor(250, 252, 255); // Very light blue
+      pdf.roundedRect(20, yPos - 5, pageWidth - 40, 10, 1, 1, 'F');
+    } else {
+      pdf.setFillColor(255, 255, 255); // White
+      pdf.roundedRect(20, yPos - 5, pageWidth - 40, 10, 1, 1, 'F');
     }
     
+    // Subtle row border
+    pdf.setDrawColor(230, 230, 230);
+    pdf.setLineWidth(0.2);
+    pdf.roundedRect(20, yPos - 5, pageWidth - 40, 10, 1, 1, 'D');
+    
+    
     pdf.setTextColor(40, 40, 40);
+    pdf.setFont('helvetica', 'normal');
     pdf.text(snapshot.hostname, 25, yPos);
+    
+    // Vulnerability count with better styling
+    pdf.setFont('helvetica', 'bold');
     pdf.text(String(snapshot.vulnerabilities), 95, yPos, { align: 'center' });
     
-    // Risk level badge
+    // Enhanced risk level badge with shadow
+    pdf.setFillColor(0, 0, 0, 0.1); // Shadow
+    pdf.roundedRect(138, yPos - 3, 28, 8, 2, 2, 'F');
+    
     pdf.setFillColor(riskColor[0], riskColor[1], riskColor[2]);
-    pdf.roundedRect(137, yPos - 4, 25, 6, 1, 1, 'F');
-    pdf.setFontSize(8);
+    pdf.roundedRect(137, yPos - 4, 28, 8, 2, 2, 'F');
+    
+    // Badge highlight
+    pdf.setFillColor(255, 255, 255, 0.2);
+    pdf.roundedRect(137, yPos - 4, 28, 4, 2, 2, 'F');
+    
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'bold');
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(255, 255, 255);
     pdf.text(riskLevel.toUpperCase(), 149.5, yPos, { align: 'center' });
@@ -708,72 +800,102 @@ const generateSimplePDF = (data: ReportData) => {
   // ============= PAGE 5: MALWARE DETECTIONS =============
   pdf.addPage();
   
-  // Page header
-  pdf.setFillColor(212, 175, 55);
-  pdf.rect(0, 0, pageWidth, 12, 'F');
-  pdf.setFontSize(10);
+  // Enhanced page header with gradient
+  pdf.setFillColor(25, 35, 65); // Dark navy
+  pdf.rect(0, 0, pageWidth, 15, 'F');
+  pdf.setFillColor(212, 175, 55); // Gold accent
+  pdf.rect(0, 12, pageWidth, 3, 'F');
+  
+  pdf.setFontSize(12);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 255, 255);
-  pdf.text('? VOLTAXE SECURITY REPORT', 15, 8);
+  pdf.text('VOLTAXE SECURITY REPORT', 15, 10);
   
-  yPos = 25;
+  yPos = 30;
   
-  // Malware Section
-  pdf.setFontSize(18);
+  // Enhanced Malware Section
+  pdf.setFontSize(20);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(156, 39, 176);
-  pdf.text('? Malware Detection Analysis', 20, yPos);
+  pdf.setTextColor(111, 66, 193); // Purple theme
+  pdf.text('[SCAN] Malware Detection Analysis', 20, yPos);
   
-  yPos += 12;
+  // Section underline
+  pdf.setDrawColor(111, 66, 193);
+  pdf.setLineWidth(1.5);
+  pdf.line(20, yPos + 2, 150, yPos + 2);
+  
+  yPos += 18;
   
   if (data.malware.length > 0) {
     const maliciousFiles = data.malware.filter(m => m.isMalicious);
     
     if (maliciousFiles.length > 0) {
       maliciousFiles.slice(0, 6).forEach((malware) => {
-        // Malware card
-        pdf.setFillColor(251, 245, 255);
-        pdf.setDrawColor(156, 39, 176);
-        pdf.setLineWidth(0.5);
-        pdf.roundedRect(20, yPos, pageWidth - 40, 22, 2, 2, 'FD');
+        // Enhanced malware card with shadow and gradient
+        pdf.setFillColor(0, 0, 0, 0.08); // Shadow
+        pdf.roundedRect(21, yPos + 1, pageWidth - 40, 26, 3, 3, 'F');
         
-        // Threat level badge
+        // Main card background
+        pdf.setFillColor(255, 252, 255); // Very light purple tint
+        pdf.roundedRect(20, yPos, pageWidth - 40, 26, 3, 3, 'F');
+        
+        // Card border
+        pdf.setDrawColor(111, 66, 193);
+        pdf.setLineWidth(0.8);
+        pdf.roundedRect(20, yPos, pageWidth - 40, 26, 3, 3, 'D');
+        
+        // Left accent stripe
+        pdf.setFillColor(111, 66, 193);
+        pdf.roundedRect(20, yPos, 4, 26, 3, 3, 'F');
+        
+        // Enhanced threat level badge with shadow
         const threatColor: [number, number, number] = malware.threatLevel === 'High' ? [220, 53, 69] :
-                          malware.threatLevel === 'Medium' ? [255, 193, 7] : [156, 39, 176];
+                          malware.threatLevel === 'Medium' ? [255, 193, 7] : [111, 66, 193];
+        
+        // Badge shadow
+        pdf.setFillColor(0, 0, 0, 0.1);
+        pdf.roundedRect(28, yPos + 5, 32, 8, 2, 2, 'F');
+        
+        // Main badge
         pdf.setFillColor(threatColor[0], threatColor[1], threatColor[2]);
-        pdf.roundedRect(25, yPos + 4, 30, 6, 1, 1, 'F');
+        pdf.roundedRect(27, yPos + 4, 32, 8, 2, 2, 'F');
+        
+        // Badge highlight
+        pdf.setFillColor(255, 255, 255, 0.3);
+        pdf.roundedRect(27, yPos + 4, 32, 4, 2, 2, 'F');
+        
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(255, 255, 255);
-        pdf.text(malware.threatLevel.toUpperCase(), 40, yPos + 8, { align: 'center' });
+        pdf.text(malware.threatLevel.toUpperCase(), 43, yPos + 9, { align: 'center' });
         
-        // Filename
-        pdf.setFontSize(10);
+        // Enhanced filename with icon
+        pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(40, 40, 40);
-        const fileName = malware.fileName.length > 50 ? 
-          malware.fileName.substring(0, 47) + '...' : 
+        pdf.setTextColor(25, 35, 65);
+        const fileName = malware.fileName.length > 45 ? 
+          malware.fileName.substring(0, 42) + '...' : 
           malware.fileName;
-        pdf.text(fileName, 60, yPos + 8);
+        pdf.text(`[FILE] ${fileName}`, 65, yPos + 9);
         
-        // Signatures
+        // Enhanced signatures section
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(9);
-        pdf.setTextColor(156, 39, 176);
+        pdf.setTextColor(111, 66, 193);
         const matchNames = malware.matches.slice(0, 3).map((m: any) => {
           // API returns objects with rule_name property
           if (typeof m === 'string') return m;
           return m.rule_name || m.rule || m.name || m.signature || 'Unknown';
         });
         const signatures = matchNames.length > 0 ? matchNames.join(', ') : 'Generic detection';
-        pdf.text(`Signatures: ${signatures}`, 25, yPos + 15);
+        pdf.text(`Signatures: ${signatures}`, 27, yPos + 17);
         
-        // Scan time
+        // Enhanced scan time with icon
         pdf.setFontSize(8);
         pdf.setTextColor(120, 120, 120);
-        pdf.text(`Scanned: ${malware.scanTime.toLocaleString()}`, 25, yPos + 20);
+        pdf.text(`[CLOCK] Scanned: ${malware.scanTime.toLocaleString()}`, 27, yPos + 22);
         
-        yPos += 26;
+        yPos += 30;
         
         if (yPos > 250) {
           pdf.addPage();
