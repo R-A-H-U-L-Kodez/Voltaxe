@@ -11,6 +11,7 @@ import {
   Users,
   PlusCircle
 } from 'lucide-react';
+import { GlobalSearch } from './GlobalSearch';
 
 export const Sidebar = () => {
   const { logout } = useAuth();
@@ -27,6 +28,11 @@ export const Sidebar = () => {
           </div>
         </div>
         <p className="text-sm text-muted-foreground mt-1">Clarity Hub</p>
+      </div>
+
+      {/* Global Search */}
+      <div className="p-4 border-b border-border">
+        <GlobalSearch />
       </div>
 
       <nav className="flex-1 p-4">

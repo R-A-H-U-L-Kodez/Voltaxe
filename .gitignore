@@ -1,0 +1,27 @@
+
+# Voltaxe Cleanup - Auto-generated
+# Database files
+*.db
+*.sqlite
+
+# Log files
+*.log
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+env/
+
+# Archives
+*.tar.gz
+*.zip
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

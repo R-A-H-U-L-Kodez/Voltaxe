@@ -189,7 +189,9 @@ app = FastAPI(
 
 # Include routers
 from routers.team import router as team_router
+from routers.search import router as search_router
 app.include_router(team_router)
+app.include_router(search_router)
 
 # Health check endpoint
 @app.get("/health")
