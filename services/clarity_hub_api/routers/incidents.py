@@ -9,6 +9,28 @@ from incident_correlator import IncidentCorrelator
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
+def get_event_severity(event_type: str) -> str:
+    """
+    Map event types to severity levels.
+    This is used when the events table doesn't have a severity column.
+    """
+    event_type_lower = event_type.lower()
+    
+    # Critical events
+    if event_type_lower in ['malware_detected', 'data_exfiltration', 'privilege_escalation']:
+        return 'critical'
+    
+    # High severity events
+    if event_type_lower in ['lateral_movement', 'credential_access', 'suspicious_behavior']:
+        return 'high'
+    
+    # Medium severity events
+    if event_type_lower in ['vulnerability', 'network_anomaly', 'file_modification']:
+        return 'medium'
+    
+    # Default to medium
+    return 'medium'
+
 @router.get("/")
 async def get_incidents(
     status: Optional[str] = Query(None, description="Filter by status: open, investigating, resolved"),
@@ -32,8 +54,7 @@ async def get_incidents(
                 event_type,
                 hostname,
                 details,
-                timestamp,
-                severity
+                timestamp
             FROM events
             WHERE timestamp >= :time_threshold
             ORDER BY timestamp DESC
@@ -53,7 +74,7 @@ async def get_incidents(
                 'hostname': row.hostname,
                 'details': str(row.details) if row.details else '',
                 'timestamp': row.timestamp,
-                'severity': row.severity if hasattr(row, 'severity') else 'medium'
+                'severity': get_event_severity(row.event_type)
             }
             alerts.append(alert)
         
@@ -104,8 +125,7 @@ async def get_incident_details(
                 event_type,
                 hostname,
                 details,
-                timestamp,
-                severity
+                timestamp
             FROM events
             ORDER BY timestamp DESC
             LIMIT 500
@@ -121,7 +141,7 @@ async def get_incident_details(
                 'hostname': row.hostname,
                 'details': str(row.details) if row.details else '',
                 'timestamp': row.timestamp,
-                'severity': row.severity if hasattr(row, 'severity') else 'medium'
+                'severity': get_event_severity(row.event_type)
             }
             alerts.append(alert)
         
@@ -177,8 +197,7 @@ async def get_incident_stats(
                 event_type,
                 hostname,
                 details,
-                timestamp,
-                severity
+                timestamp
             FROM events
             WHERE timestamp >= :time_threshold
             ORDER BY timestamp DESC
@@ -194,7 +213,7 @@ async def get_incident_stats(
                 'hostname': row.hostname,
                 'details': str(row.details) if row.details else '',
                 'timestamp': row.timestamp,
-                'severity': row.severity if hasattr(row, 'severity') else 'medium'
+                'severity': get_event_severity(row.event_type)
             }
             alerts.append(alert)
         
