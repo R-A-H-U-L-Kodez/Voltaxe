@@ -11,6 +11,7 @@ import { MalwareScannerPage } from './pages/MalwareScannerPage';
 import { TeamManagementPage } from './pages/TeamManagementPage';
 import { AddEndpointPage } from './pages/AddEndpointPage';
 import { IncidentsPage } from './pages/IncidentsPage';
+import AuditLogsPage from './pages/AuditLogsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -104,6 +105,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <IncidentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/audit-logs"
+            element={
+              <ProtectedRoute>
+                <AuditLogsPage />
               </ProtectedRoute>
             }
           />

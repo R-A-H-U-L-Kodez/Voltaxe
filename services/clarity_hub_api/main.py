@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_, Float, Text, Boolean, text
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
@@ -12,6 +12,9 @@ from database import Base, engine, SessionLocal, get_db, DATABASE_URL
 
 # Import team management models
 from models.team import TeamMemberDB, AuditLogDB
+
+# Import audit logging service
+from audit_service import audit_service, ActionType, SeverityLevel
 
 # Load environment variables
 load_dotenv()
@@ -443,6 +446,19 @@ async def login(request: LoginRequest):
     try:
         auth_result = await auth_service.authenticate_user(request.email, request.password)
         
+        # Log successful login
+        audit_service.log_action(
+            user_id=auth_result["user_id"],
+            username=request.email,
+            action_type=ActionType.LOGIN,
+            action_description=f"User logged in successfully via {auth_result['provider']}",
+            severity=SeverityLevel.INFO,
+            details={
+                "provider": auth_result["provider"],
+                "user_id": auth_result["user_id"]
+            }
+        )
+        
         return LoginResponse(
             access_token=auth_result["access_token"],
             refresh_token=auth_result["refresh_token"],
@@ -454,6 +470,18 @@ async def login(request: LoginRequest):
         )
     except HTTPException as e:
         print(f"[AUTH] Login failed for {request.email}: {e.detail}")
+        
+        # Log failed login attempt
+        audit_service.log_action(
+            user_id="unknown",
+            username=request.email,
+            action_type=ActionType.LOGIN_FAILED,
+            action_description=f"Failed login attempt: {e.detail}",
+            severity=SeverityLevel.WARNING,
+            success=False,
+            error_message=e.detail
+        )
+        
         raise e
 
 @app.post("/auth/register", response_model=RegisterResponse)
@@ -772,6 +800,18 @@ async def isolate_endpoint(
     )
     
     if not result.get("success"):
+        # Log failed isolation attempt
+        audit_service.log_action(
+            user_id=current_user.get("email", current_user.get("sub", "unknown")),
+            username=current_user.get('username', 'unknown'),
+            action_type=ActionType.ENDPOINT_ISOLATED,
+            action_description=f"Failed to isolate endpoint '{hostname}'",
+            resource_type="endpoint",
+            resource_id=hostname,
+            severity=SeverityLevel.CRITICAL,
+            success=False,
+            error_message=result.get("message", "Unknown error")
+        )
         raise HTTPException(
             status_code=500,
             detail=result.get("message", "Failed to isolate endpoint")
@@ -781,6 +821,22 @@ async def isolate_endpoint(
     
     print(f"[SECURITY ACTION] {timestamp}: Endpoint '{hostname}' has been isolated from network")
     print(f"[AUDIT LOG] Isolation action logged for compliance and forensics")
+    
+    # Log successful isolation to audit trail
+    audit_service.log_action(
+        user_id=current_user.get("email", current_user.get("sub", "unknown")),
+        username=current_user.get('username', 'unknown'),
+        action_type=ActionType.ENDPOINT_ISOLATED,
+        action_description=f"Isolated endpoint '{hostname}' from network",
+        resource_type="endpoint",
+        resource_id=hostname,
+        severity=SeverityLevel.CRITICAL,
+        details={
+            "reason": "Manual isolation requested via Clarity Hub",
+            "initiated_by": current_user.get('username', 'unknown'),
+            "timestamp": timestamp
+        }
+    )
     
     # Send notification about the isolation
     try:
@@ -843,6 +899,18 @@ async def restore_endpoint(
     )
     
     if not result.get("success"):
+        # Log failed restore attempt
+        audit_service.log_action(
+            user_id=current_user.get("email", current_user.get("sub", "unknown")),
+            username=current_user.get('username', 'unknown'),
+            action_type=ActionType.ENDPOINT_RESTORED,
+            action_description=f"Failed to restore endpoint '{hostname}'",
+            resource_type="endpoint",
+            resource_id=hostname,
+            severity=SeverityLevel.WARNING,
+            success=False,
+            error_message=result.get("message", "Unknown error")
+        )
         raise HTTPException(
             status_code=500,
             detail=result.get("message", "Failed to restore endpoint")
@@ -852,6 +920,21 @@ async def restore_endpoint(
     
     print(f"[SECURITY ACTION] {timestamp}: Endpoint '{hostname}' network access restored")
     print(f"[AUDIT LOG] Restore action logged for compliance and forensics")
+    
+    # Log successful restore to audit trail
+    audit_service.log_action(
+        user_id=current_user.get("email", current_user.get("sub", "unknown")),
+        username=current_user.get('username', 'unknown'),
+        action_type=ActionType.ENDPOINT_RESTORED,
+        action_description=f"Restored network access for endpoint '{hostname}'",
+        resource_type="endpoint",
+        resource_id=hostname,
+        severity=SeverityLevel.WARNING,  # Restoration is a warning-level event
+        details={
+            "initiated_by": current_user.get('username', 'unknown'),
+            "timestamp": timestamp
+        }
+    )
     
     # Send notification about the restoration
     try:
@@ -1478,6 +1561,19 @@ def reload_yara_rules(current_user: Dict = Depends(get_current_user)):
     try:
         scanner.reload_rules()
         rules = scanner.get_available_rules()
+        
+        # Log audit event
+        audit_service.log_action(
+            user_id=current_user.get("user_id", "unknown"),
+            username=current_user.get("email", "unknown"),
+            action_type=ActionType.SETTINGS_UPDATED,
+            action_description=f"Reloaded YARA rules: {len(rules)} rules loaded",
+            resource_type="malware_scanner",
+            resource_id="yara_rules",
+            severity=SeverityLevel.INFO,
+            details={"total_rules": len(rules)}
+        )
+        
         return {
             "status": "success",
             "message": "YARA rules reloaded successfully",
@@ -1486,3 +1582,228 @@ def reload_yara_rules(current_user: Dict = Depends(get_current_user)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reloading rules: {str(e)}")
+
+
+# ==================== AUDIT LOGGING ENDPOINTS ====================
+
+@app.get("/audit/logs")
+def get_audit_logs(
+    user_id: Optional[str] = None,
+    action_type: Optional[str] = None,
+    resource_type: Optional[str] = None,
+    resource_id: Optional[str] = None,
+    severity: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Get audit logs with optional filters.
+    Returns paginated audit trail for compliance and security monitoring.
+    """
+    try:
+        # Parse dates if provided
+        start_dt = datetime.datetime.fromisoformat(start_date) if start_date else None
+        end_dt = datetime.datetime.fromisoformat(end_date) if end_date else None
+        
+        logs = audit_service.get_logs(
+            user_id=user_id,
+            action_type=action_type,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            severity=severity,
+            start_date=start_dt,
+            end_date=end_dt,
+            search=search,
+            limit=limit,
+            offset=offset
+        )
+        
+        # Log this audit log access (meta-logging!)
+        audit_service.log_action(
+            user_id=current_user.get("user_id", "unknown"),
+            username=current_user.get("email", "unknown"),
+            action_type=ActionType.DATA_EXPORTED,
+            action_description=f"Accessed audit logs (returned {len(logs)} entries)",
+            resource_type="audit_log",
+            severity=SeverityLevel.INFO,
+            details={
+                "filters": {
+                    "user_id": user_id,
+                    "action_type": action_type,
+                    "resource_type": resource_type,
+                    "search": search
+                },
+                "limit": limit,
+                "offset": offset
+            }
+        )
+        
+        return {
+            "logs": logs,
+            "total": len(logs),
+            "limit": limit,
+            "offset": offset
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching audit logs: {str(e)}")
+
+@app.get("/audit/logs/{log_id}")
+def get_audit_log_detail(
+    log_id: int,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Get detailed information for a specific audit log entry.
+    """
+    try:
+        log = audit_service.get_log_by_id(log_id)
+        
+        if not log:
+            raise HTTPException(status_code=404, detail="Audit log not found")
+        
+        # Log this access
+        audit_service.log_action(
+            user_id=current_user.get("user_id", "unknown"),
+            username=current_user.get("email", "unknown"),
+            action_type=ActionType.DATA_EXPORTED,
+            action_description=f"Viewed audit log detail #{log_id}",
+            resource_type="audit_log",
+            resource_id=str(log_id),
+            severity=SeverityLevel.INFO
+        )
+        
+        return log
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching audit log: {str(e)}")
+
+@app.get("/audit/statistics")
+def get_audit_statistics(
+    days: int = 30,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Get audit log statistics for the specified time period.
+    """
+    try:
+        stats = audit_service.get_statistics(days=days)
+        
+        # Log this access
+        audit_service.log_action(
+            user_id=current_user.get("user_id", "unknown"),
+            username=current_user.get("email", "unknown"),
+            action_type=ActionType.REPORT_GENERATED,
+            action_description=f"Generated audit statistics report ({days} days)",
+            resource_type="audit_log",
+            severity=SeverityLevel.INFO,
+            details={"period_days": days}
+        )
+        
+        return stats
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating statistics: {str(e)}")
+
+@app.get("/audit/user-activity/{user_id}")
+def get_user_activity(
+    user_id: str,
+    days: int = 30,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Get activity summary for a specific user.
+    """
+    try:
+        activity = audit_service.get_user_activity(user_id=user_id, days=days)
+        
+        # Log this access
+        audit_service.log_action(
+            user_id=current_user.get("user_id", "unknown"),
+            username=current_user.get("email", "unknown"),
+            action_type=ActionType.SEARCH_PERFORMED,
+            action_description=f"Viewed user activity for {user_id} ({days} days)",
+            resource_type="user",
+            resource_id=user_id,
+            severity=SeverityLevel.INFO,
+            details={"period_days": days}
+        )
+        
+        return activity
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching user activity: {str(e)}")
+
+@app.get("/audit/export")
+def export_audit_logs(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    format: str = "json",
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Export audit logs for compliance reporting.
+    Supports JSON and CSV formats.
+    """
+    try:
+        # Parse dates if provided
+        start_dt = datetime.datetime.fromisoformat(start_date) if start_date else None
+        end_dt = datetime.datetime.fromisoformat(end_date) if end_date else None
+        
+        # Export logs
+        export_data = audit_service.export_logs(
+            start_date=start_dt,
+            end_date=end_dt,
+            format=format
+        )
+        
+        # Log this export (critical action!)
+        audit_service.log_action(
+            user_id=current_user.get("user_id", "unknown"),
+            username=current_user.get("email", "unknown"),
+            action_type=ActionType.DATA_EXPORTED,
+            action_description=f"Exported audit logs ({format.upper()} format)",
+            resource_type="audit_log",
+            severity=SeverityLevel.WARNING,  # Exports are important to track
+            details={
+                "format": format,
+                "start_date": start_date,
+                "end_date": end_date
+            }
+        )
+        
+        # Return appropriate content type
+        media_type = "application/json" if format == "json" else "text/csv"
+        filename = f"audit_logs_{datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{format}"
+        
+        from fastapi.responses import Response
+        return Response(
+            content=export_data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid parameter: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error exporting audit logs: {str(e)}")
+
+@app.get("/audit/action-types")
+def get_action_types(current_user: Dict = Depends(get_current_user)):
+    """
+    Get all available action types for filtering.
+    """
+    return {
+        "action_types": [action.value for action in ActionType],
+        "severity_levels": ["info", "warning", "critical"]
+    }
