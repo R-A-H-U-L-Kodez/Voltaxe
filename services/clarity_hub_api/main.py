@@ -675,20 +675,22 @@ def acknowledge_alert(alert_id: str, db: Session = Depends(get_db)):
 @app.get("/vulnerabilities/{cve_id}", response_model=CVEDetailsResponse)
 def get_vulnerability_details(cve_id: str, db: Session = Depends(get_db), current_user: Dict[str, Any] = Depends(get_current_user)):
     """
-    Get detailed vulnerability information from real CVE database.
+    Get detailed vulnerability information from real NIST NVD database.
     Protected endpoint requiring authentication.
+    
+    Data source: Local PostgreSQL database synced daily with NIST NVD API
     """
     print(f"\n[API] ---> Fetching vulnerability details for {cve_id} by user {current_user.get('email', 'unknown')} [API]")
     
-    # Query real CVE database first
+    # Query real CVE database first (primary source)
     cve_record = db.query(CVEDB).filter(
         CVEDB.cve_id == cve_id,
         CVEDB.is_active == True
     ).first()
     
     if cve_record:
-        # Real CVE data from database
-        print(f"[API] ---> Found CVE in real database [API]")
+        # Real CVE data from NIST NVD database
+        print(f"[API] ---> ✓ Found {cve_id} in NIST NVD database [API]")
         
         # Extract references from JSON
         references = []
@@ -708,6 +710,11 @@ def get_vulnerability_details(cve_id: str, db: Session = Depends(get_db), curren
         published_date = getattr(cve_record, 'published_date', None)
         last_modified = getattr(cve_record, 'last_modified', None)
         
+        # Get affected products from JSON
+        affected_products = getattr(cve_record, 'affected_products', None) or []
+        
+        print(f"[API] ---> CVE Details: CVSS={getattr(cve_record, 'cvss_v3_score', 'N/A')}, Severity={getattr(cve_record, 'severity', 'N/A')}, Products={len(affected_products)} [API]")
+        
         return CVEDetailsResponse(
             id=getattr(cve_record, 'cve_id', cve_id),
             cvssScore=getattr(cve_record, 'cvss_v3_score', None) or getattr(cve_record, 'cvss_v2_score', None) or 0.0,
@@ -720,8 +727,8 @@ def get_vulnerability_details(cve_id: str, db: Session = Depends(get_db), curren
             references=references
         )
     else:
-        # Fallback to mock data for development/demo
-        print(f"[API] ---> CVE not found in database, using fallback data [API]")
+        # Fallback to mock data for development/demo (only if CVE not in database)
+        print(f"[API] ---> ⚠ CVE {cve_id} not found in NIST database, checking mock data [API]")
         
         mock_cve_database = {
             "CVE-2024-12345": {
@@ -752,8 +759,13 @@ def get_vulnerability_details(cve_id: str, db: Session = Depends(get_db), curren
         }
         
         if cve_id not in mock_cve_database:
-            raise HTTPException(status_code=404, detail=f"CVE {cve_id} not found in database")
+            print(f"[API] ---> ✗ CVE {cve_id} not found in database or mock data [API]")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"CVE {cve_id} not found. It may not be in the database yet. CVE sync service runs daily."
+            )
         
+        print(f"[API] ---> Using mock data for {cve_id} [API]")
         cve_data = mock_cve_database[cve_id]
         
         # Find affected endpoints by querying events
@@ -768,6 +780,228 @@ def get_vulnerability_details(cve_id: str, db: Session = Depends(get_db), curren
             **cve_data,
             affectedEndpoints=affected_endpoints
         )
+
+
+# ============================================================================
+# NEW CVE DATABASE ENDPOINTS
+# ============================================================================
+
+@app.get("/vulnerabilities/stats/summary")
+def get_vulnerability_stats(
+    db: Session = Depends(get_db), 
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Get vulnerability database statistics and summary.
+    
+    Returns:
+        - Total CVEs in database
+        - CVEs by severity (CRITICAL, HIGH, MEDIUM, LOW)
+        - Recent CVEs (last 30 days)
+        - Database last sync time
+    """
+    print(f"\n[API] ---> Fetching vulnerability statistics for user {current_user.get('email', 'unknown')} [API]")
+    
+    try:
+        # Total CVEs
+        total_cves = db.query(CVEDB).filter(CVEDB.is_active == True).count()
+        
+        # CVEs by severity
+        severity_counts = {}
+        for severity in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNKNOWN']:
+            count = db.query(CVEDB).filter(
+                CVEDB.severity == severity,
+                CVEDB.is_active == True
+            ).count()
+            severity_counts[severity.lower()] = count
+        
+        # Recent CVEs (last 30 days)
+        thirty_days_ago = datetime.datetime.utcnow() - datetime.timedelta(days=30)
+        recent_cves = db.query(CVEDB).filter(
+            CVEDB.published_date >= thirty_days_ago,
+            CVEDB.is_active == True
+        ).count()
+        
+        # Last sync time
+        latest_sync = db.query(CVEDB).order_by(CVEDB.sync_timestamp.desc()).first()
+        last_sync_time = getattr(latest_sync, 'sync_timestamp', None)
+        
+        # High severity CVEs (CRITICAL + HIGH)
+        high_severity_count = severity_counts.get('critical', 0) + severity_counts.get('high', 0)
+        
+        print(f"[API] ---> Stats: Total={total_cves}, Critical={severity_counts.get('critical', 0)}, Recent={recent_cves} [API]")
+        
+        return {
+            "total_cves": total_cves,
+            "severity_breakdown": severity_counts,
+            "recent_cves_30_days": recent_cves,
+            "high_severity_count": high_severity_count,
+            "last_sync": last_sync_time.isoformat() if last_sync_time else None,
+            "database_status": "active" if total_cves > 0 else "empty"
+        }
+    
+    except Exception as e:
+        print(f"[API] ---> Error fetching vulnerability stats: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Error fetching statistics: {str(e)}")
+
+
+@app.get("/vulnerabilities/search")
+def search_vulnerabilities(
+    query: Optional[str] = None,
+    severity: Optional[str] = None,
+    min_cvss: Optional[float] = None,
+    max_cvss: Optional[float] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Search vulnerabilities in the database with filters.
+    
+    Query params:
+        - query: Search in CVE ID or description
+        - severity: Filter by severity (CRITICAL, HIGH, MEDIUM, LOW)
+        - min_cvss: Minimum CVSS score
+        - max_cvss: Maximum CVSS score
+        - limit: Results per page (default 50, max 500)
+        - offset: Pagination offset
+    """
+    print(f"\n[API] ---> Searching vulnerabilities: query={query}, severity={severity}, cvss=[{min_cvss},{max_cvss}] [API]")
+    
+    try:
+        # Build query
+        query_filter = db.query(CVEDB).filter(CVEDB.is_active == True)
+        
+        # Text search
+        if query:
+            query_filter = query_filter.filter(
+                (CVEDB.cve_id.ilike(f"%{query}%")) |
+                (CVEDB.description.ilike(f"%{query}%"))
+            )
+        
+        # Severity filter
+        if severity:
+            query_filter = query_filter.filter(CVEDB.severity == severity.upper())
+        
+        # CVSS score filters
+        if min_cvss is not None:
+            query_filter = query_filter.filter(
+                (CVEDB.cvss_v3_score >= min_cvss) |
+                (CVEDB.cvss_v2_score >= min_cvss)
+            )
+        
+        if max_cvss is not None:
+            query_filter = query_filter.filter(
+                (CVEDB.cvss_v3_score <= max_cvss) |
+                (CVEDB.cvss_v2_score <= max_cvss)
+            )
+        
+        # Get total count
+        total_count = query_filter.count()
+        
+        # Apply pagination
+        limit = min(limit, 500)  # Max 500 results
+        results = query_filter.order_by(
+            CVEDB.published_date.desc()
+        ).offset(offset).limit(limit).all()
+        
+        # Format results
+        cves = []
+        for cve in results:
+            pub_date = getattr(cve, 'published_date', None)
+            cves.append({
+                "cve_id": getattr(cve, 'cve_id', ''),
+                "description": getattr(cve, 'description', '')[:200] + '...' if len(getattr(cve, 'description', '')) > 200 else getattr(cve, 'description', ''),
+                "cvss_v3_score": getattr(cve, 'cvss_v3_score', None),
+                "cvss_v2_score": getattr(cve, 'cvss_v2_score', None),
+                "severity": getattr(cve, 'severity', 'UNKNOWN'),
+                "published_date": pub_date.isoformat() if pub_date else None,
+                "attack_vector": getattr(cve, 'attack_vector', None)
+            })
+        
+        print(f"[API] ---> Found {total_count} vulnerabilities, returning {len(cves)} results [API]")
+        
+        return {
+            "total": total_count,
+            "limit": limit,
+            "offset": offset,
+            "results": cves
+        }
+    
+    except Exception as e:
+        print(f"[API] ---> Error searching vulnerabilities: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
+
+
+@app.get("/vulnerabilities/recent")
+def get_recent_vulnerabilities(
+    days: int = 7,
+    severity: Optional[str] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Get recently published CVEs from the database.
+    
+    Query params:
+        - days: Number of days to look back (default 7)
+        - severity: Filter by severity
+        - limit: Max results (default 100, max 500)
+    """
+    print(f"\n[API] ---> Fetching recent vulnerabilities (last {days} days) [API]")
+    
+    try:
+        # Calculate date range
+        start_date = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+        
+        # Build query
+        query_filter = db.query(CVEDB).filter(
+            CVEDB.published_date >= start_date,
+            CVEDB.is_active == True
+        )
+        
+        # Severity filter
+        if severity:
+            query_filter = query_filter.filter(CVEDB.severity == severity.upper())
+        
+        # Get results
+        limit = min(limit, 500)
+        results = query_filter.order_by(
+            CVEDB.published_date.desc()
+        ).limit(limit).all()
+        
+        # Format results
+        cves = []
+        for cve in results:
+            pub_date = getattr(cve, 'published_date', None)
+            cves.append({
+                "cve_id": getattr(cve, 'cve_id', ''),
+                "description": getattr(cve, 'description', '')[:200] + '...' if len(getattr(cve, 'description', '')) > 200 else getattr(cve, 'description', ''),
+                "cvss_v3_score": getattr(cve, 'cvss_v3_score', None),
+                "severity": getattr(cve, 'severity', 'UNKNOWN'),
+                "published_date": pub_date.isoformat() if pub_date else None,
+                "attack_vector": getattr(cve, 'attack_vector', None)
+            })
+        
+        print(f"[API] ---> Found {len(cves)} recent vulnerabilities [API]")
+        
+        return {
+            "days": days,
+            "severity_filter": severity,
+            "count": len(cves),
+            "vulnerabilities": cves
+        }
+    
+    except Exception as e:
+        print(f"[API] ---> Error fetching recent vulnerabilities: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+# ============================================================================
+# ENDPOINT ACTIONS
+# ============================================================================
 
 @app.post("/endpoints/{hostname}/isolate", response_model=EndpointActionResponse)
 async def isolate_endpoint(
