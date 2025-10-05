@@ -150,7 +150,8 @@ class AuditService:
                 f"{username} - {action_description}"
             )
             
-            return audit_entry.id
+            # Type ignore for SQLAlchemy column access
+            return audit_entry.id  # type: ignore
             
         except Exception as e:
             logger.error(f"[AUDIT] Failed to log action: {e}")
@@ -294,14 +295,14 @@ class AuditService:
             
             for log in logs:
                 # Count action types
-                action_types[log.action_type] = action_types.get(log.action_type, 0) + 1
+                action_types[log.action_type] = action_types.get(log.action_type, 0) + 1  # type: ignore
                 
                 # Count severity
-                if log.severity in severity_counts:
-                    severity_counts[log.severity] += 1
+                if log.severity in severity_counts:  # type: ignore
+                    severity_counts[log.severity] += 1  # type: ignore
                 
                 # Count failures
-                if log.success == "false":
+                if log.success == "false":  # type: ignore
                     failed_actions += 1
             
             return {
@@ -337,19 +338,19 @@ class AuditService:
             
             for log in logs:
                 # Count action types
-                action_types[log.action_type] = action_types.get(log.action_type, 0) + 1
+                action_types[log.action_type] = action_types.get(log.action_type, 0) + 1  # type: ignore
                 
                 # Count severity
-                if log.severity in severity_counts:
-                    severity_counts[log.severity] += 1
+                if log.severity in severity_counts:  # type: ignore
+                    severity_counts[log.severity] += 1  # type: ignore
                 
                 # Count failures
-                if log.success == "false":
+                if log.success == "false":  # type: ignore
                     failed_actions += 1
                 
                 # Count resource types
-                if log.resource_type:
-                    resource_types[log.resource_type] = resource_types.get(log.resource_type, 0) + 1
+                if log.resource_type:  # type: ignore
+                    resource_types[log.resource_type] = resource_types.get(log.resource_type, 0) + 1  # type: ignore
             
             return {
                 "period_days": days,

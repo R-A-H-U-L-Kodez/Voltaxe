@@ -10,9 +10,9 @@ from enum import Enum
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email, To, Content
-from pywebpush import webpush, WebPushException
+from sendgrid import SendGridAPIClient  # type: ignore
+from sendgrid.helpers.mail import Mail, Email, To, Content  # type: ignore
+from pywebpush import webpush, WebPushException  # type: ignore
 import json
 
 logger = logging.getLogger(__name__)

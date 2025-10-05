@@ -93,6 +93,7 @@ export const SettingsPage = () => {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   
   // Notification states
+  // @ts-ignore - pushEnabled is set but not directly read, kept for future implementation
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
   const [testingNotification, setTestingNotification] = useState(false);
