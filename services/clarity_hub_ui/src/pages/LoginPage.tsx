@@ -95,7 +95,20 @@ export const LoginPage = () => {
             </button>
           </form>
 
+          {/* Register Link */}
           <div className="mt-6 text-center">
+            <p className="text-foreground/60 text-sm">
+              Don't have an account?{' '}
+              <a
+                href="/register"
+                className="text-primary-gold hover:underline font-medium"
+              >
+                Sign up
+              </a>
+            </p>
+          </div>
+
+          <div className="mt-4 text-center">
             <p className="text-foreground/60 text-sm">
               Demo credentials: admin@voltaxe.com / password
             </p>

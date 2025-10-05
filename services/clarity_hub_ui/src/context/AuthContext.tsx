@@ -1,67 +1,164 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { AuthContextType } from '../types';
-import axios from 'axios';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authService, AuthResponse } from '../services/api';
+
+export interface User {
+  id: string;
+  email: string;
+  role: string;
+  full_name?: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, fullName?: string) => Promise<void>;
+  logout: () => void;
+  isAuthenticated: boolean;
+  loading: boolean;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return !!localStorage.getItem('token');
-  });
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Initialize theme on mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem('voltaxe_settings');
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings);
-        const theme = parsed.theme || 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
-      } catch (error) {
-        console.error('Failed to load theme:', error);
-        document.documentElement.setAttribute('data-theme', 'dark');
+    const initAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      const userStr = localStorage.getItem('user');
+      
+      if (token && userStr) {
+        try {
+          setUser(JSON.parse(userStr));
+          
+          // Optionally verify token is still valid by fetching profile
+          try {
+            const profile = await authService.getProfile();
+            setUser(profile);
+            localStorage.setItem('user', JSON.stringify(profile));
+          } catch (error) {
+            console.error('Token validation failed:', error);
+            // Token invalid, clear auth state
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Failed to parse user from localStorage:', error);
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+        }
       }
-    } else {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
+      setLoading(false);
+    };
+
+    initAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<void> => {
-    try {
-      // Call the real login API
-      const response = await axios.post('/api/auth/login', {
-        email,
-        password
-      });
+  const handleAuthResponse = (response: AuthResponse) => {
+    const { access_token, refresh_token, user: userData } = response;
+    
+    // Store tokens
+    localStorage.setItem('access_token', access_token);
+    if (refresh_token) {
+      localStorage.setItem('refresh_token', refresh_token);
+    }
+    
+    // Store user data
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+    
+    console.log('Authentication successful for user:', userData.email);
+  };
 
-      // Store the real JWT token
-      const { access_token } = response.data;
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('voltaxe_token', access_token); // Keep for backward compatibility
-      setIsAuthenticated(true);
+  const login = async (email: string, password: string) => {
+    try {
+      console.log('Attempting login for:', email);
+      const response = await authService.login({ email, password });
+      handleAuthResponse(response);
     } catch (error: any) {
       console.error('Login failed:', error);
-      throw new Error(error.response?.data?.detail || 'Invalid credentials');
+      
+      // Clear any partial auth state
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      
+      // Extract error message
+      let errorMessage = 'Login failed';
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = 'Invalid email or password';
+        } else if (error.response.data?.detail) {
+          errorMessage = error.response.data.detail;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
+    }
+  };
+
+  const register = async (email: string, password: string, fullName?: string) => {
+    try {
+      console.log('Attempting registration for:', email);
+      const response = await authService.register({ 
+        email, 
+        password, 
+        full_name: fullName 
+      });
+      handleAuthResponse(response);
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      
+      // Clear any partial auth state
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      
+      // Extract error message
+      let errorMessage = 'Registration failed';
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('voltaxe_token');
-    setIsAuthenticated(false);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        register,
+        logout,
+        isAuthenticated: !!user,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
