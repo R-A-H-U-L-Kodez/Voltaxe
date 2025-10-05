@@ -1,5 +1,32 @@
---- Voltaxe Sentinel v1.2.0 ---
+nohup: ignoring input
+--- Voltaxe Sentinel v2.0.0 (Strike Module Enabled) ---
+Performing deep system integrity scan for rootkits...
+🚨💀🚨 CRITICAL: Rootkit signatures detected on host 'kali'!
+[STRIKE RECEIVER] Command server listening on :9090
 Analyzing software inventory for known vulnerabilities...
 ??????? Vulnerability Found: Docker Desktop is vulnerable (CVE-2024-12345)
 
 Snapshot sent. Starting real-time behavioral monitoring...
+[STRIKE RECEIVER] 🎯 Command received: network_isolate
+🚨🚨🚨 STRIKE ACTION: NETWORK ISOLATION 🚨🚨🚨
+Hostname: kali
+Initiated by: unknown
+Reason: Manual isolation requested via Clarity Hub
+✅ Network isolation completed for kali
+[STRIKE RECEIVER] 🎯 Command received: network_restore
+🔓 STRIKE ACTION: NETWORK RESTORATION 🔓
+Hostname: kali
+Initiated by: unknown
+✅ Network access restored for kali
+[STRIKE RECEIVER] 🎯 Command received: network_isolate
+🚨🚨🚨 STRIKE ACTION: NETWORK ISOLATION 🚨🚨🚨
+Hostname: kali
+Initiated by: unknown
+Reason: Manual isolation requested via Clarity Hub
+✅ Network isolation completed for kali
+[STRIKE RECEIVER] 🎯 Command received: network_isolate
+🚨🚨🚨 STRIKE ACTION: NETWORK ISOLATION 🚨🚨🚨
+Hostname: kali
+Initiated by: unknown
+Reason: Manual isolation requested via Clarity Hub
+✅ Network isolation completed for kali

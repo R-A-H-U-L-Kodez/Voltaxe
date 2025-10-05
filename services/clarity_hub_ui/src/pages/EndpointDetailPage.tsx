@@ -63,7 +63,9 @@ export const EndpointDetailPage = () => {
     if (!hostname) return;
     setIsolating(true);
     try {
+      console.log('[ENDPOINT DETAIL] Starting isolation for:', hostname);
       const result = await endpointService.isolateEndpoint(hostname);
+      console.log('[ENDPOINT DETAIL] Isolation result:', result);
       alert(`🚨 ${result.message}`);
       console.log('🚨 Isolation completed:', result);
       setShowIsolateModal(false);
@@ -71,7 +73,10 @@ export const EndpointDetailPage = () => {
       const refreshedData = await endpointService.getEndpointDetail(hostname);
       setEndpoint(refreshedData);
     } catch (error: any) {
-      console.error('Isolation failed:', error);
+      console.error('[ENDPOINT DETAIL] Isolation failed:', error);
+      console.error('[ENDPOINT DETAIL] Error response:', error.response);
+      console.error('[ENDPOINT DETAIL] Error data:', error.response?.data);
+      console.error('[ENDPOINT DETAIL] Error status:', error.response?.status);
       const errorMessage = error.response?.data?.detail || 'Failed to isolate endpoint. Please try again.';
       alert(`❌ ${errorMessage}`);
     } finally {

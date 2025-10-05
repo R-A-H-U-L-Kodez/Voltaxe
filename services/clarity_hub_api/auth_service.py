@@ -145,18 +145,23 @@ class AuthService:
         
         # Fallback JWT verification
         try:
+            print(f"[AUTH] Attempting to verify token: {token[:50]}...")
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            print(f"[AUTH] Token decoded successfully. Payload: {payload}")
             email: str = payload.get("sub")
             if email is None:
+                print("[AUTH] ERROR: No 'sub' field in token")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid token"
+                    detail="Invalid token - missing subject"
                 )
+            print(f"[AUTH] Token valid for user: {email}")
             return payload
-        except JWTError:
+        except JWTError as e:
+            print(f"[AUTH] JWT verification failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
+                detail=f"Invalid token: {str(e)}"
             )
     
     async def register_user(self, email: str, password: str, name: str) -> Dict[str, Any]:
@@ -227,6 +232,8 @@ auth_service = AuthService()
 # Dependency for protected routes
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
     """Dependency to get current authenticated user"""
+    print(f"[AUTH] get_current_user called with credentials: {credentials}")
+    print(f"[AUTH] Token: {credentials.credentials[:50] if credentials and credentials.credentials else 'None'}...")
     return await auth_service.verify_token(credentials)
 
 # Pydantic models for authentication

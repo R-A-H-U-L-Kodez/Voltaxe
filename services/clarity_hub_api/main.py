@@ -187,6 +187,21 @@ app = FastAPI(
     version="2.0.0"
 )
 
+# Initialize Strike Orchestrator
+from strike_orchestrator import strike_orchestrator
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize Strike Module and register Sentinels"""
+    print("[STRIKE MODULE] Initializing automated response system...")
+    
+    # Auto-register Sentinels
+    # In production, this would query a database or service registry
+    # Use Docker host IP (172.17.0.1) to reach host machine from container
+    strike_orchestrator.register_sentinel("kali", "http://172.17.0.1:9090")
+    
+    print("[STRIKE MODULE] ✅ Automated response system ready")
+
 # Include routers
 from routers.team import router as team_router
 from routers.search import router as search_router
@@ -562,12 +577,16 @@ def get_vulnerability_details(cve_id: str, db: Session = Depends(get_db), curren
         )
 
 @app.post("/endpoints/{hostname}/isolate", response_model=EndpointActionResponse)
-def isolate_endpoint(hostname: str, db: Session = Depends(get_db)):
+async def isolate_endpoint(
+    hostname: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Isolate an endpoint from the network.
-    This endpoint serves as integration point for Voltaxe Strike Module.
+    Isolate an endpoint from the network using the Strike Module.
+    This triggers the automated response system to disconnect the endpoint.
     """
-    print(f"\n🚨🚨 ACTION: Isolation requested for '{hostname}' 🚨🚨")
+    print(f"\n🚨🚨 ACTION: Isolation requested for '{hostname}' by {current_user.get('username')} 🚨🚨")
     
     # Verify endpoint exists
     endpoint_exists = db.query(SnapshotDB).filter(
@@ -577,22 +596,80 @@ def isolate_endpoint(hostname: str, db: Session = Depends(get_db)):
     if not endpoint_exists:
         raise HTTPException(status_code=404, detail=f"Endpoint '{hostname}' not found")
     
-    # In production, this would:
-    # 1. Send isolation command to Voltaxe Strike Module
-    # 2. Update endpoint status in database
-    # 3. Log the action for audit trail
-    # 4. Send notifications to security team
+    # Import Strike Orchestrator
+    from strike_orchestrator import strike_orchestrator
     
-    timestamp = datetime.datetime.utcnow().isoformat()
+    # Execute isolation via Strike Module
+    result = await strike_orchestrator.isolate_endpoint(
+        hostname=hostname,
+        initiated_by=current_user.get('username', 'unknown'),
+        reason="Manual isolation requested via Clarity Hub"
+    )
+    
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=500,
+            detail=result.get("message", "Failed to isolate endpoint")
+        )
+    
+    timestamp = result.get("timestamp", datetime.datetime.utcnow().isoformat())
     
     print(f"[SECURITY ACTION] {timestamp}: Endpoint '{hostname}' has been isolated from network")
     print(f"[AUDIT LOG] Isolation action logged for compliance and forensics")
     
     return EndpointActionResponse(
         status="success",
-        message=f"Endpoint '{hostname}' has been successfully isolated from the network",
+        message=result.get("message", f"Endpoint '{hostname}' has been successfully isolated"),
         hostname=hostname,
         action="isolate",
+        timestamp=timestamp
+    )
+
+@app.post("/endpoints/{hostname}/restore", response_model=EndpointActionResponse)
+async def restore_endpoint(
+    hostname: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Restore an endpoint's network connectivity after isolation.
+    This triggers the Strike Module to re-enable network access.
+    """
+    print(f"\n✅ ACTION: Network restore requested for '{hostname}' by {current_user.get('username')} ✅")
+    
+    # Verify endpoint exists
+    endpoint_exists = db.query(SnapshotDB).filter(
+        SnapshotDB.hostname == hostname
+    ).first()
+    
+    if not endpoint_exists:
+        raise HTTPException(status_code=404, detail=f"Endpoint '{hostname}' not found")
+    
+    # Import Strike Orchestrator
+    from strike_orchestrator import strike_orchestrator
+    
+    # Execute restore via Strike Module
+    result = await strike_orchestrator.restore_endpoint(
+        hostname=hostname,
+        initiated_by=current_user.get('username', 'unknown')
+    )
+    
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=500,
+            detail=result.get("message", "Failed to restore endpoint")
+        )
+    
+    timestamp = result.get("timestamp", datetime.datetime.utcnow().isoformat())
+    
+    print(f"[SECURITY ACTION] {timestamp}: Endpoint '{hostname}' network access restored")
+    print(f"[AUDIT LOG] Restore action logged for compliance and forensics")
+    
+    return EndpointActionResponse(
+        status="success",
+        message=result.get("message", f"Endpoint '{hostname}' network access has been restored"),
+        hostname=hostname,
+        action="restore",
         timestamp=timestamp
     )
 

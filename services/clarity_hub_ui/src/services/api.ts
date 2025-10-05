@@ -65,7 +65,10 @@ export const endpointService = {
     return response.data;
   },
   isolateEndpoint: async (hostname: string): Promise<{ status: string; message: string }> => {
+    console.log('[ISOLATE] Starting isolation for:', hostname);
+    console.log('[ISOLATE] Token from localStorage:', localStorage.getItem('token')?.substring(0, 20) + '...');
     const response = await api.post(`/endpoints/${hostname}/isolate`);
+    console.log('[ISOLATE] Response:', response);
     return response.data;
   },
 };
