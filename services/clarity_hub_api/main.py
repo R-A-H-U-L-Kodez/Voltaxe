@@ -210,6 +210,171 @@ app.include_router(team_router)
 app.include_router(search_router)
 app.include_router(incidents_router)
 
+# ============================================================================
+# NOTIFICATION ENDPOINTS
+# ============================================================================
+
+class NotificationPreferences(BaseModel):
+    """User notification preferences"""
+    email: Optional[str] = None
+    emailNotifications: bool = True
+    desktopNotifications: bool = True
+    criticalAlerts: bool = True
+    suspiciousActivity: bool = True
+    systemUpdates: bool = False
+
+class PushSubscription(BaseModel):
+    """Web Push subscription object"""
+    endpoint: str
+    keys: Dict[str, str]
+
+class NotificationRequest(BaseModel):
+    """Request to send a notification"""
+    title: str
+    message: str
+    notification_type: str = "system_update"
+    data: Optional[Dict[str, Any]] = None
+    channel: str = "both"  # email, push, or both
+
+@app.get("/notifications/vapid-public-key")
+async def get_vapid_public_key():
+    """
+    Get VAPID public key for push notification subscription.
+    This is needed by the frontend to subscribe to push notifications.
+    """
+    from notification_service import notification_service
+    
+    public_key = notification_service.get_vapid_public_key()
+    
+    if not public_key:
+        raise HTTPException(
+            status_code=503,
+            detail="Push notifications not configured. Please set VAPID keys."
+        )
+    
+    return {
+        "publicKey": public_key,
+        "status": "available"
+    }
+
+@app.post("/notifications/preferences")
+async def update_notification_preferences(
+    preferences: NotificationPreferences,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update user's notification preferences.
+    """
+    from notification_service import notification_service
+    
+    user_id = current_user.get("email", current_user.get("sub", "unknown"))
+    
+    # Update preferences
+    notification_service.update_user_preferences(
+        user_id=user_id,
+        preferences=preferences.dict()
+    )
+    
+    return {
+        "status": "success",
+        "message": "Notification preferences updated",
+        "preferences": preferences.dict()
+    }
+
+@app.get("/notifications/preferences")
+async def get_notification_preferences(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get user's current notification preferences.
+    """
+    from notification_service import notification_service
+    
+    user_id = current_user.get("email", current_user.get("sub", "unknown"))
+    prefs = notification_service.user_preferences.get(user_id, {})
+    
+    return {
+        "preferences": prefs or {
+            "emailNotifications": True,
+            "desktopNotifications": True,
+            "criticalAlerts": True,
+            "suspiciousActivity": True,
+            "systemUpdates": False
+        }
+    }
+
+@app.post("/notifications/subscribe-push")
+async def subscribe_push_notifications(
+    subscription: PushSubscription,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Subscribe to browser push notifications.
+    """
+    from notification_service import notification_service
+    
+    user_id = current_user.get("email", current_user.get("sub", "unknown"))
+    
+    success = notification_service.subscribe_push(
+        user_id=user_id,
+        subscription=subscription.dict()
+    )
+    
+    return {
+        "status": "success" if success else "already_subscribed",
+        "message": "Push notification subscription registered" if success else "Already subscribed"
+    }
+
+@app.post("/notifications/unsubscribe-push")
+async def unsubscribe_push_notifications(
+    endpoint: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Unsubscribe from push notifications for a specific endpoint.
+    """
+    from notification_service import notification_service
+    
+    user_id = current_user.get("email", current_user.get("sub", "unknown"))
+    
+    success = notification_service.unsubscribe_push(
+        user_id=user_id,
+        endpoint=endpoint
+    )
+    
+    return {
+        "status": "success" if success else "not_found",
+        "message": "Push subscription removed" if success else "Subscription not found"
+    }
+
+@app.post("/notifications/send")
+async def send_notification(
+    notification: NotificationRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Send a notification (for testing purposes).
+    In production, notifications should be triggered by events, not manual API calls.
+    """
+    from notification_service import notification_service, NotificationType, NotificationChannel
+    
+    user_id = current_user.get("email", current_user.get("sub", "unknown"))
+    
+    # Map string to enum
+    notification_type = NotificationType(notification.notification_type)
+    channel = NotificationChannel(notification.channel)
+    
+    result = await notification_service.send_notification(
+        user_id=user_id,
+        notification_type=notification_type,
+        title=notification.title,
+        message=notification.message,
+        data=notification.data,
+        channel=channel
+    )
+    
+    return result
+
 # Health check endpoint
 @app.get("/health")
 def health_check():
@@ -617,6 +782,29 @@ async def isolate_endpoint(
     print(f"[SECURITY ACTION] {timestamp}: Endpoint '{hostname}' has been isolated from network")
     print(f"[AUDIT LOG] Isolation action logged for compliance and forensics")
     
+    # Send notification about the isolation
+    try:
+        from notification_service import notification_service, NotificationType
+        
+        user_id = current_user.get("email", current_user.get("sub", "unknown"))
+        
+        await notification_service.send_notification(
+            user_id=user_id,
+            notification_type=NotificationType.ENDPOINT_ISOLATED,
+            title=f"🚨 Endpoint Isolated: {hostname}",
+            message=f"Endpoint '{hostname}' has been isolated from the network to prevent potential threat propagation.",
+            data={
+                "hostname": hostname,
+                "initiated_by": current_user.get('username', 'unknown'),
+                "timestamp": timestamp,
+                "action": "isolate"
+            }
+        )
+        print(f"[NOTIFICATIONS] Isolation notification sent for {hostname}")
+    except Exception as e:
+        print(f"[NOTIFICATIONS] Failed to send notification: {e}")
+        # Don't fail the isolation if notification fails
+    
     return EndpointActionResponse(
         status="success",
         message=result.get("message", f"Endpoint '{hostname}' has been successfully isolated"),
@@ -664,6 +852,29 @@ async def restore_endpoint(
     
     print(f"[SECURITY ACTION] {timestamp}: Endpoint '{hostname}' network access restored")
     print(f"[AUDIT LOG] Restore action logged for compliance and forensics")
+    
+    # Send notification about the restoration
+    try:
+        from notification_service import notification_service, NotificationType
+        
+        user_id = current_user.get("email", current_user.get("sub", "unknown"))
+        
+        await notification_service.send_notification(
+            user_id=user_id,
+            notification_type=NotificationType.ENDPOINT_RESTORED,
+            title=f"✅ Endpoint Restored: {hostname}",
+            message=f"Network access has been restored for endpoint '{hostname}'.",
+            data={
+                "hostname": hostname,
+                "initiated_by": current_user.get('username', 'unknown'),
+                "timestamp": timestamp,
+                "action": "restore"
+            }
+        )
+        print(f"[NOTIFICATIONS] Restore notification sent for {hostname}")
+    except Exception as e:
+        print(f"[NOTIFICATIONS] Failed to send notification: {e}")
+        # Don't fail the restore if notification fails
     
     return EndpointActionResponse(
         status="success",

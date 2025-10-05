@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
+import { notificationService } from '../services/notificationService';
 import { 
   Settings, 
   User, 
@@ -90,6 +91,11 @@ export const SettingsPage = () => {
   const [copiedApiKey, setCopiedApiKey] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  
+  // Notification states
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [testingNotification, setTestingNotification] = useState(false);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -132,6 +138,23 @@ export const SettingsPage = () => {
     setSaving(true);
     try {
       localStorage.setItem('voltaxe_settings', JSON.stringify(settings));
+      
+      // Save notification preferences to server
+      try {
+        await notificationService.updatePreferences({
+          email: settings.email,
+          emailNotifications: settings.emailNotifications,
+          desktopNotifications: settings.desktopNotifications,
+          criticalAlerts: settings.criticalAlerts,
+          suspiciousActivity: settings.suspiciousActivity,
+          systemUpdates: settings.systemUpdates,
+        });
+        console.log('[SETTINGS] Notification preferences synced to server');
+      } catch (error) {
+        console.error('[SETTINGS] Failed to sync notification preferences:', error);
+        // Don't fail the entire save if server sync fails
+      }
+      
       setUnsavedChanges(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -147,6 +170,89 @@ export const SettingsPage = () => {
     localStorage.removeItem('voltaxe_settings');
     setUnsavedChanges(false);
   };
+
+  // Initialize notifications on mount
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        // Check if notifications are supported
+        const supported = 'Notification' in window && 'serviceWorker' in navigator;
+        setPushSupported(supported);
+        
+        if (supported) {
+          // Initialize notification service
+          await notificationService.initialize();
+          
+          // Check current subscription status
+          const isSubscribed = await notificationService.checkSubscription();
+          setPushEnabled(isSubscribed);
+          
+          // Update UI if user has push enabled in settings but not subscribed
+          if (settings.desktopNotifications && !isSubscribed) {
+            console.log('[SETTINGS] Desktop notifications enabled but not subscribed');
+          }
+        }
+      } catch (error) {
+        console.error('[SETTINGS] Failed to initialize notifications:', error);
+      }
+    };
+    
+    initNotifications();
+  }, []);
+
+  // Handle desktop notifications toggle
+  const handleDesktopNotificationsToggle = async (checked: boolean) => {
+    updateSetting('desktopNotifications', checked);
+    
+    if (checked) {
+      // Subscribe to push notifications
+      try {
+        const success = await notificationService.subscribe();
+        setPushEnabled(success);
+        
+        if (success) {
+          // Show confirmation notification
+          await notificationService.showLocalNotification(
+            '🔔 Notifications Enabled',
+            {
+              body: 'You will now receive security alerts and updates from Voltaxe.',
+              tag: 'notification-enabled'
+            }
+          );
+        }
+      } catch (error) {
+        console.error('[SETTINGS] Failed to subscribe to notifications:', error);
+        updateSetting('desktopNotifications', false);
+      }
+    } else {
+      // Unsubscribe from push notifications
+      try {
+        await notificationService.unsubscribe();
+        setPushEnabled(false);
+      } catch (error) {
+        console.error('[SETTINGS] Failed to unsubscribe from notifications:', error);
+      }
+    }
+  };
+
+  // Send test notification
+  const sendTestNotification = async () => {
+    setTestingNotification(true);
+    try {
+      if (settings.desktopNotifications) {
+        await notificationService.sendTestNotification();
+        alert('✅ Test notification sent! Check your notifications.');
+      } else {
+        alert('⚠️ Please enable desktop notifications first.');
+      }
+    } catch (error) {
+      console.error('[SETTINGS] Failed to send test notification:', error);
+      alert('❌ Failed to send test notification. Please check your settings.');
+    } finally {
+      setTestingNotification(false);
+    }
+  };
+
 
   const generateNewApiKey = () => {
     const newKey = `vltx_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}_${Date.now()}`;
@@ -451,8 +557,36 @@ export const SettingsPage = () => {
               label="Desktop Notifications"
               description="Show browser notifications for real-time alerts"
               checked={settings.desktopNotifications}
-              onChange={(checked) => updateSetting('desktopNotifications', checked)}
+              onChange={handleDesktopNotificationsToggle}
             />
+            
+            {/* Test Notification Button */}
+            {settings.desktopNotifications && pushSupported && (
+              <div className="flex items-center justify-between p-4 bg-primary-gold/10 border border-primary-gold/20 rounded-lg">
+                <div>
+                  <p className="text-foreground font-semibold">Test Notifications</p>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Send a test notification to verify your settings
+                  </p>
+                </div>
+                <button
+                  onClick={sendTestNotification}
+                  disabled={testingNotification}
+                  className="px-4 py-2 bg-primary-gold text-background rounded-lg font-semibold hover:shadow-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {testingNotification ? 'Sending...' : 'Send Test'}
+                </button>
+              </div>
+            )}
+            
+            {!pushSupported && (
+              <div className="p-4 bg-danger/10 border border-danger rounded-lg">
+                <p className="text-danger text-sm">
+                  ⚠️ Push notifications are not supported in your browser. Please use a modern browser like Chrome, Firefox, or Edge.
+                </p>
+              </div>
+            )}
+            
             <ToggleSwitch
               label="Critical Alerts"
               description="Always notify for critical security events"
