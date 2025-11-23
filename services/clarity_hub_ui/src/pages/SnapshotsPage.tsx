@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { snapshotService } from '../services/api';
 import { Snapshot } from '../types';
@@ -46,6 +47,7 @@ const getRiskColor = (level: string) => {
 };
 
 export const SnapshotsPage = () => {
+  const navigate = useNavigate();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [filteredSnapshots, setFilteredSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -373,7 +375,7 @@ export const SnapshotsPage = () => {
               <div
                 key={snapshot.id}
                 className="card card-hover relative"
-                onClick={() => window.location.href = `/endpoints/${snapshot.hostname}`}
+                onClick={() => navigate(`/endpoints/${snapshot.hostname}`)}
                 style={{ cursor: 'pointer' }}
               >
                 {/* Status Indicator - Top Right */}
