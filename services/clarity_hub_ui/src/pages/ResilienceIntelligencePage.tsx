@@ -1,6 +1,9 @@
 import { Sidebar } from '../components/Sidebar';
 import { ResilienceDashboardComponent } from '../components/ResilienceDashboard.tsx';
 import { ResilienceScoreWidget } from '../components/ResilienceScoreWidget';
+import { SecurityTrends } from '../components/SecurityTrends';
+import { AxonEngineMonitor } from '../components/AxonEngineMonitor';
+import { PathToGreen } from '../components/PathToGreen';
 import { Shield, TrendingUp, Activity } from 'lucide-react';
 
 export const ResilienceIntelligencePage = () => {
@@ -64,6 +67,17 @@ export const ResilienceIntelligencePage = () => {
         {/* Resilience Score Widget */}
         <div className="mb-8 animate-fadeIn">
           <ResilienceScoreWidget />
+        </div>
+
+        {/* Security Trends - Historical Score Analysis */}
+        <div className="mb-8 animate-fadeIn">
+          <SecurityTrends />
+        </div>
+
+        {/* Two Column Layout: Axon Engine Monitor & Path to Green */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 animate-fadeIn">
+          <AxonEngineMonitor />
+          <PathToGreen />
         </div>
 
         {/* Resilience Dashboard */}
