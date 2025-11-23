@@ -1,8 +1,4 @@
-# 🐳 Voltaxe Docker Quick Start Guide
-
-## 🌐 Access Your Platform
-
-### **Frontend (Main Application)**
+hi rahul
 ```
 http://localhost:3000
 ```
@@ -23,8 +19,7 @@ http://localhost:8000/health
 ```
 http://localhost
 ```
-
----
+rgwerklnfgowen f
 
 ## 🎮 Essential Docker Commands
 
