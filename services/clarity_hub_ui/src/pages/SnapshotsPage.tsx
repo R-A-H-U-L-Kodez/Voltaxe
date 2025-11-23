@@ -19,18 +19,19 @@ import {
   CheckCircle,
   XCircle,
   Monitor,
-  Globe
+  Globe,
+  Camera
 } from 'lucide-react';
 
-// OS Icon mapping
+// OS Icon Component
 const getOSIcon = (os: string) => {
   const osLower = os.toLowerCase();
-  if (osLower.includes('windows')) return '🪟';
-  if (osLower.includes('linux')) return '🐧';
-  if (osLower.includes('mac') || osLower.includes('darwin')) return '🍎';
-  if (osLower.includes('ubuntu')) return '🟠';
-  if (osLower.includes('centos') || osLower.includes('rhel')) return '🔴';
-  return '💻';
+  if (osLower.includes('windows')) return <Monitor className="h-8 w-8" style={{ color: 'hsl(var(--primary-gold))' }} />;
+  if (osLower.includes('linux')) return <Server className="h-8 w-8" style={{ color: 'hsl(var(--primary-gold))' }} />;
+  if (osLower.includes('mac') || osLower.includes('darwin')) return <Monitor className="h-8 w-8" style={{ color: 'hsl(var(--primary-gold))' }} />;
+  if (osLower.includes('ubuntu')) return <Server className="h-8 w-8" style={{ color: 'hsl(var(--warning))' }} />;
+  if (osLower.includes('centos') || osLower.includes('rhel')) return <Server className="h-8 w-8" style={{ color: 'hsl(var(--danger))' }} />;
+  return <Monitor className="h-8 w-8" style={{ color: 'hsl(var(--muted-foreground))' }} />;
 };
 
 // Risk level color mapping
@@ -72,19 +73,7 @@ export const SnapshotsPage = () => {
     try {
       setLoading(true);
       const data = await snapshotService.getSnapshots();
-      
-      // Enhance snapshot data with mock data for demo
-      const enhancedData = data.map((snapshot, index) => ({
-        ...snapshot,
-        status: index % 3 === 0 ? 'offline' : 'online',
-        riskLevel: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'][index % 4],
-        ipAddress: `192.168.1.${10 + index}`,
-        agentVersion: `v${2 + (index % 3)}.${(index % 10)}.0`,
-        lastSeen: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        vulnerabilities: Math.floor(Math.random() * 20),
-      }));
-      
-      setSnapshots(enhancedData);
+      setSnapshots(data);
       setError('');
     } catch (err) {
       setError('Failed to fetch snapshots. Please ensure the API server is running.');
@@ -149,12 +138,12 @@ export const SnapshotsPage = () => {
         <div className="mb-6 animate-fadeIn">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 gradient-gold rounded-2xl flex items-center justify-center shadow-xl">
-              <Monitor size={32} className="text-white" />
+              <Camera size={32} className="text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-gradient-gold">Fleet Command Center</h1>
+              <h1 className="text-4xl font-bold text-gradient-gold">Snapshots</h1>
               <p className="mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                Comprehensive endpoint visibility and management
+                Real-time endpoint monitoring and system status
               </p>
             </div>
           </div>
@@ -472,13 +461,13 @@ export const SnapshotsPage = () => {
                     <span
                       className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
                       style={{
-                        backgroundColor: `${getRiskColor(snapshot.riskLevel)} / 0.1)`,
-                        color: getRiskColor(snapshot.riskLevel),
-                        border: `1px solid ${getRiskColor(snapshot.riskLevel)}20`
+                        backgroundColor: `${getRiskColor(snapshot.riskLevel || 'LOW')}20`,
+                        color: getRiskColor(snapshot.riskLevel || 'LOW'),
+                        border: `1px solid ${getRiskColor(snapshot.riskLevel || 'LOW')}40`
                       }}
                     >
                       <Shield className="h-3 w-3" />
-                      {snapshot.riskLevel} RISK
+                      {snapshot.riskLevel || snapshot.risk_category || 'LOW'} RISK
                     </span>
                   </div>
 
@@ -490,7 +479,7 @@ export const SnapshotsPage = () => {
                         IP Address
                       </span>
                       <span className="font-mono font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                        {snapshot.ipAddress}
+                        {snapshot.ipAddress || 'N/A'}
                       </span>
                     </div>
 
@@ -500,7 +489,7 @@ export const SnapshotsPage = () => {
                         Agent
                       </span>
                       <span className="font-mono font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                        {snapshot.agentVersion}
+                        {snapshot.agentVersion || 'N/A'}
                       </span>
                     </div>
 
@@ -511,9 +500,9 @@ export const SnapshotsPage = () => {
                       </span>
                       <span 
                         className="font-bold"
-                        style={{ color: snapshot.vulnerabilities > 10 ? 'hsl(var(--danger))' : 'hsl(var(--success))' }}
+                        style={{ color: (snapshot.vulnerabilities || 0) > 10 ? 'hsl(var(--danger))' : 'hsl(var(--success))' }}
                       >
-                        {snapshot.vulnerabilities}
+                        {snapshot.vulnerabilities || 0}
                       </span>
                     </div>
 
@@ -523,7 +512,7 @@ export const SnapshotsPage = () => {
                         Last Seen
                       </span>
                       <span className="text-xs font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                        {new Date(snapshot.lastSeen).toLocaleTimeString()}
+                        {snapshot.lastSeen ? new Date(snapshot.lastSeen).toLocaleTimeString() : new Date(snapshot.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                   </div>
