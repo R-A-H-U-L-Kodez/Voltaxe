@@ -35,8 +35,6 @@ export const SecurityTrends = () => {
   const improvementPercent = ((improvement / previousScore) * 100).toFixed(1);
 
   const maxScore = Math.max(...data.map(d => d.score));
-  const minScore = Math.min(...data.map(d => d.score));
-  const range = maxScore - minScore || 1;
 
   return (
     <div className="card p-6">
@@ -123,53 +121,84 @@ export const SecurityTrends = () => {
       </div>
 
       {/* Chart */}
-      <div className="relative h-64">
-        <div className="absolute inset-0 flex items-end justify-between gap-2 px-4">
+      <div className="relative" style={{ height: '280px', paddingTop: '40px', paddingBottom: '30px' }}>
+        {/* Grid lines */}
+        <div className="absolute inset-0 flex flex-col justify-between" style={{ paddingTop: '40px', paddingBottom: '30px' }}>
+          {[100, 75, 50, 25, 0].map((value) => (
+            <div key={value} className="flex items-center">
+              <span className="text-xs w-8" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                {value}
+              </span>
+              <div 
+                className="flex-1 h-px" 
+                style={{ backgroundColor: 'hsl(var(--border))' }}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Bars */}
+        <div className="absolute inset-0 flex items-end justify-between gap-3" style={{ paddingLeft: '40px', paddingBottom: '30px', paddingRight: '10px', paddingTop: '40px' }}>
           {data.map((point, index) => {
-            const heightPercent = ((point.score - minScore) / range) * 100;
-            const isHighest = point.score === currentScore;
+            // Calculate height based on 0-100 scale
+            const heightPercent = (point.score / 100) * 100;
+            const isHighest = point.score === maxScore;
             
             return (
-              <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                <div className="relative group flex-1 flex items-end w-full">
-                  <div
-                    className="w-full rounded-t-lg transition-all duration-500 hover-lift cursor-pointer relative"
-                    style={{
-                      height: `${Math.max(heightPercent, 5)}%`,
-                      backgroundColor: isHighest 
-                        ? 'hsl(var(--primary-gold))'
-                        : 'hsl(var(--accent-gold) / 0.6)',
+              <div key={index} className="flex-1 flex flex-col items-center gap-2" style={{ minWidth: '40px' }}>
+                {/* Bar container */}
+                <div className="relative group w-full" style={{ height: 'calc(100% - 30px)', display: 'flex', alignItems: 'flex-end' }}>
+                  {/* Score label above bar */}
+                  <span 
+                    className="absolute left-1/2 transform -translate-x-1/2 text-xs font-bold whitespace-nowrap"
+                    style={{ 
+                      color: 'hsl(var(--foreground))',
+                      bottom: `calc(${heightPercent}% + 4px)`
                     }}
                   >
-                    {/* Tooltip */}
+                    {point.score}
+                  </span>
+
+                  {/* Bar */}
+                  <div
+                    className="w-full rounded-t-lg transition-all duration-500 hover:scale-105 cursor-pointer shadow-lg"
+                    style={{
+                      height: `${heightPercent}%`,
+                      backgroundColor: isHighest 
+                        ? 'hsl(var(--primary-gold))'
+                        : 'hsl(var(--accent-gold))',
+                      minHeight: '10px',
+                      boxShadow: isHighest 
+                        ? '0 4px 6px -1px rgba(218, 165, 32, 0.3)'
+                        : '0 2px 4px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    {/* Hover tooltip */}
                     <div 
-                      className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap"
+                      className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10"
                       style={{ 
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                       }}
                     >
-                      <p className="text-xs font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                        Score: {point.score}
+                      <p className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                        Security Score: {point.score}/100
                       </p>
                       <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                         {point.date}
                       </p>
+                      <p className="text-xs" style={{ color: 'hsl(var(--success))' }}>
+                        {index > 0 && point.score > data[index - 1].score && `+${point.score - data[index - 1].score} from previous`}
+                        {index > 0 && point.score < data[index - 1].score && `${point.score - data[index - 1].score} from previous`}
+                        {index > 0 && point.score === data[index - 1].score && 'No change'}
+                      </p>
                     </div>
-                    
-                    {/* Score label on bar */}
-                    <span 
-                      className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-bold"
-                      style={{ color: 'hsl(var(--foreground))' }}
-                    >
-                      {point.score}
-                    </span>
                   </div>
                 </div>
                 
-                {/* Date label */}
-                <span className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                {/* Date label below */}
+                <span className="text-xs font-medium text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
                   {point.date}
                 </span>
               </div>
