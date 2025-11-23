@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard } from '../types';
+import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard, Incident, IncidentStats } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -101,16 +101,16 @@ export const incidentService = {
     severity?: string;
     hours?: number;
     limit?: number;
-  }): Promise<any> => {
-    const response = await api.get('/incidents/', { params });
+  }): Promise<{ incidents: Incident[] }> => {
+    const response = await api.get<{ incidents: Incident[] }>('/incidents/', { params });
     return response.data;
   },
-  getIncidentDetails: async (incidentId: string): Promise<any> => {
-    const response = await api.get(`/incidents/${incidentId}`);
+  getIncidentDetails: async (incidentId: string): Promise<Incident> => {
+    const response = await api.get<Incident>(`/incidents/${incidentId}`);
     return response.data;
   },
-  getIncidentStats: async (hours: number = 24): Promise<any> => {
-    const response = await api.get('/incidents/stats/summary', { params: { hours } });
+  getIncidentStats: async (hours: number = 24): Promise<IncidentStats> => {
+    const response = await api.get<IncidentStats>('/incidents/stats/summary', { params: { hours } });
     return response.data;
   },
 };

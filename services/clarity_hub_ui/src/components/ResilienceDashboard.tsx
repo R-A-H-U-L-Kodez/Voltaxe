@@ -234,5 +234,3 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
     </div>
   );
 };
-
-export default ResilienceDashboardComponent;

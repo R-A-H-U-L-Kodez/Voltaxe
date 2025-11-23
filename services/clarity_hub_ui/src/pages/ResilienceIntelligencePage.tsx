@@ -1,5 +1,5 @@
 import { Sidebar } from '../components/Sidebar';
-import { ResilienceDashboardComponent } from '../components/ResilienceDashboard';
+import { ResilienceDashboardComponent } from '../components/ResilienceDashboard.tsx';
 import { ResilienceScoreWidget } from '../components/ResilienceScoreWidget';
 
 export const ResilienceIntelligencePage = () => {

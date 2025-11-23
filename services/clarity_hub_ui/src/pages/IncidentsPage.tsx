@@ -2,47 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Shield, Clock, Activity, ChevronDown, ChevronUp, TrendingUp, Users, Target } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { incidentService } from '../services/api';
-
-interface Alert {
-  id: number;
-  event_type: string;
-  hostname: string;
-  details: string;
-  timestamp: string;
-  severity: string;
-}
-
-interface Incident {
-  incident_id: string;
-  title: string;
-  description: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  status: string;
-  alert_count: number;
-  affected_hosts: string[];
-  event_types: string[];
-  first_seen: string;
-  last_seen: string;
-  alerts: Alert[];
-  kill_chain_stage: string;
-  recommended_actions: string[];
-}
-
-interface IncidentStats {
-  total_alerts: number;
-  total_incidents: number;
-  alert_reduction_percent: number;
-  avg_alerts_per_incident: number;
-  severity_distribution: {
-    critical: number;
-    high: number;
-    medium: number;
-    low: number;
-  };
-  kill_chain_stages: Record<string, number>;
-  multi_host_incidents: number;
-  time_window_hours: number;
-}
+import { Incident, IncidentStats } from '../types';
 
 export const IncidentsPage: React.FC = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
