@@ -6,6 +6,13 @@ export interface Snapshot {
   resilience_score?: number;
   risk_category?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   last_scored?: string;
+  // Fleet Command Center fields
+  status?: 'online' | 'offline';
+  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  ipAddress?: string;
+  agentVersion?: string;
+  lastSeen?: string;
+  vulnerabilities?: number;
 }
 
 export interface ResilienceScore {

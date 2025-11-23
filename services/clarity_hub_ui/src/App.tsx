@@ -4,6 +4,7 @@ import { LoginPage } from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import { ResilienceIntelligencePage } from './pages/ResilienceIntelligencePage';
 import { DashboardPage } from './pages/DashboardPage';
+import { SnapshotsPage } from './pages/SnapshotsPage';
 import { MainDashboard } from './pages/MainDashboard';
 import { AlertsPage } from './pages/AlertsPage';
 import { EndpointDetailPage } from './pages/EndpointDetailPage';
@@ -51,7 +52,7 @@ function App() {
             path="/snapshots"
             element={
               <ProtectedRoute>
-                <DashboardPage />
+                <SnapshotsPage />
               </ProtectedRoute>
             }
           />
