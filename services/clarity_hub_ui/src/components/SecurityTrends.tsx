@@ -137,73 +137,144 @@ export const SecurityTrends = () => {
           ))}
         </div>
 
-        {/* Bars */}
-        <div className="absolute inset-0 flex items-end justify-between gap-3" style={{ paddingLeft: '40px', paddingBottom: '30px', paddingRight: '10px', paddingTop: '40px' }}>
-          {data.map((point, index) => {
-            // Calculate height based on 0-100 scale
-            const heightPercent = (point.score / 100) * 100;
-            const isHighest = point.score === maxScore;
-            
-            return (
-              <div key={index} className="flex-1 flex flex-col items-center gap-2" style={{ minWidth: '40px' }}>
-                {/* Bar container */}
-                <div className="relative group w-full" style={{ height: 'calc(100% - 30px)', display: 'flex', alignItems: 'flex-end' }}>
-                  {/* Score label above bar */}
-                  <span 
-                    className="absolute left-1/2 transform -translate-x-1/2 text-xs font-bold whitespace-nowrap"
-                    style={{ 
-                      color: 'hsl(var(--foreground))',
-                      bottom: `calc(${heightPercent}% + 4px)`
-                    }}
-                  >
-                    {point.score}
-                  </span>
+        {/* Line Chart */}
+        <div className="absolute inset-0" style={{ paddingLeft: '40px', paddingBottom: '30px', paddingRight: '10px', paddingTop: '40px' }}>
+          <svg width="100%" height="100%" style={{ overflow: 'visible' }}>
+            {/* Define gradient for line */}
+            <defs>
+              <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style={{ stopColor: 'hsl(var(--accent-gold))', stopOpacity: 1 }} />
+                <stop offset="100%" style={{ stopColor: 'hsl(var(--primary-gold))', stopOpacity: 1 }} />
+              </linearGradient>
+              <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style={{ stopColor: 'hsl(var(--primary-gold))', stopOpacity: 0.3 }} />
+                <stop offset="100%" style={{ stopColor: 'hsl(var(--primary-gold))', stopOpacity: 0.05 }} />
+              </linearGradient>
+            </defs>
 
-                  {/* Bar */}
-                  <div
-                    className="w-full rounded-t-lg transition-all duration-500 hover:scale-105 cursor-pointer shadow-lg"
-                    style={{
-                      height: `${heightPercent}%`,
-                      backgroundColor: isHighest 
-                        ? 'hsl(var(--primary-gold))'
-                        : 'hsl(var(--accent-gold))',
-                      minHeight: '10px',
-                      boxShadow: isHighest 
-                        ? '0 4px 6px -1px rgba(218, 165, 32, 0.3)'
-                        : '0 2px 4px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                  >
-                    {/* Hover tooltip */}
-                    <div 
-                      className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10"
-                      style={{ 
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                      }}
-                    >
-                      <p className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                        Security Score: {point.score}/100
-                      </p>
-                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                        {point.date}
-                      </p>
-                      <p className="text-xs" style={{ color: 'hsl(var(--success))' }}>
-                        {index > 0 && point.score > data[index - 1].score && `+${point.score - data[index - 1].score} from previous`}
-                        {index > 0 && point.score < data[index - 1].score && `${point.score - data[index - 1].score} from previous`}
-                        {index > 0 && point.score === data[index - 1].score && 'No change'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Date label below */}
-                <span className="text-xs font-medium text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  {point.date}
-                </span>
-              </div>
-            );
-          })}
+            {/* Calculate SVG dimensions */}
+            {(() => {
+              const svgWidth = 800; // approximate width
+              const svgHeight = 200; // approximate height
+              const points = data.map((point, index) => {
+                const x = (index / (data.length - 1)) * svgWidth;
+                const y = svgHeight - (point.score / 100) * svgHeight;
+                return { x, y, score: point.score, date: point.date };
+              });
+
+              // Create path string for line
+              const linePath = points.map((p, i) => 
+                `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+              ).join(' ');
+
+              // Create path string for area under line
+              const areaPath = `${linePath} L ${points[points.length - 1].x} ${svgHeight} L 0 ${svgHeight} Z`;
+
+              return (
+                <g>
+                  {/* Area under line */}
+                  <path
+                    d={areaPath}
+                    fill="url(#areaGradient)"
+                    className="transition-all duration-500"
+                  />
+
+                  {/* Grid lines connecting points */}
+                  {points.map((point, index) => (
+                    index < points.length - 1 && (
+                      <line
+                        key={`grid-${index}`}
+                        x1={point.x}
+                        y1={svgHeight}
+                        x2={point.x}
+                        y2={point.y}
+                        stroke="hsl(var(--border))"
+                        strokeWidth="1"
+                        strokeDasharray="2,2"
+                        opacity="0.3"
+                      />
+                    )
+                  ))}
+
+                  {/* Main line */}
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="url(#lineGradient)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="transition-all duration-500"
+                  />
+
+                  {/* Data points */}
+                  {points.map((point, index) => {
+                    const isHighest = point.score === maxScore;
+                    
+                    return (
+                      <g key={index}>
+                        {/* Point circle */}
+                        <circle
+                          cx={point.x}
+                          cy={point.y}
+                          r={isHighest ? 8 : 6}
+                          fill={isHighest ? 'hsl(var(--primary-gold))' : 'hsl(var(--accent-gold))'}
+                          stroke="hsl(var(--card))"
+                          strokeWidth="2"
+                          className="transition-all duration-300 hover:r-10 cursor-pointer"
+                          style={{
+                            filter: isHighest ? 'drop-shadow(0 0 8px hsl(var(--primary-gold)))' : 'none'
+                          }}
+                        >
+                          <title>
+                            {point.date}: {point.score}/100
+                            {index > 0 && `\nChange: ${point.score > points[index - 1].score ? '+' : ''}${point.score - points[index - 1].score} points`}
+                          </title>
+                        </circle>
+
+                        {/* Score label */}
+                        <text
+                          x={point.x}
+                          y={point.y - 15}
+                          textAnchor="middle"
+                          fontSize="12"
+                          fontWeight="bold"
+                          fill="hsl(var(--foreground))"
+                        >
+                          {point.score}
+                        </text>
+
+                        {/* Date label below chart */}
+                        <text
+                          x={point.x}
+                          y={svgHeight + 20}
+                          textAnchor="middle"
+                          fontSize="11"
+                          fill="hsl(var(--muted-foreground))"
+                        >
+                          {point.date}
+                        </text>
+
+                        {/* Trend indicator */}
+                        {index > 0 && (
+                          <text
+                            x={point.x}
+                            y={point.y - 30}
+                            textAnchor="middle"
+                            fontSize="10"
+                            fontWeight="600"
+                            fill={point.score > points[index - 1].score ? 'hsl(var(--success))' : 'hsl(var(--danger))'}
+                          >
+                            {point.score > points[index - 1].score ? '▲' : '▼'} {Math.abs(point.score - points[index - 1].score)}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })()}
+          </svg>
         </div>
       </div>
 
