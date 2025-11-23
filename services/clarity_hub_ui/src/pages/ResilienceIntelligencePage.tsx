@@ -1,7 +1,7 @@
 import { Sidebar } from '../components/Sidebar';
 import { ResilienceDashboardComponent } from '../components/ResilienceDashboard';
 import { ResilienceScoreWidget } from '../components/ResilienceScoreWidget';
-import { Shield, TrendingUp } from 'lucide-react';
+import { Shield, Activity } from 'lucide-react';
 
 export const ResilienceIntelligencePage = () => {
   return (
@@ -10,29 +10,29 @@ export const ResilienceIntelligencePage = () => {
 
       <main className="ml-64 p-8">
         {/* Page Header */}
-        <div className="mb-8 animate-fadeIn">
+        <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 gradient-gold rounded-2xl flex items-center justify-center shadow-xl">
-              <Shield size={32} style={{ color: 'hsl(var(--background))' }} />
+            <div className="w-14 h-14 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)', border: '1px solid hsl(var(--primary-gold) / 0.2)' }}>
+              <Shield size={28} style={{ color: 'hsl(var(--primary-gold))' }} />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-gradient-gold mb-2">
+              <h1 className="text-3xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
                 Resilience Intelligence
               </h1>
-              <p className="text-muted-foreground flex items-center">
-                <TrendingUp className="h-4 w-4 mr-2" style={{ color: 'hsl(var(--primary-gold))' }} />
-                AI-powered security resilience scoring and analysis powered by Axon Engine
+              <p className="text-muted-foreground flex items-center gap-2 mt-1">
+                <Activity className="h-4 w-4" />
+                AI-powered security resilience scoring and analysis
               </p>
             </div>
           </div>
         </div>
 
-        {/* Prominent Resilience Score Widget */}
-        <div className="mb-8 animate-fadeIn">
+        {/* Resilience Score Widget */}
+        <div className="mb-8">
           <ResilienceScoreWidget />
         </div>
 
-        {/* Resilience Dashboard - All resilience related cards */}
+        {/* Resilience Dashboard */}
         <ResilienceDashboardComponent />
       </main>
     </div>

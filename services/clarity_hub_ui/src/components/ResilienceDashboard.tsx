@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { resilienceService } from '../services/api';
 import { ResilienceScore, ResilienceDashboard } from '../types';
-import { Shield, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
 import { getRiskColor } from '../theme';
 
 interface ResilienceDashboardComponentProps {
@@ -35,8 +35,6 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
     };
 
     fetchResilienceData();
-    
-    // Refresh every 30 seconds
     const interval = setInterval(fetchResilienceData, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -44,7 +42,7 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
   const getRiskIcon = (risk: string | null) => {
     switch (risk?.toUpperCase()) {
       case 'LOW': return <CheckCircle className="h-5 w-5" />;
-      case 'MEDIUM': return <Clock className="h-5 w-5" />;
+      case 'MEDIUM': return <AlertCircle className="h-5 w-5" />;
       case 'HIGH': return <AlertTriangle className="h-5 w-5" />;
       case 'CRITICAL': return <AlertTriangle className="h-5 w-5" />;
       default: return <Shield className="h-5 w-5" />;
@@ -53,13 +51,16 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
 
   if (loading) {
     return (
-      <div className={`card animate-fadeIn ${className}`}>
+      <div className={`card ${className}`}>
         <div className="flex items-center justify-center h-32">
           <div className="relative">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-border"></div>
-            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-primary-gold absolute top-0 left-0" style={{ borderTopColor: 'hsl(var(--primary-gold))' }}></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-4" style={{ borderColor: 'hsl(var(--border))' }}></div>
+            <div 
+              className="animate-spin rounded-full h-12 w-12 border-t-4 absolute top-0 left-0" 
+              style={{ borderTopColor: 'hsl(var(--primary-gold))' }}
+            ></div>
           </div>
-          <span className="ml-4 text-lg text-foreground">Loading resilience intelligence...</span>
+          <span className="ml-4 text-lg" style={{ color: 'hsl(var(--foreground))' }}>Loading resilience intelligence...</span>
         </div>
       </div>
     );
@@ -67,12 +68,12 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
 
   if (error) {
     return (
-      <div className={`card animate-fadeIn ${className}`}>
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ backgroundColor: 'hsl(var(--danger) / 0.2)' }}>
+      <div className={`card ${className}`}>
+        <div className="text-center p-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ backgroundColor: 'hsl(var(--danger) / 0.1)' }}>
             <AlertTriangle className="h-8 w-8" style={{ color: 'hsl(var(--danger))' }} />
           </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">{error}</h3>
+          <h3 className="text-lg font-semibold mb-2" style={{ color: 'hsl(var(--foreground))' }}>{error}</h3>
           <p className="text-sm text-muted-foreground">Ensure the Axon Engine is running and connected</p>
         </div>
       </div>
@@ -80,7 +81,7 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
   }
 
   return (
-    <div className={`space-y-6 animate-fadeIn ${className}`}>
+    <div className={`space-y-6 ${className}`}>
       {/* Risk Distribution Cards */}
       {dashboard && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -89,16 +90,16 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
             return (
               <div 
                 key={risk} 
-                className="card card-hover border-l-4"
+                className="card border-l-4"
                 style={{ borderLeftColor: colors.icon }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-5">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">{risk}</p>
+                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{risk}</p>
                     <p className="text-3xl font-bold mt-2" style={{ color: colors.icon }}>{count}</p>
                   </div>
                   <div 
-                    className="p-3 rounded-full" 
+                    className="p-3 rounded-lg" 
                     style={{ backgroundColor: colors.bg }}
                   >
                     <span style={{ color: colors.icon }}>
@@ -114,8 +115,8 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
 
       {/* Endpoint Resilience Scores Table */}
       <div className="card overflow-hidden">
-        <div className="px-6 py-5 border-b" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--card))' }}>
-          <h3 className="text-xl font-bold text-foreground">Endpoint Resilience Scores</h3>
+        <div className="px-6 py-5" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+          <h3 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Endpoint Resilience Scores</h3>
           <p className="text-sm text-muted-foreground mt-1">Real-time security posture assessment</p>
         </div>
         
@@ -125,7 +126,7 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style={{ backgroundColor: 'hsl(var(--muted))' }}>
                 <Shield className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h4 className="text-lg font-semibold text-foreground mb-2">No Resilience Scores Available</h4>
+              <h4 className="text-lg font-semibold mb-2" style={{ color: 'hsl(var(--foreground))' }}>No Resilience Scores Available</h4>
               <p className="text-muted-foreground">Scores will appear once the Axon Engine processes endpoint data</p>
             </div>
           ) : (
@@ -137,22 +138,25 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
                 return (
                   <div 
                     key={score.hostname} 
-                    className="rounded-xl p-6 border transition-smooth hover:border-primary-gold hover:glow-gold"
+                    className="rounded-lg p-6"
                     style={{ 
                       backgroundColor: 'hsl(var(--card))',
-                      borderColor: 'hsl(var(--border))'
+                      border: '1px solid hsl(var(--border))'
                     }}
                   >
                     <div className="flex items-center justify-between flex-wrap gap-4">
                       {/* Hostname */}
                       <div className="flex items-center min-w-0 flex-1">
                         <div className="flex-shrink-0">
-                          <div className="w-14 h-14 rounded-full gradient-gold flex items-center justify-center shadow-lg">
-                            <Shield className="h-7 w-7" style={{ color: 'hsl(var(--background))' }} />
+                          <div 
+                            className="w-12 h-12 rounded-lg flex items-center justify-center" 
+                            style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)' }}
+                          >
+                            <Shield className="h-6 w-6" style={{ color: 'hsl(var(--primary-gold))' }} />
                           </div>
                         </div>
                         <div className="ml-4 min-w-0">
-                          <h4 className="text-lg font-semibold text-foreground truncate">{score.hostname}</h4>
+                          <h4 className="text-lg font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>{score.hostname}</h4>
                           <p className="text-sm text-muted-foreground">
                             Last scored: {score.last_scored ? new Date(score.last_scored).toLocaleString() : 'Never'}
                           </p>
@@ -163,28 +167,22 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
                       <div className="flex items-center gap-6">
                         {/* Resilience Score */}
                         <div className="text-center">
-                          <p className="text-sm font-medium text-muted-foreground mb-1">Score</p>
-                          <div className="relative">
-                            <div className="text-4xl font-bold text-gradient-gold">
-                              {scoreValue}
-                            </div>
-                            <div className="text-sm text-muted-foreground absolute -bottom-4 left-1/2 transform -translate-x-1/2">
-                              /100
-                            </div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Score</p>
+                          <div className="text-3xl font-bold" style={{ color: 'hsl(var(--primary-gold))' }}>
+                            {scoreValue}
+                            <span className="text-sm text-muted-foreground">/100</span>
                           </div>
                         </div>
 
                         {/* Risk Badge */}
                         <div className="text-center">
-                          <p className="text-sm font-medium text-muted-foreground mb-2">Risk</p>
+                          <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Risk</p>
                           <span 
-                            className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold"
+                            className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold"
                             style={{ 
                               backgroundColor: colors.bg,
                               color: colors.text,
-                              borderWidth: '1px',
-                              borderStyle: 'solid',
-                              borderColor: colors.border
+                              border: `1px solid ${colors.border}`
                             }}
                           >
                             <span style={{ color: colors.icon }}>
@@ -196,10 +194,10 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
 
                         {/* Vulnerabilities */}
                         <div className="text-center">
-                          <p className="text-sm font-medium text-muted-foreground mb-1">Vulnerabilities</p>
+                          <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Vulnerabilities</p>
                           <div className="flex items-center justify-center">
                             <AlertTriangle className="h-5 w-5 mr-2" style={{ color: 'hsl(var(--warning))' }} />
-                            <span className="text-2xl font-bold text-foreground">
+                            <span className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
                               {score.vulnerability_count || 0}
                             </span>
                           </div>
@@ -209,18 +207,19 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
 
                     {/* Progress Bar */}
                     <div className="mt-4">
-                      <div className="w-full rounded-full h-3 overflow-hidden" style={{ backgroundColor: 'hsl(var(--muted))' }}>
+                      <div className="w-full rounded-full h-2 overflow-hidden" style={{ backgroundColor: 'hsl(var(--muted))' }}>
                         <div 
-                          className="h-full rounded-full transition-all duration-500"
+                          className="h-full rounded-full"
                           style={{ 
                             width: `${scoreValue}%`,
-                            background: scoreValue >= 90 
-                              ? 'linear-gradient(to right, hsl(var(--success)), hsl(142 76% 45%))'
-                              : scoreValue >= 75
-                              ? 'linear-gradient(to right, hsl(var(--primary-gold)), hsl(var(--accent-gold)))'
-                              : scoreValue >= 50
-                              ? 'linear-gradient(to right, hsl(var(--warning)), hsl(38 92% 60%))'
-                              : 'linear-gradient(to right, hsl(var(--danger)), hsl(0 84% 70%))'
+                            backgroundColor: scoreValue >= 80 
+                              ? 'hsl(var(--success))'
+                              : scoreValue >= 60
+                              ? 'hsl(var(--warning))'
+                              : scoreValue >= 40
+                              ? 'hsl(var(--accent-gold))'
+                              : 'hsl(var(--danger))',
+                            transition: 'width 0.5s ease-out'
                           }}
                         />
                       </div>
