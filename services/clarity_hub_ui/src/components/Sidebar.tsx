@@ -11,7 +11,8 @@ import {
   Users,
   PlusCircle,
   Target,
-  FileText
+  FileText,
+  LayoutDashboard
 } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 
@@ -53,6 +54,24 @@ export const Sidebar = () => {
             backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
           })}
         >
+          <LayoutDashboard size={20} />
+          <span className="font-medium">Command Center</span>
+        </NavLink>
+
+        <NavLink
+          to="/resilience"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+              isActive
+                ? 'bg-primary-gold/10 text-primary-gold glow-gold'
+                : 'text-foreground hover:text-accent-gold hover:bg-white/5'
+            }`
+          }
+          style={({ isActive }) => ({
+            color: isActive ? 'hsl(var(--primary-gold))' : undefined,
+            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
+          })}
+        >
           <Shield size={20} />
           <span className="font-medium">Resilience Intelligence</span>
         </NavLink>
@@ -76,7 +95,7 @@ export const Sidebar = () => {
         </NavLink>
 
         <NavLink
-          to="/events"
+          to="/live-events"
           className={({ isActive }) =>
             `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
               isActive
@@ -130,7 +149,7 @@ export const Sidebar = () => {
         </NavLink>
 
         <NavLink
-          to="/malware"
+          to="/malware-scanner"
           className={({ isActive }) =>
             `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
               isActive

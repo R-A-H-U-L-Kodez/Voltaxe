@@ -29,7 +29,7 @@ export const LoginPage = () => {
 
     try {
       await login(email, password);
-      navigate('/snapshots');
+      navigate('/');
     } catch (err) {
       setError('Invalid email or password');
     } finally {

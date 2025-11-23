@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { resilienceService } from '../services/api';
 import { ResilienceScore, ResilienceDashboard } from '../types';
-import { Shield, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, AlertCircle, Plus } from 'lucide-react';
 import { getRiskColor } from '../theme';
 
 interface ResilienceDashboardComponentProps {
@@ -115,9 +115,14 @@ export const ResilienceDashboardComponent: React.FC<ResilienceDashboardComponent
 
       {/* Endpoint Resilience Scores Table */}
       <div className="card overflow-hidden">
-        <div className="px-6 py-5" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-          <h3 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Endpoint Resilience Scores</h3>
-          <p className="text-sm text-muted-foreground mt-1">Real-time security posture assessment</p>
+        <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+          <div>
+            <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+              <span>Endpoint Resilience Scores</span>
+              <Plus className="h-5 w-5" style={{ color: 'hsl(var(--primary-gold))' }} />
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">Real-time security posture assessment</p>
+          </div>
         </div>
         
         <div className="p-6">

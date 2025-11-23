@@ -4,6 +4,7 @@ import { LoginPage } from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import { ResilienceIntelligencePage } from './pages/ResilienceIntelligencePage';
 import { DashboardPage } from './pages/DashboardPage';
+import { MainDashboard } from './pages/MainDashboard';
 import { AlertsPage } from './pages/AlertsPage';
 import { EndpointDetailPage } from './pages/EndpointDetailPage';
 import { LiveEventFeedPage } from './pages/LiveEventFeedPage';
@@ -26,7 +27,23 @@ function App() {
             path="/"
             element={
               <ProtectedRoute>
+                <MainDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/resilience"
+            element={
+              <ProtectedRoute>
                 <ResilienceIntelligencePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/malware-scanner"
+            element={
+              <ProtectedRoute>
+                <MalwareScannerPage />
               </ProtectedRoute>
             }
           />
@@ -55,6 +72,14 @@ function App() {
             }
           />
           <Route
+            path="/live-events"
+            element={
+              <ProtectedRoute>
+                <LiveEventFeedPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/events"
             element={
               <ProtectedRoute>
@@ -75,14 +100,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/malware"
-            element={
-              <ProtectedRoute>
-                <MalwareScannerPage />
               </ProtectedRoute>
             }
           />

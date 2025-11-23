@@ -49,7 +49,7 @@ const RegisterPage: React.FC = () => {
 
     try {
       await register(email, password, fullName || undefined);
-      navigate('/snapshots');
+      navigate('/');
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {

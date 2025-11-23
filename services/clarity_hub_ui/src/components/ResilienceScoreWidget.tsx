@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { resilienceService } from '../services/api';
 import { ResilienceDashboard } from '../types';
 
@@ -10,7 +10,6 @@ interface ResilienceScoreWidgetProps {
 export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ className }) => {
   const [dashboard, setDashboard] = useState<ResilienceDashboard | null>(null);
   const [loading, setLoading] = useState(true);
-  const [trend, setTrend] = useState<'up' | 'down' | 'stable'>('stable');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -18,14 +17,6 @@ export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ cl
         setLoading(true);
         const data = await resilienceService.getResilienceDashboard();
         setDashboard(data);
-
-        if (data.summary.average_score > 75) {
-          setTrend('up');
-        } else if (data.summary.average_score < 50) {
-          setTrend('down');
-        } else {
-          setTrend('stable');
-        }
       } catch (error) {
         console.error('Failed to fetch resilience data', error);
       } finally {
@@ -61,17 +52,6 @@ export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ cl
     return 'High risk - immediate action recommended';
   };
 
-  const getTrendIcon = () => {
-    switch (trend) {
-      case 'up':
-        return <TrendingUp className="h-4 w-4" style={{ color: 'hsl(var(--success))' }} />;
-      case 'down':
-        return <TrendingDown className="h-4 w-4" style={{ color: 'hsl(var(--danger))' }} />;
-      default:
-        return <Minus className="h-4 w-4" style={{ color: 'hsl(var(--muted-foreground))' }} />;
-    }
-  };
-
   if (loading) {
     return (
       <div className={`card ${className}`}>
@@ -94,29 +74,6 @@ export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ cl
   return (
     <div className={`card ${className}`}>
       <div className="p-8">
-        <div className="flex items-start justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)' }}>
-              <Shield className="h-6 w-6" style={{ color: 'hsl(var(--primary-gold))' }} />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Organization resilience score
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Real-time analysis powered by Axon Engine
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ backgroundColor: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
-            {getTrendIcon()}
-            <span className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-              {trend === 'up' ? 'Improving' : trend === 'down' ? 'Declining' : 'Stable'}
-            </span>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="flex flex-col items-center justify-center">
             <div className="relative w-48 h-48">
