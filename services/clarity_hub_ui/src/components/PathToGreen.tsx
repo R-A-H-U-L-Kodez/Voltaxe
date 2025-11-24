@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Target, CheckCircle, AlertTriangle, ArrowRight, Award } from 'lucide-react';
+import { resilienceService, endpointService } from '../services/api';
 
 interface Recommendation {
   id: number;
@@ -11,69 +12,179 @@ interface Recommendation {
   completed: boolean;
 }
 
-export const PathToGreen = () => {
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([
-    {
-      id: 1,
-      title: 'Update critical vulnerabilities on endpoint-01',
-      description: '3 critical CVEs detected. Apply security patches to improve score by 8 points.',
-      impact: 'high',
-      points: 8,
-      priority: 1,
-      completed: false,
-    },
-    {
-      id: 2,
-      title: 'Enable firewall on 2 endpoints',
-      description: 'Endpoints endpoint-05 and endpoint-12 have firewall disabled. Enabling will add 5 points.',
-      impact: 'high',
-      points: 5,
-      priority: 2,
-      completed: false,
-    },
-    {
-      id: 3,
-      title: 'Resolve 4 unresolved security alerts',
-      description: 'High-priority alerts require attention. Resolution will improve score by 4 points.',
-      impact: 'medium',
-      points: 4,
-      priority: 3,
-      completed: false,
-    },
-    {
-      id: 4,
-      title: 'Update antivirus definitions',
-      description: '5 endpoints have outdated AV signatures. Update to gain 3 points.',
-      impact: 'medium',
-      points: 3,
-      priority: 4,
-      completed: false,
-    },
-    {
-      id: 5,
-      title: 'Isolate compromised device (endpoint-08)',
-      description: 'Suspicious activity detected. Isolating will prevent score deduction.',
-      impact: 'high',
-      points: 6,
-      priority: 5,
-      completed: false,
-    },
-    {
-      id: 6,
-      title: 'Enable automatic updates',
-      description: 'Configure auto-updates on 3 endpoints to maintain security posture. +2 points.',
-      impact: 'low',
-      points: 2,
-      priority: 6,
-      completed: false,
-    },
-  ]);
+interface PathToGreenProps {
+  onScoreChange?: (bonusPoints: number) => void;
+  onPriorityActionsUpdate?: (count: number) => void;
+}
 
-  const currentScore = 82;
+export const PathToGreen: React.FC<PathToGreenProps> = ({ onScoreChange, onPriorityActionsUpdate }) => {
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [currentScore, setCurrentScore] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [dashboard, endpoints] = await Promise.all([
+          resilienceService.getResilienceDashboard(),
+          endpointService.getAllEndpoints()
+        ]);
+        
+        // Set current score from dashboard
+        setCurrentScore(Math.round(dashboard.summary.average_score));
+        
+        // Generate recommendations based on real data
+        const generatedRecommendations: Recommendation[] = [];
+        let priorityCounter = 1;
+
+        // Check for critical/high vulnerabilities
+        const criticalCount = dashboard.summary.risk_distribution.CRITICAL || 0;
+        const highCount = dashboard.summary.risk_distribution.HIGH || 0;
+        
+        if (criticalCount > 0) {
+          generatedRecommendations.push({
+            id: priorityCounter++,
+            title: `Patch ${criticalCount} critical vulnerabilit${criticalCount > 1 ? 'ies' : 'y'}`,
+            description: `${criticalCount} critical CVE${criticalCount > 1 ? 's' : ''} detected across your endpoints. Apply security patches immediately.`,
+            impact: 'high',
+            points: Math.min(criticalCount * 3, 15),
+            priority: priorityCounter - 1,
+            completed: false,
+          });
+        }
+
+        if (highCount > 0) {
+          generatedRecommendations.push({
+            id: priorityCounter++,
+            title: `Remediate ${highCount} high-risk vulnerabilit${highCount > 1 ? 'ies' : 'y'}`,
+            description: `${highCount} high-severity CVE${highCount > 1 ? 's' : ''} require attention. Update affected systems to improve security posture.`,
+            impact: 'high',
+            points: Math.min(highCount * 2, 10),
+            priority: priorityCounter - 1,
+            completed: false,
+          });
+        }
+
+        // Check for offline/at-risk endpoints
+        const offlineEndpoints = endpoints.filter(e => e.status === 'offline');
+        if (offlineEndpoints.length > 0) {
+          generatedRecommendations.push({
+            id: priorityCounter++,
+            title: `Restore ${offlineEndpoints.length} offline endpoint${offlineEndpoints.length > 1 ? 's' : ''}`,
+            description: `${offlineEndpoints.length} endpoint${offlineEndpoints.length > 1 ? 's are' : ' is'} currently offline or unreachable. Restore connectivity to improve monitoring coverage.`,
+            impact: 'high',
+            points: offlineEndpoints.length * 2,
+            priority: priorityCounter - 1,
+            completed: false,
+          });
+        }
+
+        // Check for compromised endpoints
+        const compromisedEndpoints = endpoints.filter(e => e.risk_level === 'CRITICAL' && e.status === 'online');
+        if (compromisedEndpoints.length > 0) {
+          generatedRecommendations.push({
+            id: priorityCounter++,
+            title: `Isolate ${compromisedEndpoints.length} high-risk endpoint${compromisedEndpoints.length > 1 ? 's' : ''}`,
+            description: `${compromisedEndpoints.length} endpoint${compromisedEndpoints.length > 1 ? 's show' : ' shows'} critical risk indicators. Isolate to prevent lateral movement.`,
+            impact: 'high',
+            points: compromisedEndpoints.length * 4,
+            priority: priorityCounter - 1,
+            completed: false,
+          });
+        }
+
+        // Check for medium risk
+        const mediumCount = dashboard.summary.risk_distribution.MEDIUM || 0;
+        if (mediumCount > 0 && generatedRecommendations.length < 6) {
+          generatedRecommendations.push({
+            id: priorityCounter++,
+            title: `Address ${mediumCount} medium-risk vulnerabilit${mediumCount > 1 ? 'ies' : 'y'}`,
+            description: `${mediumCount} medium-severity finding${mediumCount > 1 ? 's' : ''} detected. Apply patches during next maintenance window.`,
+            impact: 'medium',
+            points: Math.min(mediumCount, 5),
+            priority: priorityCounter - 1,
+            completed: false,
+          });
+        }
+
+        // Check for endpoints needing updates
+        const outdatedEndpoints = endpoints.filter(e => 
+          e.last_seen && (new Date().getTime() - new Date(e.last_seen).getTime()) > 7 * 24 * 60 * 60 * 1000
+        );
+        if (outdatedEndpoints.length > 0 && generatedRecommendations.length < 6) {
+          generatedRecommendations.push({
+            id: priorityCounter++,
+            title: `Update ${outdatedEndpoints.length} endpoint${outdatedEndpoints.length > 1 ? 's' : ''}`,
+            description: `${outdatedEndpoints.length} endpoint${outdatedEndpoints.length > 1 ? 's have' : ' has'} not checked in recently. Enable automatic updates and verify agent status.`,
+            impact: 'medium',
+            points: Math.min(outdatedEndpoints.length, 4),
+            priority: priorityCounter - 1,
+            completed: false,
+          });
+        }
+
+        // Add low priority recommendations to reach 100 if needed
+        const lowCount = dashboard.summary.risk_distribution.LOW || 0;
+        if (lowCount > 0 && generatedRecommendations.length < 6 && currentScore < 90) {
+          generatedRecommendations.push({
+            id: priorityCounter++,
+            title: `Resolve ${lowCount} low-risk finding${lowCount > 1 ? 's' : ''}`,
+            description: `${lowCount} informational finding${lowCount > 1 ? 's' : ''} detected. Address to achieve perfect security score.`,
+            impact: 'low',
+            points: Math.min(lowCount, 3),
+            priority: priorityCounter - 1,
+            completed: false,
+          });
+        }
+
+        // If no recommendations, add a maintenance suggestion
+        if (generatedRecommendations.length === 0) {
+          generatedRecommendations.push({
+            id: 1,
+            title: 'Maintain current security posture',
+            description: 'Continue monitoring and applying regular security updates to maintain your excellent security score.',
+            impact: 'low',
+            points: 0,
+            priority: 1,
+            completed: false,
+          });
+        }
+
+        setRecommendations(generatedRecommendations);
+        
+        // Calculate and report priority actions count (high impact + not completed)
+        const priorityCount = generatedRecommendations.filter(r => r.impact === 'high' && !r.completed).length;
+        if (onPriorityActionsUpdate) {
+          onPriorityActionsUpdate(priorityCount);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Path to Green data:', error);
+        // Fallback to empty state
+        setRecommendations([]);
+        setCurrentScore(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Calculate scores dynamically based on completed recommendations
+  const completedPoints = recommendations
+    .filter(r => r.completed)
+    .reduce((sum, r) => sum + r.points, 0);
+  
+  const displayScore = Math.min(100, currentScore + completedPoints);
+  
   const totalPossiblePoints = recommendations
     .filter(r => !r.completed)
     .reduce((sum, r) => sum + r.points, 0);
-  const potentialScore = Math.min(100, currentScore + totalPossiblePoints);
+  
+  const potentialScore = Math.min(100, displayScore + totalPossiblePoints);
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
@@ -94,15 +205,61 @@ export const PathToGreen = () => {
   };
 
   const toggleComplete = (id: number) => {
-    setRecommendations(prev =>
-      prev.map(rec =>
-        rec.id === id ? { ...rec, completed: !rec.completed } : rec
-      )
-    );
+    setRecommendations(prev => {
+      const updated = prev.map(rec => {
+        if (rec.id === id) {
+          const newCompleted = !rec.completed;
+          
+          // Show visual feedback
+          if (newCompleted) {
+            console.log(`✓ Completed: ${rec.title} (+${rec.points} points)`);
+          } else {
+            console.log(`↩ Unchecked: ${rec.title} (-${rec.points} points)`);
+          }
+          
+          return { ...rec, completed: newCompleted };
+        }
+        return rec;
+      });
+      
+      // Calculate total completed points
+      const totalCompleted = updated.filter(r => r.completed).reduce((sum, r) => sum + r.points, 0);
+      const newDisplayScore = Math.min(100, currentScore + totalCompleted);
+      console.log(`Current Score: ${currentScore} + ${totalCompleted} completed points = ${newDisplayScore}`);
+      console.log(`Progress: ${newDisplayScore}/100 (${Math.round((newDisplayScore/100)*100)}%)`);
+      
+      // Notify parent component about score change
+      if (onScoreChange) {
+        onScoreChange(totalCompleted);
+        console.log(`📊 Notified parent: +${totalCompleted} bonus points`);
+      }
+      
+      // Calculate and report priority actions count (high impact + not completed)
+      const priorityCount = updated.filter(r => r.impact === 'high' && !r.completed).length;
+      if (onPriorityActionsUpdate) {
+        onPriorityActionsUpdate(priorityCount);
+        console.log(`⚠️  Priority actions: ${priorityCount}`);
+      }
+      
+      return updated;
+    });
   };
 
   const pendingRecommendations = recommendations.filter(r => !r.completed);
   const completedRecommendations = recommendations.filter(r => r.completed);
+
+  if (loading) {
+    return (
+      <div className="card p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite] mb-4" style={{ color: 'hsl(var(--primary-gold))' }} />
+            <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Loading recommendations...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card p-6">
@@ -122,8 +279,15 @@ export const PathToGreen = () => {
             <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
               Current Score
             </p>
-            <p className="text-2xl font-bold" style={{ color: 'hsl(var(--primary-gold))' }}>
-              {currentScore}
+            <p className="text-2xl font-bold transition-all duration-500" style={{ 
+              color: completedPoints > 0 ? 'hsl(var(--success))' : 'hsl(var(--primary-gold))'
+            }}>
+              {displayScore}
+              {completedPoints > 0 && (
+                <span className="text-sm ml-1 text-green-500">
+                  (+{completedPoints})
+                </span>
+              )}
             </p>
           </div>
           <ArrowRight className="h-5 w-5" style={{ color: 'hsl(var(--muted-foreground))' }} />
@@ -142,25 +306,50 @@ export const PathToGreen = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
-            Progress to Grade A (90+)
+            Progress to Perfect Score (100)
           </span>
-          <span className="text-sm font-medium" style={{ color: 'hsl(var(--success))' }}>
-            {Math.min(potentialScore, 100)}/100
+          <span className="text-sm font-medium transition-all duration-500" style={{ 
+            color: displayScore >= 90 ? 'hsl(var(--success))' : 'hsl(var(--primary-gold))'
+          }}>
+            {displayScore}/100 {displayScore >= 90 && '✓ Grade A'}
           </span>
         </div>
-        <div className="w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'hsl(var(--muted))' }}>
+        <div className="w-full h-3 rounded-full overflow-hidden relative" style={{ backgroundColor: 'hsl(var(--muted))' }}>
+          {/* Base score (from API) */}
           <div
-            className="h-full rounded-full transition-all duration-500"
+            className="h-full absolute left-0 top-0 transition-all duration-500"
             style={{
-              width: `${potentialScore}%`,
-              backgroundColor: potentialScore >= 90 ? 'hsl(var(--success))' : 'hsl(var(--primary-gold))',
+              width: `${currentScore}%`,
+              backgroundColor: 'hsl(var(--primary-gold) / 0.5)',
             }}
           />
+          {/* Completed tasks bonus */}
+          {completedPoints > 0 && (
+            <div
+              className="h-full absolute left-0 top-0 transition-all duration-500"
+              style={{
+                width: `${displayScore}%`,
+                backgroundColor: displayScore >= 90 ? 'hsl(var(--success))' : 'hsl(var(--primary-gold))',
+              }}
+            />
+          )}
+          {/* No completed tasks - show base score */}
+          {completedPoints === 0 && (
+            <div
+              className="h-full absolute left-0 top-0 transition-all duration-500"
+              style={{
+                width: `${currentScore}%`,
+                backgroundColor: currentScore >= 90 ? 'hsl(var(--success))' : 'hsl(var(--primary-gold))',
+              }}
+            />
+          )}
         </div>
-        <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-          {potentialScore >= 90 
-            ? '🎉 You can achieve Grade A by completing these recommendations!'
-            : `Complete ${Math.ceil((90 - currentScore) / 2)} more items to reach Grade A`
+        <p className="text-xs mt-2 transition-all duration-500" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          {displayScore >= 90 
+            ? '🎉 Excellent! You have achieved Grade A security posture!'
+            : completedPoints > 0
+            ? `Great progress! Complete ${pendingRecommendations.length} more item${pendingRecommendations.length > 1 ? 's' : ''} to reach ${potentialScore}/100`
+            : `Complete ${Math.min(pendingRecommendations.length, 3)} high-priority items to reach Grade A`
           }
         </p>
       </div>

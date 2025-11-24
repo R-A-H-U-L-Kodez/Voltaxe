@@ -5,9 +5,10 @@ import { ResilienceDashboard } from '../types';
 
 interface ResilienceScoreWidgetProps {
   className?: string;
+  scoreBonus?: number; // Bonus points from completed Path to Green tasks
 }
 
-export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ className }) => {
+export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ className, scoreBonus = 0 }) => {
   const [dashboard, setDashboard] = useState<ResilienceDashboard | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -66,15 +67,18 @@ export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ cl
     return null;
   }
 
-  const score = dashboard.summary.average_score;
+  // Calculate actual score with bonus points
+  const baseScore = dashboard.summary.average_score;
+  const score = Math.min(100, baseScore + scoreBonus);
   const scoreColor = getScoreColor(score);
   const circumference = 2 * Math.PI * 90;
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
   return (
     <div className={`card ${className}`}>
-      <div className="p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Score Circle - Left Column */}
           <div className="flex flex-col items-center justify-center">
             <div className="relative w-48 h-48">
               <svg className="w-full h-full transform -rotate-90">
@@ -100,8 +104,13 @@ export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ cl
               </svg>
 
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <div className="text-5xl font-bold" style={{ color: scoreColor }}>
+                <div className="text-5xl font-bold flex items-center gap-2" style={{ color: scoreColor }}>
                   {Math.round(score)}
+                  {scoreBonus > 0 && (
+                    <span className="text-2xl font-semibold" style={{ color: 'hsl(var(--success))' }}>
+                      +{scoreBonus}
+                    </span>
+                  )}
                 </div>
                 <div className="text-lg font-semibold text-muted-foreground">
                   {getScoreGrade(score)}
@@ -113,7 +122,8 @@ export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ cl
             </div>
           </div>
 
-          <div className="lg:col-span-2 flex flex-col justify-between space-y-6">
+          {/* Info Cards - Right 2 Columns */}
+          <div className="lg:col-span-2 flex flex-col justify-between space-y-4">
             <div className="rounded-lg p-5" style={{ backgroundColor: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
               <h3 className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wide">
                 Security posture status
@@ -131,28 +141,28 @@ export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ cl
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg p-5" style={{ backgroundColor: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                   Endpoints monitored
                 </p>
-                <p className="text-3xl font-bold" style={{ color: 'hsl(var(--primary-gold))' }}>
+                <p className="text-2xl font-bold" style={{ color: 'hsl(var(--primary-gold))' }}>
                   {dashboard.summary.total_endpoints}
                 </p>
               </div>
 
-              <div className="rounded-lg p-5" style={{ backgroundColor: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                   High risk systems
                 </p>
-                <p className="text-3xl font-bold" style={{ color: 'hsl(var(--danger))' }}>
+                <p className="text-2xl font-bold" style={{ color: 'hsl(var(--danger))' }}>
                   {dashboard.summary.risk_distribution.HIGH + dashboard.summary.risk_distribution.CRITICAL}
                 </p>
               </div>
             </div>
 
-            <div className="rounded-lg p-5" style={{ backgroundColor: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
-              <div className="flex items-center justify-between mb-4">
+            <div className="rounded-lg p-4" style={{ backgroundColor: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
+              <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Risk distribution
                 </p>
@@ -161,7 +171,7 @@ export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ cl
                 </p>
               </div>
 
-              <div className="flex h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'hsl(var(--background))' }}>
+              <div className="flex h-2 rounded-full overflow-hidden mb-3" style={{ backgroundColor: 'hsl(var(--background))' }}>
                 {dashboard.summary.total_endpoints > 0 && (
                   <>
                     <div
@@ -192,44 +202,44 @@ export const ResilienceScoreWidget: React.FC<ResilienceScoreWidgetProps> = ({ cl
                 )}
               </div>
 
-              <div className="grid grid-cols-4 gap-3 mt-4">
+              <div className="grid grid-cols-4 gap-2">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(var(--success))' }} />
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--success))' }} />
                     <span className="text-xs font-medium text-muted-foreground">Low</span>
                   </div>
-                  <div className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{dashboard.summary.risk_distribution.LOW}</div>
+                  <div className="text-sm font-bold ml-4" style={{ color: 'hsl(var(--foreground))' }}>{dashboard.summary.risk_distribution.LOW}</div>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(var(--warning))' }} />
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--warning))' }} />
                     <span className="text-xs font-medium text-muted-foreground">Medium</span>
                   </div>
-                  <div className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{dashboard.summary.risk_distribution.MEDIUM}</div>
+                  <div className="text-sm font-bold ml-4" style={{ color: 'hsl(var(--foreground))' }}>{dashboard.summary.risk_distribution.MEDIUM}</div>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(var(--accent-gold))' }} />
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--accent-gold))' }} />
                     <span className="text-xs font-medium text-muted-foreground">High</span>
                   </div>
-                  <div className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{dashboard.summary.risk_distribution.HIGH}</div>
+                  <div className="text-sm font-bold ml-4" style={{ color: 'hsl(var(--foreground))' }}>{dashboard.summary.risk_distribution.HIGH}</div>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(var(--danger))' }} />
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--danger))' }} />
                     <span className="text-xs font-medium text-muted-foreground">Critical</span>
                   </div>
-                  <div className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{dashboard.summary.risk_distribution.CRITICAL}</div>
+                  <div className="text-sm font-bold ml-4" style={{ color: 'hsl(var(--foreground))' }}>{dashboard.summary.risk_distribution.CRITICAL}</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 pt-6" style={{ borderTop: '1px solid hsl(var(--border))' }}>
-          <div className="flex items-center justify-between text-sm">
+        <div className="mt-5 pt-5" style={{ borderTop: '1px solid hsl(var(--border))' }}>
+          <div className="flex items-center justify-between text-xs">
             <p className="text-muted-foreground">
-              Maintain a score above <span className="font-bold" style={{ color: 'hsl(var(--foreground))' }}>80</span> for optimal security resilience
+              Maintain a score above <span className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>80</span> for optimal security resilience
             </p>
             <p className="text-muted-foreground">
               Last updated: <span className="font-medium">Just now</span>
