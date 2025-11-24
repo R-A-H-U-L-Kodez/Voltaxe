@@ -885,6 +885,22 @@ def get_vulnerability_stats(
         raise HTTPException(status_code=500, detail=f"Error fetching statistics: {str(e)}")
 
 
+@app.get("/cve/stats")
+def get_cve_stats_alias(
+    db: Session = Depends(get_db), 
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Alias endpoint for /vulnerabilities/stats/summary.
+    Returns CVE database statistics and summary.
+    
+    This endpoint provides a shorter URL path for convenience.
+    """
+    print(f"\n[API] ---> CVE stats requested via /cve/stats alias by {current_user.get('email', 'unknown')} [API]")
+    # Call the main stats function
+    return get_vulnerability_stats(db=db, current_user=current_user)
+
+
 @app.get("/vulnerabilities/search")
 def search_vulnerabilities(
     query: Optional[str] = None,

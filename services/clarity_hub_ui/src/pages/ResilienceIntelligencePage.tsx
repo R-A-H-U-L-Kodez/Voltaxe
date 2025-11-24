@@ -45,15 +45,6 @@ export const ResilienceIntelligencePage = () => {
     console.log(`⚠️  Priority actions count: ${count}`);
   };
 
-  const getScoreStatus = () => {
-    if (!dashboard) return 'Loading...';
-    const score = dashboard.summary.average_score;
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    return 'At Risk';
-  };
-
   const getRiskLevel = () => {
     if (!dashboard) return 'Calculating...';
     const criticalCount = dashboard.summary.risk_distribution.CRITICAL || 0;
