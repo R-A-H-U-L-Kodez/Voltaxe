@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard, Incident, IncidentStats, Endpoint, FleetMetrics, EndpointScanResult, EndpointAction } from '../types';
+import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard, Incident, IncidentStats, Endpoint, FleetMetrics, EndpointAction } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -10,14 +10,14 @@ const api = axios.create({
 
 // Add request interceptor to include auth token
 api.interceptors.request.use(
-  (config) => {
+  (config: any) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
+  (error: any) => {
     return Promise.reject(error);
   }
 );
