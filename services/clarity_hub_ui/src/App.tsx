@@ -5,7 +5,7 @@ import RegisterPage from './pages/RegisterPage';
 import { ResilienceIntelligencePage } from './pages/ResilienceIntelligencePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { SnapshotsPage } from './pages/SnapshotsPage';
-import { MainDashboard } from './pages/MainDashboard';
+import { CommandCenterPage } from './pages/CommandCenterPage';
 import { AlertsPage } from './pages/AlertsPage';
 import { EndpointDetailPage } from './pages/EndpointDetailPage';
 import { LiveEventFeedPage } from './pages/LiveEventFeedPage';
@@ -28,7 +28,7 @@ function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <MainDashboard />
+                <CommandCenterPage />
               </ProtectedRoute>
             }
           />
