@@ -20,5 +20,15 @@
     "tailwindCSS.includeLanguages": {
         "typescript": "typescript",
         "typescriptreact": "typescriptreact"
-    }
+    },
+    "files.exclude": {
+        "**/Voltaxe/Voltaxe": true,
+        "**/Voltaxe_backup_old": true
+    },
+    "search.exclude": {
+        "**/Voltaxe/Voltaxe": true,
+        "**/Voltaxe_backup_old": true
+    },
+    "typescript.tsdk": "services/clarity_hub_ui/node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true
 }

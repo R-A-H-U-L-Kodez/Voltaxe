@@ -25,3 +25,4 @@ env/
 dist/
 build/
 *.egg-info/
+Voltaxe_backup_old/

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { EventListItem } from '../components/EventListItem';
 import { EventDetailModal } from '../components/EventDetailModal';

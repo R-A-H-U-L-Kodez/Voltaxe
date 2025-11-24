@@ -43,7 +43,7 @@ export const Sidebar = () => {
           to="/"
           end
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer cursor-pointer ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold glow-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
