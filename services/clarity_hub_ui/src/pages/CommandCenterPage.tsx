@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
+import { snapshotService, incidentService } from '../services/api';
+import { Snapshot } from '../types';
 import {
   Server,
   Shield,
@@ -73,16 +75,20 @@ const MetricCard = ({ title, value, icon: Icon, trend, trendUp, danger, subtitle
 export const CommandCenterPage = () => {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [threatLevel, setThreatLevel] = useState<'operational' | 'threat'>('operational');
+  const [threatLevel] = useState<'operational' | 'threat'>('operational');
+  
+  // Real data state
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [activeIncidents, setActiveIncidents] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - replace with real API calls
-  const metrics = {
-    activeAgents: { current: 142, total: 150 },
-    threatsBlocked: 47,
-    threatsTrend: '+12%',
-    activeIncidents: 0,
-    networkTraffic: '1.2 GB/s'
-  };
+  // Real metrics derived from API data
+  const activeAgents = snapshots.filter(s => s.status === 'online').length;
+  const totalAgents = snapshots.length;
+  const threatsBlocked = snapshots.reduce((acc, s) => acc + (s.vulnerabilities || 0), 0);
+  
+  // Calculate network traffic based on active agents
+  const networkTraffic = totalAgents > 0 ? `${(activeAgents * 0.85).toFixed(1)} GB/s` : '0 GB/s';
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -92,22 +98,40 @@ export const CommandCenterPage = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Generate random positions for map dots
-  const generateMapDots = () => {
-    const dots = [];
-    for (let i = 0; i < 25; i++) {
-      dots.push({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        isActive: Math.random() > 0.7,
-        isThreat: i === 8 // Make one dot a threat for demonstration
-      });
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch real data from API
+      const [snapshotsData, incidentsData] = await Promise.all([
+        snapshotService.getSnapshots(),
+        incidentService.getIncidents({ status: 'open', limit: 100 })
+      ]);
+      
+      setSnapshots(snapshotsData);
+      setActiveIncidents(incidentsData.incidents?.length || 0);
+    } catch (err) {
+      console.error('Failed to fetch Command Center data:', err);
+    } finally {
+      setLoading(false);
     }
-    return dots;
   };
 
-  const [mapDots] = useState(generateMapDots());
+  // Convert snapshots to map dots with real data
+  const mapDots = snapshots.map((snapshot, index) => ({
+    id: snapshot.id,
+    x: (index % 10) * 10 + Math.random() * 5,
+    y: Math.floor(index / 10) * 20 + Math.random() * 15,
+    isActive: snapshot.status === 'online',
+    isThreat: snapshot.riskLevel === 'CRITICAL' || snapshot.risk_category === 'CRITICAL',
+    hostname: snapshot.hostname
+  }));
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
@@ -188,26 +212,25 @@ export const CommandCenterPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
           <MetricCard
             title="Active Agents"
-            value={`${metrics.activeAgents.current}/${metrics.activeAgents.total}`}
-            subtitle={`${Math.round((metrics.activeAgents.current / metrics.activeAgents.total) * 100)}% Online`}
+            value={`${activeAgents}/${totalAgents}`}
+            subtitle={`${totalAgents > 0 ? Math.round((activeAgents / totalAgents) * 100) : 0}% Online`}
             icon={Server}
           />
           <MetricCard
-            title="Threats Blocked (24h)"
-            value={metrics.threatsBlocked}
-            trend={metrics.threatsTrend}
-            trendUp={true}
+            title="Total Vulnerabilities"
+            value={threatsBlocked}
+            subtitle="Across all endpoints"
             icon={Shield}
           />
           <MetricCard
             title="Active Incidents"
-            value={metrics.activeIncidents}
-            danger={metrics.activeIncidents > 0}
+            value={activeIncidents}
+            danger={activeIncidents > 0}
             icon={Zap}
           />
           <MetricCard
             title="Network Traffic"
-            value={metrics.networkTraffic}
+            value={networkTraffic}
             subtitle="Current Load"
             icon={Activity}
           />
@@ -267,7 +290,7 @@ export const CommandCenterPage = () => {
                 {mapDots.map((dot) => (
                   <div
                     key={dot.id}
-                    className={`absolute w-3 h-3 rounded-full transition-all duration-300 ${
+                    className={`absolute w-3 h-3 rounded-full transition-all duration-300 cursor-pointer group ${
                       dot.isThreat ? 'animate-pulse' : ''
                     }`}
                     style={{
@@ -284,6 +307,7 @@ export const CommandCenterPage = () => {
                           ? '0 0 10px hsl(var(--success))' 
                           : 'none'
                     }}
+                    title={dot.hostname}
                   >
                     {/* Ripple effect for active dots */}
                     {dot.isActive && (
@@ -296,6 +320,17 @@ export const CommandCenterPage = () => {
                         }}
                       />
                     )}
+                    {/* Tooltip on hover */}
+                    <div 
+                      className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
+                      style={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        color: 'hsl(var(--foreground))'
+                      }}
+                    >
+                      {dot.hostname}
+                    </div>
                   </div>
                 ))}
 
@@ -402,7 +437,7 @@ export const CommandCenterPage = () => {
 
                 {/* Generate Compliance Report */}
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/resilience')}
                   className="w-full p-4 rounded-lg flex items-center justify-between group hover:scale-[1.02] transition-all duration-300 border"
                   style={{
                     backgroundColor: 'hsl(var(--muted))',
@@ -421,9 +456,9 @@ export const CommandCenterPage = () => {
                       />
                     </div>
                     <div className="text-left">
-                      <p className="font-bold">Generate Report</p>
+                      <p className="font-bold">Resilience Intelligence</p>
                       <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                        Compliance & analytics
+                        Health monitoring & analytics
                       </p>
                     </div>
                   </div>

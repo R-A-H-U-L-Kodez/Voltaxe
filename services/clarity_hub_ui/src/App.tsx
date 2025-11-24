@@ -3,7 +3,6 @@ import { AuthProvider } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import { ResilienceIntelligencePage } from './pages/ResilienceIntelligencePage';
-import { DashboardPage } from './pages/DashboardPage';
 import { SnapshotsPage } from './pages/SnapshotsPage';
 import { CommandCenterPage } from './pages/CommandCenterPage';
 import { AlertsPage } from './pages/AlertsPage';
@@ -53,14 +52,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <SnapshotsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
               </ProtectedRoute>
             }
           />
