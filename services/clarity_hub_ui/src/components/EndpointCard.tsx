@@ -86,7 +86,7 @@ export const EndpointCard = ({ endpoint, onQuickScan, onIsolate, onUnisolate }: 
 
   const handleViewDetails = () => {
     setShowMenu(false);
-    navigate(`/fleet/endpoint/${endpoint.id}`);
+    navigate(`/fleet/endpoint/${endpoint.hostname}`);
   };
 
   const handleQuickScan = () => {

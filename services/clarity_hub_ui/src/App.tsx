@@ -96,7 +96,7 @@ function App() {
             }
           />
           <Route
-            path="/fleet/endpoint/:endpointId"
+            path="/fleet/endpoint/:hostname"
             element={
               <ProtectedRoute>
                 <EndpointDetailPage />

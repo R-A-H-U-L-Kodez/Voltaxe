@@ -93,13 +93,18 @@ export const endpointService = {
     return response.data;
   },
   
-  quickScan: async (endpointId: string, scanType: 'vulnerability' | 'malware' | 'full' = 'vulnerability'): Promise<EndpointScanResult> => {
-    const response = await api.post<EndpointScanResult>(`/fleet/endpoints/${endpointId}/scan`, { scan_type: scanType });
+  quickScan: async (hostname: string, scanType: 'vulnerability' | 'malware' | 'full' = 'vulnerability'): Promise<{ status: string; message: string }> => {
+    const response = await api.post<{ status: string; message: string }>(`/endpoints/${hostname}/scan`, { scan_type: scanType });
     return response.data;
   },
   
   isolateEndpointById: async (endpointId: string): Promise<EndpointAction> => {
     const response = await api.post<EndpointAction>(`/fleet/endpoints/${endpointId}/isolate`);
+    return response.data;
+  },
+  
+  restoreEndpoint: async (hostname: string): Promise<{ status: string; message: string }> => {
+    const response = await api.post<{ status: string; message: string }>(`/endpoints/${hostname}/restore`);
     return response.data;
   },
   

@@ -77,10 +77,12 @@ export const FleetLiveView = () => {
   };
 
   const handleQuickScan = async (endpointId: string) => {
+    const endpoint = endpoints.find((e) => e.id === endpointId);
+    if (!endpoint) return;
     setActionMessage(null);
     try {
-      await endpointService.quickScan(endpointId);
-      setActionMessage({ type: 'success', message: 'Scan initiated successfully' });
+      await endpointService.quickScan(endpoint.hostname);
+      setActionMessage({ type: 'success', message: `Scan initiated for ${endpoint.hostname}` });
       setTimeout(() => fetchFleetData(true), 2000);
     } catch (err: any) {
       setActionMessage({ type: 'error', message: 'Failed to initiate scan' });
@@ -96,7 +98,7 @@ export const FleetLiveView = () => {
     if (!window.confirm(confirmMsg)) return;
     setActionMessage(null);
     try {
-      await endpointService.isolateEndpointById(endpointId);
+      await endpointService.isolateEndpoint(endpoint.hostname);
       setActionMessage({ type: 'success', message: `${endpoint.hostname} isolated successfully` });
       fetchFleetData(true);
     } catch (err: any) {
@@ -113,7 +115,7 @@ export const FleetLiveView = () => {
     if (!window.confirm(confirmMsg)) return;
     setActionMessage(null);
     try {
-      await endpointService.unisolateEndpoint(endpointId);
+      await endpointService.restoreEndpoint(endpoint.hostname);
       setActionMessage({ type: 'success', message: `${endpoint.hostname} isolation removed` });
       fetchFleetData(true);
     } catch (err: any) {
