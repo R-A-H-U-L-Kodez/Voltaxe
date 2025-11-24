@@ -20,7 +20,7 @@ export const Sidebar = () => {
   const { logout } = useAuth();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col overflow-y-auto">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col overflow-y-auto z-40">
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 gradient-gold rounded-lg flex items-center justify-center">
@@ -43,7 +43,7 @@ export const Sidebar = () => {
           to="/"
           end
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold glow-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -61,7 +61,7 @@ export const Sidebar = () => {
         <NavLink
           to="/resilience"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold glow-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -79,7 +79,7 @@ export const Sidebar = () => {
         <NavLink
           to="/fleet"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -97,7 +97,7 @@ export const Sidebar = () => {
         <NavLink
           to="/live-events"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -115,7 +115,7 @@ export const Sidebar = () => {
         <NavLink
           to="/alerts"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -133,7 +133,7 @@ export const Sidebar = () => {
         <NavLink
           to="/incidents"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -151,7 +151,7 @@ export const Sidebar = () => {
         <NavLink
           to="/malware-scanner"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -169,7 +169,7 @@ export const Sidebar = () => {
         <NavLink
           to="/team"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -187,7 +187,7 @@ export const Sidebar = () => {
         <NavLink
           to="/add-endpoint"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -205,7 +205,7 @@ export const Sidebar = () => {
         <NavLink
           to="/settings"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -223,7 +223,7 @@ export const Sidebar = () => {
         <NavLink
           to="/audit-logs"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
               isActive
                 ? 'bg-primary-gold/10 text-primary-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
@@ -242,7 +242,7 @@ export const Sidebar = () => {
       <div className="p-4 border-t border-border">
         <button
           onClick={logout}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg w-full text-foreground hover:text-accent-gold hover:bg-white/5 transition-smooth"
+          className="flex items-center gap-3 px-4 py-3 rounded-lg w-full text-foreground hover:text-accent-gold hover:bg-white/5 transition-smooth cursor-pointer"
         >
           <LogOut size={20} />
           <span>Logout</span>
