@@ -210,37 +210,4 @@ export const authService = {
   },
 };
 
-// Team Service
-export interface TeamMember {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  status: string;
-  invited_at: string;
-  last_active?: string;
-  invited_by: string;
-}
-
-export const teamService = {
-  getMembers: async (): Promise<TeamMember[]> => {
-    const response = await api.get<TeamMember[]>('/team/members');
-    return response.data;
-  },
-  
-  inviteMember: async (data: { email: string; name: string; role: string }): Promise<TeamMember> => {
-    const response = await api.post<TeamMember>('/team/invite', data);
-    return response.data;
-  },
-  
-  updateMember: async (memberId: string, data: { role?: string; status?: string }): Promise<TeamMember> => {
-    const response = await api.put<TeamMember>(`/team/members/${memberId}`, data);
-    return response.data;
-  },
-  
-  deleteMember: async (memberId: string): Promise<void> => {
-    await api.delete(`/team/members/${memberId}`);
-  },
-};
-
 export default api;
