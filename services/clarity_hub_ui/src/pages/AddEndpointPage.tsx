@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { 
   Download, 
@@ -6,14 +6,19 @@ import {
   Server, 
   CheckCircle, 
   Copy, 
-  Terminal,
-  AlertCircle,
+  Terminal, 
+  AlertCircle, 
   Loader,
   ChevronRight,
   Apple,
   Monitor,
-  HardDrive
+  HardDrive,
+  Check,
+  PlusCircle
 } from 'lucide-react';
+
+type OSType = 'linux' | 'macos' | 'windows';
+type StepType = 1 | 2 | 3 | 4;
 
 interface DeploymentConfig {
   agentId: string;
@@ -23,142 +28,197 @@ interface DeploymentConfig {
   timestamp: string;
 }
 
-type OS = 'linux' | 'macos' | 'windows';
-type Step = 1 | 2 | 3 | 4;
+interface ProgressStepProps {
+  step: number;
+  title: string;
+  isActive: boolean;
+  isCompleted: boolean;
+  isLast?: boolean;
+}
 
-export const AddEndpointPage = () => {
-  const [currentStep, setCurrentStep] = useState<Step>(1);
-  const [selectedOS, setSelectedOS] = useState<OS>('linux');
-  const [endpointName, setEndpointName] = useState('');
+const ProgressStep: React.FC<ProgressStepProps> = ({ step, title, isActive, isCompleted, isLast = false }) => {
+  return (
+    <div className="flex items-center">
+      <div className="flex flex-col items-center">
+        <div
+          className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold transition-all duration-300 ${
+            isCompleted
+              ? 'text-gray-900 shadow-lg'
+              : isActive
+              ? 'border-2'
+              : 'bg-gray-800 text-gray-500 border-2 border-gray-700'
+          }`}
+          style={{
+            backgroundColor: isCompleted 
+              ? 'hsl(var(--primary-gold))' 
+              : isActive 
+              ? 'hsl(var(--primary-gold) / 0.2)' 
+              : undefined,
+            borderColor: isActive ? 'hsl(var(--primary-gold))' : undefined,
+            color: isActive ? 'hsl(var(--primary-gold))' : undefined,
+            boxShadow: isCompleted ? '0 0 20px hsl(var(--primary-gold) / 0.5)' : undefined
+          }}
+        >
+          {isCompleted ? <Check size={24} /> : step}
+        </div>
+        <p
+          className={`mt-2 text-sm font-medium transition-colors duration-300 ${
+            isCompleted ? 'text-gray-300' : 'text-gray-500'
+          }`}
+          style={{
+            color: isActive ? 'hsl(var(--primary-gold))' : undefined
+          }}
+        >
+          {title}
+        </p>
+      </div>
+      {!isLast && (
+        <div
+          className="w-24 h-0.5 mx-4 transition-colors duration-300 bg-gray-700"
+          style={{
+            backgroundColor: isCompleted ? 'hsl(var(--primary-gold))' : undefined
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const AddEndpointPage: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState<StepType>(1);
+  const [selectedOS, setSelectedOS] = useState<OSType | null>(null);
   const [config, setConfig] = useState<DeploymentConfig | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
-  const serverUrl = window.location.origin.replace(/:\d+/, ':8000');
+  const steps = [
+    { number: 1, title: 'Select OS', isCompleted: currentStep > 1 },
+    { number: 2, title: 'Download', isCompleted: currentStep > 2 },
+    { number: 3, title: 'Deploy', isCompleted: currentStep > 3 },
+    { number: 4, title: 'Verify', isCompleted: currentStep > 4 }
+  ];
 
-  // Generate unique deployment configuration
+  const osOptions = [
+    {
+      id: 'linux' as OSType,
+      name: 'Linux',
+      icon: <Server size={48} style={{ color: 'hsl(var(--primary-gold))' }} />,
+      compatibility: 'Ubuntu 18.04+, Debian 10+, CentOS 7+, RHEL 7+',
+      recommended: true
+    },
+    {
+      id: 'macos' as OSType,
+      name: 'macOS',
+      icon: <Apple size={48} style={{ color: 'hsl(var(--primary-gold))' }} />,
+      compatibility: 'macOS 10.15 (Catalina) and later',
+      recommended: false
+    },
+    {
+      id: 'windows' as OSType,
+      name: 'Windows',
+      icon: <Monitor size={48} style={{ color: 'hsl(var(--primary-gold))' }} />,
+      compatibility: 'Windows 10, Windows 11, Windows Server 2016+',
+      recommended: false
+    }
+  ];
+
   const generateConfig = async () => {
-    setIsGenerating(true);
-    
-    // Simulate API call to generate config
-    setTimeout(() => {
-      const agentId = `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const apiKey = `vltx_${Math.random().toString(36).substr(2, 32)}`;
+    try {
+      // Simulate API call to generate deployment config
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       const newConfig: DeploymentConfig = {
-        agentId,
-        apiKey,
-        serverUrl,
-        organizationId: 'voltaxe-org-' + Date.now(),
+        agentId: `agent-${Math.random().toString(36).substring(2, 11)}`,
+        apiKey: `vltx_${Math.random().toString(36).substring(2, 18)}_${Math.random().toString(36).substring(2, 18)}`,
+        serverUrl: window.location.origin,
+        organizationId: `org-${Math.random().toString(36).substring(2, 11)}`,
         timestamp: new Date().toISOString()
       };
       
       setConfig(newConfig);
-      setIsGenerating(false);
       setCurrentStep(3);
-    }, 1500);
-  };
-
-  const handleGenerateAgent = () => {
-    if (endpointName.trim()) {
-      generateConfig();
+    } catch (error) {
+      console.error('Failed to generate config:', error);
     }
   };
 
-  const copyToClipboard = (text: string, field: string) => {
+  const handleDownload = async () => {
+    if (!selectedOS) return;
+    
+    setIsDownloading(true);
+    try {
+      // Download agent binary from backend
+      const response = await fetch(`/api/download/sentinel/${selectedOS}`);
+      
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `voltaxe-sentinel-${selectedOS}${selectedOS === 'windows' ? '.exe' : ''}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      // Generate config after successful download
+      await generateConfig();
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback: still generate config for manual installation
+      await generateConfig();
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const downloadInstaller = () => {
-    // Generate installer script with embedded config
-    const installerScript = generateInstallerScript();
-    const blob = new Blob([installerScript], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `voltaxe-sentinel-installer-${selectedOS}.sh`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    setCurrentStep(4);
-  };
-
-  const generateInstallerScript = () => {
-    if (!config) return '';
-
-    const commonConfig = `
-# Voltaxe Sentinel Agent Configuration
-AGENT_ID="${config.agentId}"
-API_KEY="${config.apiKey}"
-SERVER_URL="${config.serverUrl}"
-ORG_ID="${config.organizationId}"
-ENDPOINT_NAME="${endpointName}"
-`;
+  const generateInstallerScript = (): string => {
+    if (!config || !selectedOS) return '';
 
     if (selectedOS === 'linux') {
       return `#!/bin/bash
-# Voltaxe Sentinel Agent Installer for Linux
-# Generated: ${new Date().toLocaleString()}
+# Voltaxe Sentinel Installation Script
+# Generated: ${config.timestamp}
 
 set -e
 
-${commonConfig}
+echo "🛡️  Installing Voltaxe Sentinel..."
 
-echo "🛡️  Voltaxe Sentinel Agent Installer"
-echo "======================================"
-echo ""
-
-# Check if running as root
-if [ "$EUID" -ne 0 ]; then 
-  echo "❌ Please run as root (use sudo)"
-  exit 1
-fi
-
-echo "📦 Installing dependencies..."
-apt-get update -qq
-apt-get install -y python3 python3-pip curl jq
-
-echo "📥 Downloading Voltaxe Sentinel Agent..."
-mkdir -p /opt/voltaxe
+# Create installation directory
+sudo mkdir -p /opt/voltaxe
 cd /opt/voltaxe
 
-# Download agent (replace with actual download URL)
-curl -sSL ${config.serverUrl}/download/sentinel-agent.tar.gz -o sentinel-agent.tar.gz
-tar -xzf sentinel-agent.tar.gz
-rm sentinel-agent.tar.gz
+# Download and install agent (if not already downloaded)
+if [ ! -f "./voltaxe-sentinel-linux" ]; then
+    echo "⬇️  Downloading agent..."
+    curl -sL "${config.serverUrl}/api/download/sentinel/linux" -o voltaxe-sentinel-linux
+    chmod +x voltaxe-sentinel-linux
+fi
 
-echo "⚙️  Configuring agent..."
-cat > /opt/voltaxe/config.json <<EOF
+# Create configuration
+cat > config.json <<EOF
 {
-  "agent_id": "$AGENT_ID",
-  "api_key": "$API_KEY",
-  "server_url": "$SERVER_URL",
-  "organization_id": "$ORG_ID",
-  "endpoint_name": "$ENDPOINT_NAME",
-  "collection_interval": 300,
-  "features": {
-    "process_monitoring": true,
-    "software_inventory": true,
-    "vulnerability_scanning": true,
-    "malware_scanning": true,
-    "behavioral_analysis": true
-  }
+  "agentId": "${config.agentId}",
+  "apiKey": "${config.apiKey}",
+  "serverUrl": "${config.serverUrl}",
+  "organizationId": "${config.organizationId}"
 }
 EOF
 
-echo "🔧 Installing Python dependencies..."
-pip3 install -r requirements.txt
-
-echo "🔐 Setting permissions..."
-chmod 600 /opt/voltaxe/config.json
-chmod +x /opt/voltaxe/sentinel.py
-
-echo "📋 Creating systemd service..."
-cat > /etc/systemd/system/voltaxe-sentinel.service <<EOF
+# Create systemd service
+sudo tee /etc/systemd/system/voltaxe-sentinel.service > /dev/null <<EOF
 [Unit]
 Description=Voltaxe Sentinel Security Agent
 After=network.target
@@ -167,7 +227,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/voltaxe
-ExecStart=/usr/bin/python3 /opt/voltaxe/sentinel.py
+ExecStart=/opt/voltaxe/voltaxe-sentinel-linux
 Restart=always
 RestartSec=10
 
@@ -175,85 +235,46 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-echo "🚀 Starting Voltaxe Sentinel service..."
-systemctl daemon-reload
-systemctl enable voltaxe-sentinel
-systemctl start voltaxe-sentinel
+# Enable and start service
+sudo systemctl daemon-reload
+sudo systemctl enable voltaxe-sentinel
+sudo systemctl start voltaxe-sentinel
 
-echo ""
-echo "✅ Installation complete!"
-echo ""
-echo "📊 Agent Status:"
-systemctl status voltaxe-sentinel --no-pager
-
-echo ""
-echo "📝 Useful commands:"
-echo "  Check status:  sudo systemctl status voltaxe-sentinel"
-echo "  View logs:     sudo journalctl -u voltaxe-sentinel -f"
-echo "  Restart:       sudo systemctl restart voltaxe-sentinel"
-echo "  Stop:          sudo systemctl stop voltaxe-sentinel"
-echo ""
-echo "🎉 Your endpoint will appear in the Voltaxe dashboard within 5 minutes!"
-`;
+echo "✅ Voltaxe Sentinel installed successfully!"
+echo "📊 Check status: sudo systemctl status voltaxe-sentinel"
+echo "📋 View logs: sudo journalctl -u voltaxe-sentinel -f"`;
     } else if (selectedOS === 'macos') {
       return `#!/bin/bash
-# Voltaxe Sentinel Agent Installer for macOS
-# Generated: ${new Date().toLocaleString()}
+# Voltaxe Sentinel Installation Script (macOS)
+# Generated: ${config.timestamp}
 
 set -e
 
-${commonConfig}
+echo "🛡️  Installing Voltaxe Sentinel..."
 
-echo "🛡️  Voltaxe Sentinel Agent Installer (macOS)"
-echo "=============================================="
-echo ""
+# Create installation directory
+sudo mkdir -p /usr/local/voltaxe
+cd /usr/local/voltaxe
 
-# Check for Homebrew
-if ! command -v brew &> /dev/null; then
-    echo "📦 Installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# Download and install agent (if not already downloaded)
+if [ ! -f "./voltaxe-sentinel-macos" ]; then
+    echo "⬇️  Downloading agent..."
+    curl -sL "${config.serverUrl}/api/download/sentinel/macos" -o voltaxe-sentinel-macos
+    chmod +x voltaxe-sentinel-macos
 fi
 
-echo "📦 Installing dependencies..."
-brew install python3 curl jq
-
-echo "📥 Downloading Voltaxe Sentinel Agent..."
-sudo mkdir -p /opt/voltaxe
-cd /opt/voltaxe
-
-# Download agent
-curl -sSL ${config.serverUrl}/download/sentinel-agent.tar.gz -o sentinel-agent.tar.gz
-tar -xzf sentinel-agent.tar.gz
-rm sentinel-agent.tar.gz
-
-echo "⚙️  Configuring agent..."
-sudo cat > /opt/voltaxe/config.json <<EOF
+# Create configuration
+cat > config.json <<EOF
 {
-  "agent_id": "$AGENT_ID",
-  "api_key": "$API_KEY",
-  "server_url": "$SERVER_URL",
-  "organization_id": "$ORG_ID",
-  "endpoint_name": "$ENDPOINT_NAME",
-  "collection_interval": 300,
-  "features": {
-    "process_monitoring": true,
-    "software_inventory": true,
-    "vulnerability_scanning": true,
-    "malware_scanning": true,
-    "behavioral_analysis": true
-  }
+  "agentId": "${config.agentId}",
+  "apiKey": "${config.apiKey}",
+  "serverUrl": "${config.serverUrl}",
+  "organizationId": "${config.organizationId}"
 }
 EOF
 
-echo "🔧 Installing Python dependencies..."
-pip3 install -r requirements.txt
-
-echo "🔐 Setting permissions..."
-sudo chmod 600 /opt/voltaxe/config.json
-sudo chmod +x /opt/voltaxe/sentinel.py
-
-echo "📋 Creating LaunchDaemon..."
-sudo cat > /Library/LaunchDaemons/com.voltaxe.sentinel.plist <<EOF
+# Create LaunchDaemon
+sudo tee /Library/LaunchDaemons/com.voltaxe.sentinel.plist > /dev/null <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -262,515 +283,463 @@ sudo cat > /Library/LaunchDaemons/com.voltaxe.sentinel.plist <<EOF
     <string>com.voltaxe.sentinel</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
-        <string>/opt/voltaxe/sentinel.py</string>
+        <string>/usr/local/voltaxe/voltaxe-sentinel-macos</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
-    <key>StandardOutPath</key>
-    <string>/var/log/voltaxe-sentinel.log</string>
-    <key>StandardErrorPath</key>
-    <string>/var/log/voltaxe-sentinel-error.log</string>
+    <key>WorkingDirectory</key>
+    <string>/usr/local/voltaxe</string>
 </dict>
 </plist>
 EOF
 
-echo "🚀 Starting Voltaxe Sentinel service..."
+# Load and start service
 sudo launchctl load /Library/LaunchDaemons/com.voltaxe.sentinel.plist
 
-echo ""
-echo "✅ Installation complete!"
-echo ""
-echo "📝 Useful commands:"
-echo "  View logs:     sudo tail -f /var/log/voltaxe-sentinel.log"
-echo "  Restart:       sudo launchctl unload /Library/LaunchDaemons/com.voltaxe.sentinel.plist && sudo launchctl load /Library/LaunchDaemons/com.voltaxe.sentinel.plist"
-echo "  Stop:          sudo launchctl unload /Library/LaunchDaemons/com.voltaxe.sentinel.plist"
-echo ""
-echo "🎉 Your endpoint will appear in the Voltaxe dashboard within 5 minutes!"
-`;
+echo "✅ Voltaxe Sentinel installed successfully!"
+echo "📊 Check status: sudo launchctl list | grep voltaxe"`;
     } else {
-      return `# Voltaxe Sentinel Agent Installer for Windows
-# Generated: ${new Date().toLocaleString()}
-# Run this script in PowerShell as Administrator
+      return `# Voltaxe Sentinel Installation Script (Windows)
+# Generated: ${config.timestamp}
+# Run this in PowerShell as Administrator
 
-${commonConfig}
+Write-Host "🛡️  Installing Voltaxe Sentinel..." -ForegroundColor Cyan
 
-Write-Host "🛡️  Voltaxe Sentinel Agent Installer (Windows)" -ForegroundColor Cyan
-Write-Host "================================================" -ForegroundColor Cyan
-Write-Host ""
+# Create installation directory
+$installDir = "C:\\Program Files\\Voltaxe"
+New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+Set-Location $installDir
 
-# Check for admin privileges
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Host "❌ Please run as Administrator" -ForegroundColor Red
-    Exit 1
+# Download and install agent (if not already downloaded)
+if (!(Test-Path ".\\voltaxe-sentinel-windows.exe")) {
+    Write-Host "⬇️  Downloading agent..." -ForegroundColor Yellow
+    Invoke-WebRequest -Uri "${config.serverUrl}/api/download/sentinel/windows" -OutFile "voltaxe-sentinel-windows.exe"
 }
 
-Write-Host "📦 Installing dependencies..." -ForegroundColor Yellow
-# Install Python if not present
-if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-    Write-Host "Installing Python..."
-    Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.0/python-3.11.0-amd64.exe" -OutFile "$env:TEMP\\python-installer.exe"
-    Start-Process -Wait -FilePath "$env:TEMP\\python-installer.exe" -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1"
-}
-
-Write-Host "📥 Downloading Voltaxe Sentinel Agent..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Force -Path "C:\\Program Files\\Voltaxe"
-Set-Location "C:\\Program Files\\Voltaxe"
-
-# Download agent
-Invoke-WebRequest -Uri "${config.serverUrl}/download/sentinel-agent.zip" -OutFile "sentinel-agent.zip"
-Expand-Archive -Path "sentinel-agent.zip" -DestinationPath "." -Force
-Remove-Item "sentinel-agent.zip"
-
-Write-Host "⚙️  Configuring agent..." -ForegroundColor Yellow
+# Create configuration
 @"
 {
-  "agent_id": "$AGENT_ID",
-  "api_key": "$API_KEY",
-  "server_url": "$SERVER_URL",
-  "organization_id": "$ORG_ID",
-  "endpoint_name": "$ENDPOINT_NAME",
-  "collection_interval": 300,
-  "features": {
-    "process_monitoring": true,
-    "software_inventory": true,
-    "vulnerability_scanning": true,
-    "malware_scanning": true,
-    "behavioral_analysis": true
-  }
+  "agentId": "${config.agentId}",
+  "apiKey": "${config.apiKey}",
+  "serverUrl": "${config.serverUrl}",
+  "organizationId": "${config.organizationId}"
 }
-"@ | Out-File -FilePath "C:\\Program Files\\Voltaxe\\config.json" -Encoding UTF8
+"@ | Out-File -FilePath "config.json" -Encoding UTF8
 
-Write-Host "🔧 Installing Python dependencies..." -ForegroundColor Yellow
-python -m pip install -r requirements.txt
+# Install as Windows Service
+New-Service -Name "VoltaxeSentinel" -BinaryPathName "$installDir\\voltaxe-sentinel-windows.exe" -DisplayName "Voltaxe Sentinel" -StartupType Automatic -Description "Voltaxe Security Monitoring Agent"
+Start-Service -Name "VoltaxeSentinel"
 
-Write-Host "📋 Creating Windows Service..." -ForegroundColor Yellow
-# Create service using NSSM or sc.exe
-python "C:\\Program Files\\Voltaxe\\sentinel.py" install
-
-Write-Host ""
-Write-Host "✅ Installation complete!" -ForegroundColor Green
-Write-Host ""
-Write-Host "📝 Useful commands:" -ForegroundColor Cyan
-Write-Host "  Check status:  Get-Service VoltaxeSentinel"
-Write-Host "  View logs:     Get-Content 'C:\\Program Files\\Voltaxe\\logs\\sentinel.log' -Tail 50 -Wait"
-Write-Host "  Restart:       Restart-Service VoltaxeSentinel"
-Write-Host "  Stop:          Stop-Service VoltaxeSentinel"
-Write-Host ""
-Write-Host "🎉 Your endpoint will appear in the Voltaxe dashboard within 5 minutes!" -ForegroundColor Green
-`;
+Write-Host "✅ Voltaxe Sentinel installed successfully!" -ForegroundColor Green
+Write-Host "📊 Check status: Get-Service VoltaxeSentinel" -ForegroundColor Cyan`;
     }
   };
 
-  const getOSIcon = (os: OS) => {
-    switch (os) {
-      case 'linux': return <HardDrive size={24} />;
-      case 'macos': return <Apple size={24} />;
-      case 'windows': return <Monitor size={24} />;
-    }
-  };
-
-  const getInstallCommand = () => {
-    if (!config) return '';
+  const verifyConnection = async () => {
+    if (!config) return;
     
-    switch (selectedOS) {
-      case 'linux':
-      case 'macos':
-        return `sudo bash voltaxe-sentinel-installer-${selectedOS}.sh`;
-      case 'windows':
-        return `powershell -ExecutionPolicy Bypass -File voltaxe-sentinel-installer-windows.ps1`;
+    setIsVerifying(true);
+    setVerificationError(null);
+    
+    try {
+      // Poll backend to check if agent has connected
+      const maxAttempts = 30; // 30 seconds
+      let attempts = 0;
+      
+      while (attempts < maxAttempts) {
+        try {
+          const response = await fetch(`/api/agents/check-connection/${config.agentId}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.connected) {
+              setIsConnected(true);
+              setCurrentStep(4);
+              setIsVerifying(false);
+              return;
+            }
+          }
+        } catch (error) {
+          // Continue polling
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+      }
+      
+      setVerificationError('Connection timeout. Please ensure the agent is running and try again.');
+    } catch (error) {
+      setVerificationError('Verification failed. Please check your installation and try again.');
+    } finally {
+      setIsVerifying(false);
     }
   };
+
+  const handleSelectOS = (os: OSType) => {
+    setSelectedOS(os);
+    setCurrentStep(2);
+  };
+
+  const installerScript = generateInstallerScript();
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Sidebar />
-      <main className="flex-1 ml-64 p-8">
+      
+      <main className="ml-64 p-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 gradient-gold rounded-lg flex items-center justify-center">
-              <Shield size={24} style={{ color: 'hsl(var(--background))' }} />
+        <div className="border-b pb-6 mb-6" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)' }}>
+              <PlusCircle className="h-10 w-10" style={{ color: 'hsl(var(--primary-gold))' }} />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gradient-gold">Add Endpoint</h1>
-              <p className="text-muted-foreground">Deploy Voltaxe Sentinel Agent to protect your endpoints</p>
+              <h1 className="text-4xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                Installation Wizard
+              </h1>
+              <p className="text-lg mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                Deploy Voltaxe Sentinel in minutes
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between max-w-4xl">
-            {[
-              { num: 1, label: 'Select OS', icon: Server },
-              { num: 2, label: 'Configure', icon: Shield },
-              { num: 3, label: 'Download', icon: Download },
-              { num: 4, label: 'Deploy', icon: Terminal }
-            ].map((step, idx) => (
-              <div key={step.num} className="flex items-center flex-1">
-                <div className="flex flex-col items-center">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
-                    currentStep >= step.num
-                      ? 'bg-primary-gold/20 border-primary-gold text-primary-gold'
-                      : 'bg-card border-border text-muted-foreground'
-                  }`}>
-                    <step.icon size={20} />
-                  </div>
-                  <span className={`text-sm mt-2 font-medium ${
-                    currentStep >= step.num ? 'text-foreground' : 'text-muted-foreground'
-                  }`}>
-                    {step.label}
-                  </span>
-                </div>
-                {idx < 3 && (
-                  <div className={`flex-1 h-0.5 mx-4 ${
-                    currentStep > step.num ? 'bg-primary-gold' : 'bg-border'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Step Content */}
-        <div className="max-w-4xl">
-          {/* Step 1: Select OS */}
-          {currentStep === 1 && (
-            <div className="card-glass p-8">
-              <h2 className="text-2xl font-bold mb-2">Select Operating System</h2>
-              <p className="text-muted-foreground mb-6">Choose the operating system of your endpoint</p>
-              
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                {[
-                  { os: 'linux' as OS, name: 'Linux', desc: 'Ubuntu, Debian, CentOS, RHEL' },
-                  { os: 'macos' as OS, name: 'macOS', desc: 'macOS 10.15+' },
-                  { os: 'windows' as OS, name: 'Windows', desc: 'Windows 10, 11, Server' }
-                ].map((item) => (
-                  <button
-                    key={item.os}
-                    onClick={() => setSelectedOS(item.os)}
-                    className={`p-6 rounded-lg border-2 transition-all hover:scale-105 ${
-                      selectedOS === item.os
-                        ? 'border-primary-gold bg-primary-gold/10'
-                        : 'border-border bg-card hover:border-primary-gold/50'
-                    }`}
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <div className={`mb-3 ${selectedOS === item.os ? 'text-primary-gold' : 'text-foreground'}`}>
-                        {getOSIcon(item.os)}
-                      </div>
-                      <h3 className="font-bold mb-1">{item.name}</h3>
-                      <p className="text-sm text-muted-foreground">{item.desc}</p>
-                    </div>
-                  </button>
+          {/* Progress Stepper */}
+          <div className="flex justify-center mt-8">
+            <div className="flex items-center">
+                {steps.map((step, index) => (
+                  <ProgressStep
+                    key={step.number}
+                    step={step.number}
+                    title={step.title}
+                    isActive={currentStep === step.number}
+                    isCompleted={step.isCompleted}
+                    isLast={index === steps.length - 1}
+                  />
                 ))}
               </div>
-
-              <button
-                onClick={() => setCurrentStep(2)}
-                className="btn-primary w-full flex items-center justify-center gap-2"
-              >
-                Continue
-                <ChevronRight size={20} />
-              </button>
             </div>
-          )}
+          </div>
 
-          {/* Step 2: Configure */}
-          {currentStep === 2 && (
-            <div className="card-glass p-8">
-              <h2 className="text-2xl font-bold mb-2">Configure Endpoint</h2>
-              <p className="text-muted-foreground mb-6">Provide basic information about your endpoint</p>
-
+        {/* Step Content */}
+        <div>
+            {/* Step 1: OS Selection */}
+            {currentStep === 1 && (
               <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Endpoint Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={endpointName}
-                    onChange={(e) => setEndpointName(e.target.value)}
-                    placeholder="e.g., web-server-01, dev-workstation, prod-db"
-                    className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary-gold focus:border-transparent"
-                  />
-                  <p className="text-sm text-muted-foreground mt-2">
-                    A friendly name to identify this endpoint in the dashboard
+                <div className="text-center mb-12">
+                  <h2 className="text-2xl font-bold text-white mb-2">Choose Your Operating System</h2>
+                  <p className="text-gray-400">Select the platform where you want to deploy the agent</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {osOptions.map((os) => (
+                    <button
+                      key={os.id}
+                      onClick={() => handleSelectOS(os.id)}
+                      className="group relative p-8 rounded-2xl transition-all duration-300 text-left cursor-pointer shadow-lg border-2"
+                      style={{
+                        backgroundColor: 'hsl(var(--card))',
+                        borderColor: 'hsl(var(--border))'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'hsl(var(--primary-gold) / 0.5)';
+                        e.currentTarget.style.boxShadow = '0 0 30px hsl(var(--primary-gold) / 0.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'hsl(var(--border))';
+                        e.currentTarget.style.boxShadow = '0 10px 15px -3px rgb(0 0 0 / 0.1)';
+                      }}
+                    >
+                      {os.recommended && (
+                        <div className="absolute top-4 right-4 px-3 py-1 text-gray-900 text-xs font-semibold rounded-full shadow-lg" style={{ backgroundColor: 'hsl(var(--primary-gold))' }}>
+                          Recommended
+                        </div>
+                      )}
+
+                      <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="p-4 rounded-2xl transition-all duration-300" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)' }}>
+                          {os.icon}
+                        </div>
+
+                        <h3 className="text-2xl font-bold transition-colors" style={{ color: 'hsl(var(--foreground))' }}>
+                          {os.name}
+                        </h3>
+
+                        <p className="text-sm min-h-[40px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{os.compatibility}</p>
+
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'hsl(var(--primary-gold))' }}>
+                          <span className="text-sm font-medium">Select</span>
+                          <ChevronRight size={16} />
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Download */}
+            {currentStep === 2 && selectedOS && (
+              <div className="space-y-6">
+                <div className="text-center mb-12">
+                  <h2 className="text-2xl font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Download Voltaxe Sentinel</h2>
+                  <p style={{ color: 'hsl(var(--muted-foreground))' }}>One-click download for {osOptions.find(o => o.id === selectedOS)?.name}</p>
+                </div>
+
+                <div className="max-w-2xl mx-auto">
+                  <div className="rounded-2xl p-8 shadow-xl border-2" style={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-xl" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.2)' }}>
+                          <HardDrive size={32} style={{ color: 'hsl(var(--primary-gold))' }} />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>voltaxe-sentinel-{selectedOS}</h3>
+                          <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Security monitoring agent</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Size</p>
+                        <p className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>~25 MB</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleDownload}
+                      disabled={isDownloading}
+                      className="w-full py-4 text-gray-900 font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        backgroundColor: 'hsl(var(--primary-gold))',
+                        boxShadow: '0 0 30px hsl(var(--primary-gold) / 0.3)'
+                      }}
+                    >
+                      {isDownloading ? (
+                        <>
+                          <Loader size={20} className="animate-spin" />
+                          <span>Downloading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download size={20} />
+                          <span>Download Agent</span>
+                        </>
+                      )}
+                    </button>
+
+                    <p className="text-xs text-gray-500 text-center mt-4">
+                      By downloading, you agree to the Voltaxe Security Agent license terms
+                    </p>
+                  </div>
+
+                  <div className="mt-6 flex justify-between">
+                    <button
+                      onClick={() => {
+                        setCurrentStep(1);
+                        setSelectedOS(null);
+                      }}
+                      className="px-6 py-3 rounded-xl transition-colors border-2"
+                      style={{ backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))', borderColor: 'hsl(var(--border))' }}
+                    >
+                      Back
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Deploy */}
+            {currentStep === 3 && config && (
+              <div className="space-y-6">
+                <div className="text-center mb-12">
+                  <h2 className="text-2xl font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Deploy Your Agent</h2>
+                  <p style={{ color: 'hsl(var(--muted-foreground))' }}>Run this magic command on your server</p>
+                </div>
+
+                <div className="max-w-4xl mx-auto space-y-6">
+                  {/* Installation Command */}
+                  <div className="rounded-2xl p-6 shadow-xl border-2" style={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <Terminal size={24} style={{ color: 'hsl(var(--primary-gold))' }} />
+                      <h3 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>Installation Command</h3>
+                    </div>
+
+                    <div className="relative">
+                      <pre className="p-4 rounded-xl overflow-x-auto text-sm font-mono border" style={{ backgroundColor: 'hsl(var(--input))', color: '#22c55e', borderColor: 'hsl(var(--border))' }}>
+                        {selectedOS === 'windows' 
+                          ? `# Run in PowerShell as Administrator\nirm ${config.serverUrl}/api/install/sentinel/windows | iex`
+                          : `curl -sSL ${config.serverUrl}/api/install/sentinel/${selectedOS} | sudo bash`
+                        }
+                      </pre>
+                      <button
+                        onClick={() => handleCopy(
+                          selectedOS === 'windows' 
+                            ? `irm ${config.serverUrl}/api/install/sentinel/windows | iex`
+                            : `curl -sSL ${config.serverUrl}/api/install/sentinel/${selectedOS} | sudo bash`,
+                          'install-cmd'
+                        )}
+                        className="absolute top-4 right-4 p-2 rounded-lg transition-colors"
+                        style={{ backgroundColor: 'hsl(var(--input))', color: 'hsl(var(--primary-gold))' }}
+                      >
+                        {copiedField === 'install-cmd' ? <CheckCircle size={18} /> : <Copy size={18} />}
+                      </button>
+                    </div>
+
+                    <div className="mt-4 flex items-start gap-3 p-4 rounded-xl" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)', borderWidth: '1px', borderColor: 'hsl(var(--primary-gold) / 0.3)' }}>
+                      <Shield size={20} className="flex-shrink-0 mt-0.5" style={{ color: 'hsl(var(--primary-gold))' }} />
+                      <div className="text-sm">
+                        <p className="font-medium mb-1" style={{ color: 'hsl(var(--primary-gold))' }}>Auto-Configuration Included</p>
+                        <p style={{ color: 'hsl(var(--muted-foreground))' }}>
+                          This command includes your unique API key and will automatically link the agent to your account.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Full Installation Script */}
+                  <div className="rounded-2xl p-6 shadow-xl border-2" style={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <Server size={24} style={{ color: 'hsl(var(--primary-gold))' }} />
+                        <h3 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>Full Installation Script</h3>
+                      </div>
+                      <button
+                        onClick={() => handleCopy(installerScript, 'full-script')}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                        style={{ backgroundColor: 'hsl(var(--input))', color: 'hsl(var(--primary-gold))' }}
+                      >
+                        {copiedField === 'full-script' ? <CheckCircle size={16} /> : <Copy size={16} />}
+                        <span>{copiedField === 'full-script' ? 'Copied!' : 'Copy Script'}</span>
+                      </button>
+                    </div>
+
+                    <pre className="p-4 rounded-xl overflow-x-auto text-xs font-mono max-h-96 border" style={{ backgroundColor: 'hsl(var(--input))', color: 'hsl(var(--muted-foreground))', borderColor: 'hsl(var(--border))' }}>
+                      {installerScript}
+                    </pre>
+                  </div>
+
+                  {/* Verify Connection Button */}
+                  <div className="flex justify-center">
+                    <button
+                      onClick={verifyConnection}
+                      disabled={isVerifying}
+                      className="px-8 py-4 text-gray-900 font-semibold rounded-xl transition-all duration-300 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        backgroundColor: 'hsl(var(--primary-gold))',
+                        boxShadow: '0 0 30px hsl(var(--primary-gold) / 0.3)'
+                      }}
+                    >
+                      {isVerifying ? (
+                        <>
+                          <Loader size={20} className="animate-spin" />
+                          <span>Checking Connection...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={20} />
+                          <span>Verify Connection</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {verificationError && (
+                    <div className="flex items-start gap-3 p-4 bg-red-400/10 border border-red-400/30 rounded-xl">
+                      <AlertCircle size={20} className="text-red-400 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="text-red-400 font-medium mb-1">Connection Failed</p>
+                        <p className="text-gray-300">{verificationError}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between">
+                    <button
+                      onClick={() => {
+                        setCurrentStep(2);
+                        setConfig(null);
+                      }}
+                      className="px-6 py-3 rounded-xl transition-colors border-2"
+                      style={{ backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))', borderColor: 'hsl(var(--border))' }}
+                    >
+                      Back
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Success */}
+            {currentStep === 4 && isConnected && (
+              <div className="space-y-6">
+                <div className="max-w-2xl mx-auto text-center">
+                  <div className="inline-flex p-6 bg-gradient-to-r from-green-400/20 to-green-500/20 rounded-full mb-6">
+                    <CheckCircle size={64} className="text-green-400" />
+                  </div>
+
+                  <h2 className="text-3xl font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>Agent Connected Successfully!</h2>
+                  <p className="text-xl mb-8" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Your Voltaxe Sentinel agent is now protecting your infrastructure
                   </p>
-                </div>
 
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                  <div className="flex gap-3">
-                    <AlertCircle size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-blue-400 mb-1">Agent Features</h4>
-                      <p className="text-sm text-muted-foreground">
-                        The Sentinel agent will automatically collect:
-                      </p>
-                      <ul className="text-sm text-muted-foreground mt-2 space-y-1">
-                        <li>• System inventory (processes, software, hardware)</li>
-                        <li>• Vulnerability scanning (CVE matching)</li>
-                        <li>• Behavioral analysis (anomaly detection)</li>
-                        <li>• Malware scanning (YARA rules)</li>
-                        <li>• Real-time event monitoring</li>
-                      </ul>
+                  <div className="rounded-2xl p-8 mb-8 border-2" style={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
+                    <div className="grid grid-cols-2 gap-6 text-left">
+                      <div>
+                        <p className="text-sm mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Agent ID</p>
+                        <p className="font-mono text-sm" style={{ color: 'hsl(var(--foreground))' }}>{config?.agentId}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Platform</p>
+                        <p className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{osOptions.find(o => o.id === selectedOS)?.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Status</p>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                          <span className="text-green-400 font-medium">Online</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Connected</p>
+                        <p className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Just now</p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => setCurrentStep(1)}
-                    className="btn-ghost flex-1"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleGenerateAgent}
-                    disabled={!endpointName.trim() || isGenerating}
-                    className="btn-primary flex-1 flex items-center justify-center gap-2"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader className="animate-spin" size={20} />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        Generate Installer
-                        <ChevronRight size={20} />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+                  <div className="flex gap-4 justify-center">
+                    <button
+                      onClick={() => window.location.href = '/fleet'}
+                      className="px-8 py-4 text-gray-900 font-semibold rounded-xl transition-all duration-300 flex items-center gap-3"
+                      style={{
+                        backgroundColor: 'hsl(var(--primary-gold))',
+                        boxShadow: '0 0 30px hsl(var(--primary-gold) / 0.3)'
+                      }}
+                    >
+                      <span>View Fleet Dashboard</span>
+                      <ChevronRight size={20} />
+                    </button>
 
-          {/* Step 3: Download */}
-          {currentStep === 3 && config && (
-            <div className="card-glass p-8">
-              <h2 className="text-2xl font-bold mb-2">Download Agent Installer</h2>
-              <p className="text-muted-foreground mb-6">Your custom installer is ready with pre-configured credentials</p>
-
-              <div className="space-y-6">
-                {/* Configuration Details */}
-                <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-                  <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wide">Configuration</h3>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between p-3 bg-background rounded-lg">
-                      <div className="flex-1">
-                        <div className="text-xs text-muted-foreground mb-1">Agent ID</div>
-                        <div className="font-mono text-sm">{config.agentId}</div>
-                      </div>
-                      <button
-                        onClick={() => copyToClipboard(config.agentId, 'agentId')}
-                        className="btn-ghost p-2"
-                        title="Copy Agent ID"
-                      >
-                        {copiedField === 'agentId' ? (
-                          <CheckCircle size={16} className="text-green-500" />
-                        ) : (
-                          <Copy size={16} />
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-background rounded-lg">
-                      <div className="flex-1">
-                        <div className="text-xs text-muted-foreground mb-1">API Key</div>
-                        <div className="font-mono text-sm">
-                          {config.apiKey.substring(0, 20)}...
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => copyToClipboard(config.apiKey, 'apiKey')}
-                        className="btn-ghost p-2"
-                        title="Copy API Key"
-                      >
-                        {copiedField === 'apiKey' ? (
-                          <CheckCircle size={16} className="text-green-500" />
-                        ) : (
-                          <Copy size={16} />
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-background rounded-lg">
-                      <div className="flex-1">
-                        <div className="text-xs text-muted-foreground mb-1">Server URL</div>
-                        <div className="font-mono text-sm">{config.serverUrl}</div>
-                      </div>
-                      <button
-                        onClick={() => copyToClipboard(config.serverUrl, 'serverUrl')}
-                        className="btn-ghost p-2"
-                        title="Copy Server URL"
-                      >
-                        {copiedField === 'serverUrl' ? (
-                          <CheckCircle size={16} className="text-green-500" />
-                        ) : (
-                          <Copy size={16} />
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setCurrentStep(1);
+                        setSelectedOS(null);
+                        setConfig(null);
+                        setIsConnected(false);
+                      }}
+                      className="px-8 py-4 rounded-xl transition-colors border-2"
+                      style={{ backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))', borderColor: 'hsl(var(--border))' }}
+                    >
+                      Add Another Agent
+                    </button>
                   </div>
                 </div>
-
-                {/* Security Warning */}
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-                  <div className="flex gap-3">
-                    <AlertCircle size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-amber-400 mb-1">Security Notice</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Keep your API key secure! The installer script contains sensitive credentials.
-                        Do not share it publicly or commit it to version control.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => setCurrentStep(2)}
-                    className="btn-ghost flex-1"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={downloadInstaller}
-                    className="btn-primary flex-1 flex items-center justify-center gap-2"
-                  >
-                    <Download size={20} />
-                    Download Installer
-                  </button>
-                </div>
               </div>
-            </div>
-          )}
-
-          {/* Step 4: Deploy */}
-          {currentStep === 4 && config && (
-            <div className="card-glass p-8">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle size={32} className="text-green-500" />
-                </div>
-                <h2 className="text-2xl font-bold mb-2">Ready to Deploy!</h2>
-                <p className="text-muted-foreground">Follow the instructions below to install the agent on your endpoint</p>
-              </div>
-
-              <div className="space-y-6">
-                {/* Installation Instructions */}
-                <div className="bg-card border border-border rounded-lg p-6">
-                  <h3 className="font-bold mb-4 flex items-center gap-2">
-                    <Terminal size={20} className="text-primary-gold" />
-                    Installation Steps
-                  </h3>
-                  
-                  <ol className="space-y-4">
-                    <li className="flex gap-3">
-                      <div className="w-6 h-6 rounded-full bg-primary-gold/20 text-primary-gold flex items-center justify-center flex-shrink-0 text-sm font-bold">
-                        1
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium mb-1">Transfer the installer to your endpoint</div>
-                        <div className="text-sm text-muted-foreground">
-                          Copy <code className="bg-background px-2 py-1 rounded">voltaxe-sentinel-installer-{selectedOS}.{selectedOS === 'windows' ? 'ps1' : 'sh'}</code> to your target machine
-                        </div>
-                      </div>
-                    </li>
-
-                    <li className="flex gap-3">
-                      <div className="w-6 h-6 rounded-full bg-primary-gold/20 text-primary-gold flex items-center justify-center flex-shrink-0 text-sm font-bold">
-                        2
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium mb-2">Run the installer with elevated privileges</div>
-                        <div className="bg-background rounded-lg p-4 font-mono text-sm flex items-center justify-between">
-                          <code>{getInstallCommand()}</code>
-                          <button
-                            onClick={() => copyToClipboard(getInstallCommand(), 'command')}
-                            className="btn-ghost p-2 ml-2"
-                          >
-                            {copiedField === 'command' ? (
-                              <CheckCircle size={16} className="text-green-500" />
-                            ) : (
-                              <Copy size={16} />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-
-                    <li className="flex gap-3">
-                      <div className="w-6 h-6 rounded-full bg-primary-gold/20 text-primary-gold flex items-center justify-center flex-shrink-0 text-sm font-bold">
-                        3
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium mb-1">Wait for agent registration</div>
-                        <div className="text-sm text-muted-foreground">
-                          The endpoint will appear in your dashboard within 5 minutes after successful installation
-                        </div>
-                      </div>
-                    </li>
-                  </ol>
-                </div>
-
-                {/* What Happens Next */}
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-400 mb-3">What Happens Next?</h4>
-                  <ul className="text-sm text-muted-foreground space-y-2">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                      <span>Agent automatically registers with Clarity Hub</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                      <span>Initial system snapshot collected and analyzed</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                      <span>Vulnerability scanning begins (CVE database matching)</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                      <span>Real-time monitoring starts for processes and events</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                      <span>Resilience score calculated based on security posture</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => {
-                      setCurrentStep(1);
-                      setConfig(null);
-                      setEndpointName('');
-                    }}
-                    className="btn-ghost flex-1"
-                  >
-                    Add Another Endpoint
-                  </button>
-                  <button
-                    onClick={() => window.location.href = '/snapshots'}
-                    className="btn-primary flex-1"
-                  >
-                    View Dashboard
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+            )}
         </div>
-      </main>
-    </div>
-  );
-};
+        </main>
+      </div>
+    );
+  };
+  
+  export default AddEndpointPage;
+  export { AddEndpointPage };
