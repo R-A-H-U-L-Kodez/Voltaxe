@@ -64,15 +64,40 @@ export interface AuditFilters {
 }
 
 class AuditService {
+  private isTokenExpired(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  }
+
   private getAuthToken(): string | null {
-    return localStorage.getItem('accessToken');
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.warn('[AUDIT] No access token found');
+      return null;
+    }
+    
+    if (this.isTokenExpired(token)) {
+      console.warn('[AUDIT] Token expired, clearing storage and redirecting');
+      localStorage.clear();
+      window.location.href = '/login';
+      return null;
+    }
+    
+    return token;
   }
 
   private getHeaders(): HeadersInit {
     const token = this.getAuthToken();
+    if (!token) {
+      throw new Error('No valid authentication token');
+    }
     return {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` })
+      Authorization: `Bearer ${token}`
     };
   }
 

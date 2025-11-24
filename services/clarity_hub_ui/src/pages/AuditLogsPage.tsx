@@ -49,6 +49,12 @@ const AuditLogsPage: React.FC = () => {
       setTotalLogs(response.total);
     } catch (error) {
       console.error('Failed to fetch audit logs:', error);
+      // If 403, likely expired token - force logout
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        console.warn('Token expired or invalid, redirecting to login...');
+        localStorage.clear();
+        window.location.href = '/login';
+      }
     } finally {
       setLoading(false);
     }

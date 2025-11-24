@@ -83,18 +83,14 @@ export const IncidentsPage: React.FC = () => {
   };
 
   const fetchTeamMembers = async () => {
-    try {
-      const members = await incidentService.getTeamMembers();
-      setTeamMembers(members);
-    } catch (error) {
-      console.error('Error fetching team members:', error);
-      // Fallback to mock data for demo
-      setTeamMembers([
-        { id: '1', name: 'Alice Johnson', email: 'alice@voltaxe.com' },
-        { id: '2', name: 'Bob Smith', email: 'bob@voltaxe.com' },
-        { id: '3', name: 'Carol White', email: 'carol@voltaxe.com' }
-      ]);
-    }
+    // Using local team members data since backend endpoint not implemented
+    setTeamMembers([
+      { id: '1', name: 'Alice Johnson', email: 'alice@voltaxe.com' },
+      { id: '2', name: 'Bob Smith', email: 'bob@voltaxe.com' },
+      { id: '3', name: 'Carol White', email: 'carol@voltaxe.com' },
+      { id: '4', name: 'David Brown', email: 'david@voltaxe.com' },
+      { id: '5', name: 'Emma Davis', email: 'emma@voltaxe.com' }
+    ]);
   };
 
   const handleStatusChange = async (incidentId: string, newStatus: string) => {

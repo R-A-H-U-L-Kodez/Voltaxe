@@ -19,7 +19,7 @@ export const Sidebar = () => {
   const { logout } = useAuth();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col overflow-y-auto z-40">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col overflow-y-auto z-50" style={{ pointerEvents: 'auto' }}>
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 gradient-gold rounded-lg flex items-center justify-center">
@@ -212,7 +212,10 @@ export const Sidebar = () => {
           }
           style={({ isActive }) => ({
             color: isActive ? 'hsl(var(--primary-gold))' : undefined,
-            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
+            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined,
+            pointerEvents: 'auto',
+            position: 'relative',
+            zIndex: 10
           })}
         >
           <FileText size={20} />

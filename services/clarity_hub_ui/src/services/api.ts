@@ -11,7 +11,7 @@ const api = axios.create({
 // Add request interceptor to include auth token
 api.interceptors.request.use(
   (config: any) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -237,23 +237,126 @@ export const authService = {
 };
 
 // Audit Logs Service
+// Helper function to check if token is expired
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+};
+
+// Helper function to get valid token or redirect to login
+const getValidToken = (): string | null => {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    console.warn('[AUTH] No access token found');
+    return null;
+  }
+  
+  if (isTokenExpired(token)) {
+    console.warn('[AUTH] Token expired, clearing and redirecting to login');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.href = '/login';
+    return null;
+  }
+  
+  return token;
+};
+
 export const auditService = {
   getAuditLogs: async (filters?: AuditLogFilters): Promise<{ logs: AuditLog[]; total: number }> => {
-    const response = await api.get<{ logs: AuditLog[]; total: number }>('/audit-logs', { params: filters });
-    return response.data;
+    const token = getValidToken();
+    if (!token) throw new Error('No valid authentication token');
+    
+    const params = new URLSearchParams();
+    
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params.append(key, String(value));
+        }
+      });
+    }
+    
+    const response = await fetch(`http://localhost:8000/audit/logs?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audit logs: ${response.statusText}`);
+    }
+    
+    return response.json();
   },
   
   getAuditLogStats: async (days: number = 30): Promise<AuditLogStats> => {
-    const response = await api.get<AuditLogStats>('/audit-logs/stats', { params: { days } });
-    return response.data;
+    const token = getValidToken();
+    if (!token) throw new Error('No valid authentication token');
+    
+    const response = await fetch(`http://localhost:8000/audit/statistics?days=${days}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audit statistics: ${response.statusText}`);
+    }
+    
+    return response.json();
   },
   
   exportAuditLogs: async (format: 'csv' | 'json', filters?: AuditLogFilters): Promise<Blob> => {
-    const response = await api.get(`/audit-logs/export/${format}`, {
-      params: filters,
-      responseType: 'blob'
+    const token = getValidToken();
+    if (!token) throw new Error('No valid authentication token');
+    
+    const params = new URLSearchParams({ format });
+    
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params.append(key, String(value));
+        }
+      });
+    }
+    
+    const response = await fetch(`http://localhost:8000/audit/export?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
     });
-    return response.data;
+    
+    if (!response.ok) {
+      throw new Error(`Failed to export audit logs: ${response.statusText}`);
+    }
+    
+    return response.blob();
+  },
+  
+  getActionTypes: async (): Promise<{ action_types: string[]; severity_levels: string[] }> => {
+    const token = getValidToken();
+    if (!token) throw new Error('No valid authentication token');
+    
+    const response = await fetch('http://localhost:8000/audit/action-types', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch action types: ${response.statusText}`);
+    }
+    
+    return response.json();
   },
 };
 
