@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, Activity, Camera } from 'lucide-react';
+import { Radio, Activity, Camera } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { FleetLiveView } from '../components/fleet/FleetLiveView';
 import { FleetSnapshotsView } from '../components/fleet/FleetSnapshotsView';
@@ -33,7 +33,7 @@ export const FleetCommandCenter = () => {
         <div className="border-b pb-6 mb-6" style={{ borderColor: 'hsl(var(--border))' }}>
           <div className="flex items-center gap-4 mb-6">
             <div className="p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)' }}>
-              <Shield className="h-10 w-10" style={{ color: 'hsl(var(--primary-gold))' }} />
+              <Radio className="h-10 w-10" style={{ color: 'hsl(var(--primary-gold))' }} />
             </div>
             <div>
               <h1 className="text-4xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>

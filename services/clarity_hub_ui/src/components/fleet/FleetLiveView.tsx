@@ -39,9 +39,9 @@ export const FleetLiveView = () => {
       setEndpoints(endpointsData);
       setMetrics(metricsData);
     } catch (err: any) {
-      setError('Failed to load fleet data. Using mock data for demonstration.');
-      setEndpoints(generateMockEndpoints());
-      setMetrics(generateMockMetrics());
+      setError(err.message || 'Failed to load fleet data. Please ensure the API server is running.');
+      setEndpoints([]);
+      setMetrics(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -216,64 +216,4 @@ export const FleetLiveView = () => {
       )}
     </div>
   );
-};
-
-// Mock data generators
-const generateMockEndpoints = (): Endpoint[] => {
-  const hostnames = ['web-server-01', 'db-server-02', 'app-server-03', 'dev-laptop-04', 'admin-ws-05'];
-  const oses = [
-    { os: 'Ubuntu Server', version: '22.04.3 LTS', type: 'Linux' as OSType },
-    { os: 'Windows Server', version: '2022 Datacenter', type: 'Windows' as OSType },
-    { os: 'macOS', version: '14.2 Sonoma', type: 'macOS' as OSType },
-  ];
-  const risks: EndpointRisk[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
-  const statuses: EndpointStatus[] = ['online', 'offline', 'isolated'];
-
-  return hostnames.map((hostname, idx) => {
-    const os = oses[idx % oses.length];
-    const risk = risks[idx % risks.length];
-    const status = statuses[idx % statuses.length];
-    const vulnCount = risk === 'CRITICAL' ? 12 : risk === 'HIGH' ? 6 : risk === 'MEDIUM' ? 3 : 1;
-
-    return {
-      id: `ep-${idx + 1}`,
-      hostname,
-      ip_address: `192.168.1.${10 + idx}`,
-      os: os.os,
-      os_version: os.version,
-      os_type: os.type,
-      type: idx < 3 ? 'server' : 'laptop',
-      status,
-      risk_level: risk,
-      last_seen: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-      vulnerability_count: vulnCount,
-      critical_count: risk === 'CRITICAL' ? 3 : 0,
-      high_count: risk === 'HIGH' ? 2 : 0,
-      medium_count: 2,
-      low_count: 1,
-      agent: {
-        version: '2.1.0',
-        status: status === 'online' ? 'running' : 'stopped',
-        last_heartbeat: new Date(Date.now() - Math.random() * 600000).toISOString(),
-        uptime_seconds: Math.floor(Math.random() * 86400),
-      },
-      created_at: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-  });
-};
-
-const generateMockMetrics = (): FleetMetrics => {
-  return {
-    total_endpoints: 5,
-    online_count: 3,
-    offline_count: 1,
-    isolated_count: 1,
-    high_risk_count: 2,
-    critical_risk_count: 1,
-    total_vulnerabilities: 25,
-    risk_distribution: { CRITICAL: 1, HIGH: 1, MEDIUM: 2, LOW: 1 },
-    os_distribution: { Windows: 2, Linux: 2, macOS: 1, Other: 0 },
-    type_distribution: { server: 3, workstation: 1, laptop: 1 },
-  };
 };
