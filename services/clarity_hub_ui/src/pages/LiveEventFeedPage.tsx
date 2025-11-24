@@ -62,13 +62,13 @@ export const LiveEventFeedPage = () => {
 
   useEffect(() => {
     fetchEvents();
-    
-    if (!autoRefresh) return;
+  }, []); // Only fetch on mount
+
+  useEffect(() => {
+    if (!autoRefresh || isPaused) return;
 
     const interval = setInterval(() => {
-      if (!isPaused) {
-        fetchEvents();
-      }
+      fetchEvents();
     }, refreshInterval * 1000);
 
     return () => clearInterval(interval);
