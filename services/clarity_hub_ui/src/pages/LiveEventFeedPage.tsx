@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { EventListItem } from '../components/EventListItem';
 import { EventDetailModal } from '../components/EventDetailModal';
@@ -21,11 +21,12 @@ export const LiveEventFeedPage = () => {
   const [page, setPage] = useState(1);
   const observerTarget = useRef<HTMLDivElement>(null);
   const isMountedRef = useRef(true);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const [eps, setEps] = useState(0);
   const [eventHistory, setEventHistory] = useState<{ timestamp: number; count: number }[]>([]);
 
-  const fetchEvents = async (pageNum: number = 1, append: boolean = false) => {
+  const fetchEvents = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     if (isPaused || !isMountedRef.current) return;
     
     if (append) {
@@ -70,6 +71,10 @@ export const LiveEventFeedPage = () => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, []);
 
@@ -78,13 +83,26 @@ export const LiveEventFeedPage = () => {
   }, []); // Only fetch on mount
 
   useEffect(() => {
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     if (!autoRefresh || isPaused) return;
 
-    const interval = setInterval(() => {
-      fetchEvents();
+    intervalRef.current = setInterval(() => {
+      if (isMountedRef.current) {
+        fetchEvents();
+      }
     }, refreshInterval * 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [autoRefresh, refreshInterval, isPaused]);
 
   useEffect(() => {
