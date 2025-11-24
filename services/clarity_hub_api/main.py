@@ -183,6 +183,45 @@ class ResilienceMetricsResponse(BaseModel):
     timestamp: str
     score_details: Optional[Dict[str, Any]] = None
 
+# --- Fleet Management Models ---
+class AgentInfo(BaseModel):
+    version: str
+    status: str
+    last_heartbeat: str
+    uptime_seconds: int
+
+class EndpointResponse(BaseModel):
+    id: str
+    hostname: str
+    ip_address: str
+    os: str
+    os_version: str
+    os_type: str  # Linux, Windows, macOS, Other
+    type: str  # server, workstation, laptop
+    status: str  # online, offline, isolated
+    risk_level: str  # LOW, MEDIUM, HIGH, CRITICAL
+    last_seen: str
+    vulnerability_count: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    agent: AgentInfo
+    created_at: str
+    updated_at: str
+
+class FleetMetrics(BaseModel):
+    total_endpoints: int
+    online_count: int
+    offline_count: int
+    isolated_count: int
+    high_risk_count: int
+    critical_risk_count: int
+    total_vulnerabilities: int
+    risk_distribution: Dict[str, int]
+    os_distribution: Dict[str, int]
+    type_distribution: Dict[str, int]
+
 # --- FastAPI Application ---
 app = FastAPI(
     title="Voltaxe Clarity Hub API",
@@ -996,6 +1035,176 @@ def get_recent_vulnerabilities(
     
     except Exception as e:
         print(f"[API] ---> Error fetching recent vulnerabilities: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+# ============================================================================
+# FLEET MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@app.get("/fleet/endpoints", response_model=List[EndpointResponse])
+def get_fleet_endpoints(db: Session = Depends(get_db)):
+    """Get all endpoints (fleet devices) with their status and metrics"""
+    print("\n[API] ---> Fetching fleet endpoints [API]")
+    
+    try:
+        # Get all unique hostnames from snapshots
+        snapshots = db.query(SnapshotDB).order_by(SnapshotDB.timestamp.desc()).all()
+        
+        # Group by hostname to get latest info for each
+        endpoint_map = {}
+        for snap in snapshots:
+            hostname = str(snap.hostname)
+            if hostname not in endpoint_map:
+                # Get vulnerability counts
+                vuln_events = db.query(EventDB).filter(
+                    EventDB.hostname == hostname,
+                    EventDB.event_type == 'VULNERABILITY_DETECTED'
+                ).all()
+                
+                critical_count = sum(1 for e in vuln_events if 'critical' in str(e.details).lower())
+                high_count = sum(1 for e in vuln_events if 'high' in str(e.details).lower() and 'critical' not in str(e.details).lower())
+                medium_count = sum(1 for e in vuln_events if 'medium' in str(e.details).lower())
+                low_count = sum(1 for e in vuln_events if 'low' in str(e.details).lower())
+                total_vulns = len(vuln_events)
+                
+                # Determine risk level
+                if critical_count > 0:
+                    risk_level = 'CRITICAL'
+                elif high_count > 0:
+                    risk_level = 'HIGH'
+                elif medium_count > 0:
+                    risk_level = 'MEDIUM'
+                else:
+                    risk_level = 'LOW'
+                
+                # Determine status (online if seen in last 5 minutes)
+                time_since_last_seen = (datetime.datetime.utcnow() - snap.timestamp).total_seconds()
+                if time_since_last_seen < 300:  # 5 minutes
+                    status = 'online'
+                elif time_since_last_seen < 3600:  # 1 hour
+                    status = 'offline'
+                else:
+                    status = 'offline'
+                
+                # Extract OS details
+                details = snap.details or {}
+                os_name = details.get('os', 'Unknown')
+                hardware = details.get('hardware_info', {})
+                
+                # Determine OS type
+                os_type = 'Other'
+                os_lower = os_name.lower()
+                if 'windows' in os_lower:
+                    os_type = 'Windows'
+                elif 'linux' in os_lower or 'ubuntu' in os_lower or 'debian' in os_lower or 'centos' in os_lower:
+                    os_type = 'Linux'
+                elif 'mac' in os_lower or 'darwin' in os_lower:
+                    os_type = 'macOS'
+                
+                # Determine device type based on hardware or naming
+                device_type = 'workstation'
+                if 'server' in hostname.lower():
+                    device_type = 'server'
+                elif 'laptop' in hostname.lower() or 'notebook' in hostname.lower():
+                    device_type = 'laptop'
+                
+                endpoint_map[hostname] = EndpointResponse(
+                    id=f"ep-{snap.id}",
+                    hostname=hostname,
+                    ip_address=details.get('ip_address', '0.0.0.0'),
+                    os=os_name,
+                    os_version=details.get('architecture', 'Unknown'),
+                    os_type=os_type,
+                    type=device_type,
+                    status=status,
+                    risk_level=risk_level,
+                    last_seen=snap.timestamp.isoformat(),
+                    vulnerability_count=total_vulns,
+                    critical_count=critical_count,
+                    high_count=high_count,
+                    medium_count=medium_count,
+                    low_count=low_count,
+                    agent=AgentInfo(
+                        version='2.1.0',
+                        status='running' if status == 'online' else 'stopped',
+                        last_heartbeat=snap.timestamp.isoformat(),
+                        uptime_seconds=int(time_since_last_seen) if status == 'online' else 0
+                    ),
+                    created_at=snap.timestamp.isoformat(),
+                    updated_at=snap.timestamp.isoformat()
+                )
+        
+        endpoints = list(endpoint_map.values())
+        print(f"[API] ---> Returning {len(endpoints)} endpoints [API]")
+        return endpoints
+        
+    except Exception as e:
+        print(f"[API] ---> Error fetching fleet endpoints: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@app.get("/fleet/metrics", response_model=FleetMetrics)
+def get_fleet_metrics(db: Session = Depends(get_db)):
+    """Get fleet-wide metrics and statistics"""
+    print("\n[API] ---> Fetching fleet metrics [API]")
+    
+    try:
+        # Get all endpoints
+        endpoints = get_fleet_endpoints(db)
+        
+        # Calculate metrics
+        total_endpoints = len(endpoints)
+        online_count = sum(1 for e in endpoints if e.status == 'online')
+        offline_count = sum(1 for e in endpoints if e.status == 'offline')
+        isolated_count = sum(1 for e in endpoints if e.status == 'isolated')
+        
+        high_risk_count = sum(1 for e in endpoints if e.risk_level in ['HIGH', 'CRITICAL'])
+        critical_risk_count = sum(1 for e in endpoints if e.risk_level == 'CRITICAL')
+        
+        total_vulnerabilities = sum(e.vulnerability_count for e in endpoints)
+        
+        # Risk distribution
+        risk_distribution = {
+            'CRITICAL': sum(1 for e in endpoints if e.risk_level == 'CRITICAL'),
+            'HIGH': sum(1 for e in endpoints if e.risk_level == 'HIGH'),
+            'MEDIUM': sum(1 for e in endpoints if e.risk_level == 'MEDIUM'),
+            'LOW': sum(1 for e in endpoints if e.risk_level == 'LOW')
+        }
+        
+        # OS distribution
+        os_distribution = {
+            'Windows': sum(1 for e in endpoints if e.os_type == 'Windows'),
+            'Linux': sum(1 for e in endpoints if e.os_type == 'Linux'),
+            'macOS': sum(1 for e in endpoints if e.os_type == 'macOS'),
+            'Other': sum(1 for e in endpoints if e.os_type == 'Other')
+        }
+        
+        # Type distribution
+        type_distribution = {
+            'server': sum(1 for e in endpoints if e.type == 'server'),
+            'workstation': sum(1 for e in endpoints if e.type == 'workstation'),
+            'laptop': sum(1 for e in endpoints if e.type == 'laptop')
+        }
+        
+        metrics = FleetMetrics(
+            total_endpoints=total_endpoints,
+            online_count=online_count,
+            offline_count=offline_count,
+            isolated_count=isolated_count,
+            high_risk_count=high_risk_count,
+            critical_risk_count=critical_risk_count,
+            total_vulnerabilities=total_vulnerabilities,
+            risk_distribution=risk_distribution,
+            os_distribution=os_distribution,
+            type_distribution=type_distribution
+        )
+        
+        print(f"[API] ---> Fleet metrics: {total_endpoints} endpoints, {online_count} online [API]")
+        return metrics
+        
+    except Exception as e:
+        print(f"[API] ---> Error fetching fleet metrics: {e} [API]")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
