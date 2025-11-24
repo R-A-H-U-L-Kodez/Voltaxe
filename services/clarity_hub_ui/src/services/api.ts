@@ -164,6 +164,22 @@ export const incidentService = {
     const response = await api.get<IncidentStats>('/incidents/stats/summary', { params: { hours } });
     return response.data;
   },
+  updateIncidentStatus: async (incidentId: string, status: string): Promise<Incident> => {
+    const response = await api.patch<Incident>(`/incidents/${incidentId}/status`, { status });
+    return response.data;
+  },
+  assignIncident: async (incidentId: string, assignee: string): Promise<Incident> => {
+    const response = await api.patch<Incident>(`/incidents/${incidentId}/assign`, { assigned_to: assignee });
+    return response.data;
+  },
+  addComment: async (incidentId: string, content: string): Promise<any> => {
+    const response = await api.post(`/incidents/${incidentId}/comments`, { content });
+    return response.data;
+  },
+  getTeamMembers: async (): Promise<{ id: string; name: string; email: string }[]> => {
+    const response = await api.get('/team/members');
+    return response.data;
+  },
 };
 
 // Auth Service

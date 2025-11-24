@@ -122,12 +122,39 @@ export interface IncidentAlert {
   severity: string;
 }
 
+export interface IncidentComment {
+  id: string;
+  incident_id: string;
+  author: string;
+  content: string;
+  timestamp: string;
+}
+
+export interface IncidentPlaybook {
+  id: string;
+  name: string;
+  description: string;
+  steps: string[];
+  applicable_stages: string[];
+}
+
+export interface RelatedIncident {
+  incident_id: string;
+  title: string;
+  similarity_score: number;
+  common_event_types: string[];
+  occurred_at: string;
+}
+
+export type IncidentStatus = 'open' | 'investigating' | 'resolved';
+
 export interface Incident {
   incident_id: string;
   title: string;
   description: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
-  status: string;
+  status: IncidentStatus;
+  assigned_to?: string;
   alert_count: number;
   affected_hosts: string[];
   event_types: string[];
@@ -135,7 +162,11 @@ export interface Incident {
   last_seen: string;
   alerts: IncidentAlert[];
   kill_chain_stage: string;
+  mitre_attack_ids?: string[];
   recommended_actions: string[];
+  comments?: IncidentComment[];
+  related_incidents?: RelatedIncident[];
+  suggested_playbooks?: IncidentPlaybook[];
 }
 
 export interface IncidentStats {
