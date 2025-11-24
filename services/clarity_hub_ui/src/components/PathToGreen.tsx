@@ -70,9 +70,10 @@ export const PathToGreen = () => {
   ]);
 
   const currentScore = 82;
-  const potentialScore = currentScore + recommendations
+  const totalPossiblePoints = recommendations
     .filter(r => !r.completed)
     .reduce((sum, r) => sum + r.points, 0);
+  const potentialScore = Math.min(100, currentScore + totalPossiblePoints);
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
@@ -144,14 +145,14 @@ export const PathToGreen = () => {
             Progress to Grade A (90+)
           </span>
           <span className="text-sm font-medium" style={{ color: 'hsl(var(--success))' }}>
-            {potentialScore}/90
+            {Math.min(potentialScore, 100)}/100
           </span>
         </div>
         <div className="w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'hsl(var(--muted))' }}>
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
-              width: `${(potentialScore / 90) * 100}%`,
+              width: `${potentialScore}%`,
               backgroundColor: potentialScore >= 90 ? 'hsl(var(--success))' : 'hsl(var(--primary-gold))',
             }}
           />
