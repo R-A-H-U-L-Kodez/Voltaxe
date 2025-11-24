@@ -1,38 +1,106 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TrendingUp, Calendar, Award } from 'lucide-react';
+import { resilienceService } from '../services/api';
+import { ResilienceMetrics } from '../types';
 
 export const SecurityTrends = () => {
-  // Mock historical data - in production, this would come from API
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d'>('30d');
+  const [metricsData, setMetricsData] = useState<ResilienceMetrics[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  const historicalData = {
-    '7d': [
-      { date: '18 Nov', score: 72 },
-      { date: '19 Nov', score: 74 },
-      { date: '20 Nov', score: 73 },
-      { date: '21 Nov', score: 76 },
-      { date: '22 Nov', score: 78 },
-      { date: '23 Nov', score: 80 },
-      { date: '24 Nov', score: 82 },
-    ],
-    '30d': [
-      { date: 'Week 1', score: 65 },
-      { date: 'Week 2', score: 70 },
-      { date: 'Week 3', score: 75 },
-      { date: 'Week 4', score: 82 },
-    ],
-    '90d': [
-      { date: 'Sep', score: 58 },
-      { date: 'Oct', score: 68 },
-      { date: 'Nov', score: 82 },
-    ],
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Fetch more data for different periods
+        const limit = selectedPeriod === '7d' ? 7 : selectedPeriod === '30d' ? 30 : 90;
+        const data = await resilienceService.getResilienceMetrics(limit);
+        setMetricsData(data);
+      } catch (error) {
+        console.error('Failed to fetch resilience metrics', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, [selectedPeriod]);
+
+  // Process data based on selected period
+  const processData = () => {
+    if (!metricsData || metricsData.length === 0) {
+      return [];
+    }
+
+    // Sort by timestamp
+    const sorted = [...metricsData].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    if (selectedPeriod === '7d') {
+      // Last 7 days, daily granularity
+      return sorted.slice(-7).map(m => ({
+        date: new Date(m.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        score: m.resilience_score
+      }));
+    } else if (selectedPeriod === '30d') {
+      // Last 30 days, weekly granularity
+      const weeks: { date: string; scores: number[] }[] = [];
+      sorted.slice(-30).forEach((m, idx) => {
+        const weekIndex = Math.floor(idx / 7);
+        if (!weeks[weekIndex]) {
+          weeks[weekIndex] = { date: `Week ${weekIndex + 1}`, scores: [] };
+        }
+        weeks[weekIndex].scores.push(m.resilience_score);
+      });
+      return weeks.map(w => ({
+        date: w.date,
+        score: Math.round(w.scores.reduce((a, b) => a + b, 0) / w.scores.length)
+      }));
+    } else {
+      // Last 90 days, monthly granularity
+      const months: { [key: string]: number[] } = {};
+      sorted.slice(-90).forEach(m => {
+        const monthKey = new Date(m.timestamp).toLocaleDateString('en-US', { month: 'short' });
+        if (!months[monthKey]) {
+          months[monthKey] = [];
+        }
+        months[monthKey].push(m.resilience_score);
+      });
+      return Object.entries(months).map(([date, scores]) => ({
+        date,
+        score: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+      }));
+    }
   };
 
-  const data = historicalData[selectedPeriod];
-  const currentScore = data[data.length - 1].score;
-  const previousScore = data[0].score;
+  const data = processData();
+  
+  if (loading) {
+    return (
+      <div className="card p-6">
+        <div className="flex items-center justify-center h-48">
+          <p className="text-sm text-muted-foreground">Loading security trends…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="card p-6">
+        <h3 className="text-xl font-bold mb-4">Security Trends</h3>
+        <p className="text-sm text-muted-foreground">No historical data available yet</p>
+      </div>
+    );
+  }
+
+  const currentScore = data[data.length - 1]?.score || 0;
+  const previousScore = data[0]?.score || 0;
   const improvement = currentScore - previousScore;
-  const improvementPercent = ((improvement / previousScore) * 100).toFixed(1);
+  const improvementPercent = previousScore > 0 ? ((improvement / previousScore) * 100).toFixed(1) : '0.0';
 
   const maxScore = Math.max(...data.map(d => d.score));
 
@@ -137,9 +205,9 @@ export const SecurityTrends = () => {
           ))}
         </div>
 
-        {/* Line Chart */}
+        {/* Responsive SVG Line Chart */}
         <div className="absolute inset-0" style={{ paddingLeft: '40px', paddingBottom: '30px', paddingRight: '10px', paddingTop: '40px' }}>
-          <svg width="100%" height="100%" style={{ overflow: 'visible' }}>
+          <svg viewBox="0 0 800 200" width="100%" height="100%" style={{ overflow: 'visible' }} preserveAspectRatio="none">
             {/* Define gradient for line */}
             <defs>
               <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -154,13 +222,54 @@ export const SecurityTrends = () => {
 
             {/* Calculate SVG dimensions */}
             {(() => {
-              const svgWidth = 800; // approximate width
-              const svgHeight = 200; // approximate height
+              const svgWidth = 800;
+              const svgHeight = 200;
+              // Defensive: avoid division by zero for single point
               const points = data.map((point, index) => {
-                const x = (index / (data.length - 1)) * svgWidth;
+                const x = (data.length === 1)
+                  ? svgWidth / 2
+                  : (index / (data.length - 1)) * svgWidth;
                 const y = svgHeight - (point.score / 100) * svgHeight;
                 return { x, y, score: point.score, date: point.date };
               });
+
+              // If only one point, just show a dot in the center
+              if (points.length === 1) {
+                const p = points[0];
+                return (
+                  <g>
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={8}
+                      fill={'hsl(var(--primary-gold))'}
+                      stroke="hsl(var(--card))"
+                      strokeWidth="2"
+                    >
+                      <title>{p.date}: {p.score}/100</title>
+                    </circle>
+                    <text
+                      x={p.x}
+                      y={p.y - 15}
+                      textAnchor="middle"
+                      fontSize="12"
+                      fontWeight="bold"
+                      fill="hsl(var(--foreground))"
+                    >
+                      {p.score}
+                    </text>
+                    <text
+                      x={p.x}
+                      y={svgHeight + 20}
+                      textAnchor="middle"
+                      fontSize="11"
+                      fill="hsl(var(--muted-foreground))"
+                    >
+                      {p.date}
+                    </text>
+                  </g>
+                );
+              }
 
               // Create path string for line
               const linePath = points.map((p, i) => 
@@ -210,10 +319,8 @@ export const SecurityTrends = () => {
                   {/* Data points */}
                   {points.map((point, index) => {
                     const isHighest = point.score === maxScore;
-                    
                     return (
                       <g key={index}>
-                        {/* Point circle */}
                         <circle
                           cx={point.x}
                           cy={point.y}
@@ -231,8 +338,6 @@ export const SecurityTrends = () => {
                             {index > 0 && `\nChange: ${point.score > points[index - 1].score ? '+' : ''}${point.score - points[index - 1].score} points`}
                           </title>
                         </circle>
-
-                        {/* Score label */}
                         <text
                           x={point.x}
                           y={point.y - 15}
@@ -243,8 +348,6 @@ export const SecurityTrends = () => {
                         >
                           {point.score}
                         </text>
-
-                        {/* Date label below chart */}
                         <text
                           x={point.x}
                           y={svgHeight + 20}
@@ -254,8 +357,6 @@ export const SecurityTrends = () => {
                         >
                           {point.date}
                         </text>
-
-                        {/* Trend indicator */}
                         {index > 0 && (
                           <text
                             x={point.x}

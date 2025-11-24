@@ -1,34 +1,76 @@
 import { useState, useEffect } from 'react';
 import { Activity, Cpu, Zap, Shield, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
+import { snapshotService, incidentService } from '../services/api';
+import { Snapshot, Incident } from '../types';
 
 export const AxonEngineMonitor = () => {
   const [scanning, setScanning] = useState(true);
-  const [activeScans, setActiveScans] = useState(3);
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [snapshotsData, incidentsResponse] = await Promise.all([
+          snapshotService.getSnapshots(),
+          incidentService.getIncidents({ hours: 24, limit: 5 })
+        ]);
+        setSnapshots(snapshotsData);
+        setIncidents(incidentsResponse.incidents || []);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch Axon Engine data:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+    
     // Simulate scanning activity
-    const interval = setInterval(() => {
+    const scanInterval = setInterval(() => {
       setScanning(prev => !prev);
-      setActiveScans(Math.floor(Math.random() * 5) + 1);
     }, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearInterval(scanInterval);
+    };
   }, []);
 
-  const recentActivity = [
-    { time: '2 min ago', action: 'Completed vulnerability scan on endpoint-01', status: 'success', icon: CheckCircle },
-    { time: '5 min ago', action: 'Detected anomaly in network traffic', status: 'warning', icon: AlertTriangle },
-    { time: '8 min ago', action: 'Updated threat intelligence database', status: 'success', icon: CheckCircle },
-    { time: '12 min ago', action: 'Analyzed 247 security events', status: 'success', icon: CheckCircle },
-    { time: '15 min ago', action: 'Completed CVE correlation analysis', status: 'success', icon: CheckCircle },
-  ];
+  const activeEndpoints = snapshots.filter(s => s.status === 'online').length;
+  const threatsDetected = incidents.filter(i => i.status === 'open').length;
+  const activeScans = snapshots.filter(s => s.status === 'online').length;
 
   const engineStats = [
-    { label: 'Endpoints Monitored', value: '24', icon: Shield },
-    { label: 'Threats Detected Today', value: '12', icon: AlertTriangle },
+    { label: 'Endpoints Monitored', value: snapshots.length.toString(), icon: Shield },
+    { label: 'Threats Detected Today', value: threatsDetected.toString(), icon: AlertTriangle },
     { label: 'Active Scans', value: activeScans.toString(), icon: Activity },
     { label: 'Response Time', value: '< 1s', icon: Zap },
   ];
+
+  // Build recent activity from real incidents
+  const recentActivity = incidents.slice(0, 5).map(incident => ({
+    time: new Date(incident.timestamp).toLocaleString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    }),
+    action: incident.title || `${incident.incident_type} detected on ${incident.hostname}`,
+    status: incident.severity === 'CRITICAL' || incident.severity === 'HIGH' ? 'warning' : 'success',
+    icon: incident.severity === 'CRITICAL' || incident.severity === 'HIGH' ? AlertTriangle : CheckCircle
+  }));
+
+  if (loading) {
+    return (
+      <div className="card p-6">
+        <div className="flex items-center justify-center h-48">
+          <p className="text-sm text-muted-foreground">Loading Axon Engine data…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card p-6">

@@ -153,3 +153,92 @@ export interface IncidentStats {
   multi_host_incidents: number;
   time_window_hours: number;
 }
+
+// Fleet Management interfaces
+export type EndpointStatus = 'online' | 'offline' | 'isolated';
+export type EndpointRisk = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+export type EndpointType = 'server' | 'workstation' | 'laptop';
+export type OSType = 'Windows' | 'Linux' | 'macOS' | 'Other';
+
+export interface AgentInfo {
+  version: string;
+  status: 'running' | 'stopped' | 'error';
+  last_heartbeat: string;
+  uptime_seconds: number;
+}
+
+export interface EndpointVulnerability {
+  id: string;
+  cve_id: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  description: string;
+  detected_at: string;
+  patched: boolean;
+}
+
+export interface Endpoint {
+  id: string;
+  hostname: string;
+  ip_address: string;
+  os: string;
+  os_version: string;
+  os_type: OSType;
+  type: EndpointType;
+  status: EndpointStatus;
+  risk_level: EndpointRisk;
+  last_seen: string;
+  vulnerability_count: number;
+  critical_count: number;
+  high_count: number;
+  medium_count: number;
+  low_count: number;
+  agent: AgentInfo;
+  vulnerabilities?: EndpointVulnerability[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FleetMetrics {
+  total_endpoints: number;
+  online_count: number;
+  offline_count: number;
+  isolated_count: number;
+  high_risk_count: number;
+  critical_risk_count: number;
+  total_vulnerabilities: number;
+  risk_distribution: {
+    CRITICAL: number;
+    HIGH: number;
+    MEDIUM: number;
+    LOW: number;
+  };
+  os_distribution: {
+    Windows: number;
+    Linux: number;
+    macOS: number;
+    Other: number;
+  };
+  type_distribution: {
+    server: number;
+    workstation: number;
+    laptop: number;
+  };
+}
+
+export interface EndpointScanResult {
+  endpoint_id: string;
+  scan_type: 'vulnerability' | 'malware' | 'full';
+  status: 'started' | 'running' | 'completed' | 'failed';
+  started_at: string;
+  completed_at?: string;
+  findings?: any;
+}
+
+export interface EndpointAction {
+  action: 'scan' | 'isolate' | 'unisolate' | 'update' | 'restart';
+  endpoint_id: string;
+  initiated_by: string;
+  timestamp: string;
+  status: 'pending' | 'success' | 'failed';
+  result?: string;
+}

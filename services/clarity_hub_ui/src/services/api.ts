@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard, Incident, IncidentStats } from '../types';
+import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard, Incident, IncidentStats, Endpoint, FleetMetrics, EndpointScanResult, EndpointAction } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -69,6 +69,47 @@ export const endpointService = {
     console.log('[ISOLATE] Token from localStorage:', localStorage.getItem('token')?.substring(0, 20) + '...');
     const response = await api.post(`/endpoints/${hostname}/isolate`);
     console.log('[ISOLATE] Response:', response);
+    return response.data;
+  },
+  
+  // Fleet Management methods
+  getAllEndpoints: async (params?: {
+    status?: string;
+    risk_level?: string;
+    os_type?: string;
+    search?: string;
+  }): Promise<Endpoint[]> => {
+    const response = await api.get<Endpoint[]>('/fleet/endpoints', { params });
+    return response.data;
+  },
+  
+  getFleetMetrics: async (): Promise<FleetMetrics> => {
+    const response = await api.get<FleetMetrics>('/fleet/metrics');
+    return response.data;
+  },
+  
+  getEndpoint: async (endpointId: string): Promise<Endpoint> => {
+    const response = await api.get<Endpoint>(`/fleet/endpoints/${endpointId}`);
+    return response.data;
+  },
+  
+  quickScan: async (endpointId: string, scanType: 'vulnerability' | 'malware' | 'full' = 'vulnerability'): Promise<EndpointScanResult> => {
+    const response = await api.post<EndpointScanResult>(`/fleet/endpoints/${endpointId}/scan`, { scan_type: scanType });
+    return response.data;
+  },
+  
+  isolateEndpointById: async (endpointId: string): Promise<EndpointAction> => {
+    const response = await api.post<EndpointAction>(`/fleet/endpoints/${endpointId}/isolate`);
+    return response.data;
+  },
+  
+  unisolateEndpoint: async (endpointId: string): Promise<EndpointAction> => {
+    const response = await api.post<EndpointAction>(`/fleet/endpoints/${endpointId}/unisolate`);
+    return response.data;
+  },
+  
+  updateEndpoint: async (endpointId: string, data: Partial<Endpoint>): Promise<Endpoint> => {
+    const response = await api.patch<Endpoint>(`/fleet/endpoints/${endpointId}`, data);
     return response.data;
   },
 };

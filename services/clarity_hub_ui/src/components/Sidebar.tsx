@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Camera, 
   AlertTriangle, 
   Activity, 
   LogOut, 
@@ -12,7 +11,8 @@ import {
   PlusCircle,
   Target,
   FileText,
-  LayoutDashboard
+  LayoutDashboard,
+  Layers
 } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 
@@ -77,7 +77,7 @@ export const Sidebar = () => {
         </NavLink>
 
         <NavLink
-          to="/snapshots"
+          to="/fleet"
           className={({ isActive }) =>
             `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth ${
               isActive
@@ -90,8 +90,8 @@ export const Sidebar = () => {
             backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
           })}
         >
-          <Camera size={20} />
-          <span>Snapshots</span>
+          <Layers size={20} />
+          <span>Fleet Command</span>
         </NavLink>
 
         <NavLink

@@ -3,7 +3,6 @@ import { AuthProvider } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import { ResilienceIntelligencePage } from './pages/ResilienceIntelligencePage';
-import { SnapshotsPage } from './pages/SnapshotsPage';
 import { CommandCenterPage } from './pages/CommandCenterPage';
 import { AlertsPage } from './pages/AlertsPage';
 import { EndpointDetailPage } from './pages/EndpointDetailPage';
@@ -14,6 +13,7 @@ import { TeamManagementPage } from './pages/TeamManagementPage';
 import { AddEndpointPage } from './pages/AddEndpointPage';
 import { IncidentsPage } from './pages/IncidentsPage';
 import AuditLogsPage from './pages/AuditLogsPage';
+import { FleetCommandCenter } from './pages/FleetCommandCenter';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -48,14 +48,6 @@ function App() {
             }
           />
           <Route
-            path="/snapshots"
-            element={
-              <ProtectedRoute>
-                <SnapshotsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/alerts"
             element={
               <ProtectedRoute>
@@ -81,6 +73,30 @@ function App() {
           />
           <Route
             path="/endpoints/:hostname"
+            element={
+              <ProtectedRoute>
+                <EndpointDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fleet"
+            element={
+              <ProtectedRoute>
+                <FleetCommandCenter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/snapshots"
+            element={
+              <ProtectedRoute>
+                <FleetCommandCenter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fleet/endpoint/:endpointId"
             element={
               <ProtectedRoute>
                 <EndpointDetailPage />

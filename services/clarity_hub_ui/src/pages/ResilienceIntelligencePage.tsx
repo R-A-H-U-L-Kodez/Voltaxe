@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { ResilienceDashboardComponent } from '../components/ResilienceDashboard.tsx';
 import { ResilienceScoreWidget } from '../components/ResilienceScoreWidget';
@@ -5,8 +6,51 @@ import { SecurityTrends } from '../components/SecurityTrends';
 import { AxonEngineMonitor } from '../components/AxonEngineMonitor';
 import { PathToGreen } from '../components/PathToGreen';
 import { Shield, TrendingUp, Activity } from 'lucide-react';
+import { resilienceService } from '../services/api';
+import { ResilienceDashboard } from '../types';
 
 export const ResilienceIntelligencePage = () => {
+  const [dashboard, setDashboard] = useState<ResilienceDashboard | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await resilienceService.getResilienceDashboard();
+        setDashboard(data);
+      } catch (error) {
+        console.error('Failed to fetch resilience dashboard', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const getScoreStatus = () => {
+    if (!dashboard) return 'Loading...';
+    const score = dashboard.summary.average_score;
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Fair';
+    return 'At Risk';
+  };
+
+  const getRiskLevel = () => {
+    if (!dashboard) return 'Calculating...';
+    const criticalCount = dashboard.summary.risk_distribution.CRITICAL || 0;
+    const highCount = dashboard.summary.risk_distribution.HIGH || 0;
+    
+    if (criticalCount > 0) return 'Critical';
+    if (highCount > 5) return 'High';
+    if (highCount > 0) return 'Moderate';
+    return 'Low';
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Sidebar />
@@ -33,7 +77,9 @@ export const ResilienceIntelligencePage = () => {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Security Score</p>
-                  <p className="text-xl font-bold text-gradient-gold">Real-time</p>
+                  <p className="text-xl font-bold text-gradient-gold">
+                    {loading ? '...' : dashboard ? `${Math.round(dashboard.summary.average_score)}%` : 'N/A'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -45,7 +91,9 @@ export const ResilienceIntelligencePage = () => {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Risk Assessment</p>
-                  <p className="text-xl font-bold" style={{ color: 'hsl(var(--success))' }}>Active</p>
+                  <p className="text-xl font-bold" style={{ color: 'hsl(var(--success))' }}>
+                    {loading ? '...' : getRiskLevel()}
+                  </p>
                 </div>
               </div>
             </div>
@@ -56,8 +104,10 @@ export const ResilienceIntelligencePage = () => {
                   <Activity className="h-5 w-5" style={{ color: 'hsl(var(--accent-gold))' }} />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Monitoring</p>
-                  <p className="text-xl font-bold" style={{ color: 'hsl(var(--accent-gold))' }}>Continuous</p>
+                  <p className="text-xs uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Total Endpoints</p>
+                  <p className="text-xl font-bold" style={{ color: 'hsl(var(--accent-gold))' }}>
+                    {loading ? '...' : dashboard ? dashboard.summary.total_endpoints : '0'}
+                  </p>
                 </div>
               </div>
             </div>
