@@ -30,7 +30,7 @@ export const AxonEngineMonitor = () => {
     
     // Simulate scanning activity
     const scanInterval = setInterval(() => {
-      setScanning(prev => !prev);
+      setScanning((prev: boolean) => !prev);
     }, 3000);
 
     return () => {
@@ -39,9 +39,8 @@ export const AxonEngineMonitor = () => {
     };
   }, []);
 
-  const activeEndpoints = snapshots.filter(s => s.status === 'online').length;
-  const threatsDetected = incidents.filter(i => i.status === 'open').length;
-  const activeScans = snapshots.filter(s => s.status === 'online').length;
+  const threatsDetected = incidents.filter((i) => i.status === 'open').length;
+  const activeScans = snapshots.filter((s) => s.status === 'online').length;
 
   const engineStats = [
     { label: 'Endpoints Monitored', value: snapshots.length.toString(), icon: Shield },
@@ -51,15 +50,15 @@ export const AxonEngineMonitor = () => {
   ];
 
   // Build recent activity from real incidents
-  const recentActivity = incidents.slice(0, 5).map(incident => ({
-    time: new Date(incident.timestamp).toLocaleString('en-US', { 
+  const recentActivity = incidents.slice(0, 5).map((incident) => ({
+    time: new Date().toLocaleString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
     }),
-    action: incident.title || `${incident.incident_type} detected on ${incident.hostname}`,
-    status: incident.severity === 'CRITICAL' || incident.severity === 'HIGH' ? 'warning' : 'success',
-    icon: incident.severity === 'CRITICAL' || incident.severity === 'HIGH' ? AlertTriangle : CheckCircle
+    action: incident.description || `${incident.severity} severity incident detected`,
+    status: incident.severity === 'critical' || incident.severity === 'high' ? 'warning' : 'success',
+    icon: incident.severity === 'critical' || incident.severity === 'high' ? AlertTriangle : CheckCircle
   }));
 
   if (loading) {
@@ -124,7 +123,7 @@ export const AxonEngineMonitor = () => {
           Recent Activity
         </h4>
         <div className="space-y-3">
-          {recentActivity.map((activity, index) => {
+          {recentActivity.map((activity: any, index: number) => {
             const StatusIcon = activity.icon;
             const statusColor = activity.status === 'success' 
               ? 'hsl(var(--success))' 
