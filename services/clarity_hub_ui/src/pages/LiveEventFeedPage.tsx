@@ -23,7 +23,6 @@ export const LiveEventFeedPage = () => {
   
   const [eps, setEps] = useState(0);
   const [eventHistory, setEventHistory] = useState<{ timestamp: number; count: number }[]>([]);
-  const [newEventIds, setNewEventIds] = useState<Set<number>>(new Set());
 
   const fetchEvents = async (pageNum: number = 1, append: boolean = false) => {
     if (isPaused) return;
@@ -45,12 +44,6 @@ export const LiveEventFeedPage = () => {
           setEvents(prev => [...prev, ...data]);
         }
       } else {
-        const existingIds = new Set(events.map(e => e.id));
-        const newIds = new Set(data.map((e: Event) => e.id).filter((id: number) => !existingIds.has(id)));
-        setNewEventIds(newIds);
-        
-        setTimeout(() => setNewEventIds(new Set()), 2000);
-        
         setEvents(data);
         setPage(1);
         setHasMore(true);
@@ -283,8 +276,7 @@ export const LiveEventFeedPage = () => {
                     ? 'hsl(var(--warning))' 
                     : autoRefresh 
                     ? 'hsl(var(--success))' 
-                    : 'hsl(var(--muted-foreground))',
-                  animation: autoRefresh && !isPaused ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none'
+                    : 'hsl(var(--muted-foreground))'
                 }}
               ></div>
               <span className="text-muted-foreground font-medium">
@@ -330,18 +322,11 @@ export const LiveEventFeedPage = () => {
                 <>
                   <div className="divide-y divide-border">
                     {filteredEvents.map((event) => (
-                      <div 
-                        key={event.id} 
-                        className={`transition-all duration-500 ${newEventIds.has(event.id) ? 'animate-slide-in-fade' : ''}`}
-                        style={{
-                          backgroundColor: newEventIds.has(event.id) ? 'hsl(var(--primary-gold) / 0.1)' : 'transparent'
-                        }}
-                      >
-                        <EventListItem 
-                          event={event} 
-                          onClick={() => setSelectedEvent(event)}
-                        />
-                      </div>
+                      <EventListItem 
+                        key={event.id}
+                        event={event} 
+                        onClick={() => setSelectedEvent(event)}
+                      />
                     ))}
                   </div>
                   
@@ -363,7 +348,7 @@ export const LiveEventFeedPage = () => {
               <div className="p-4 border-t text-center" style={{ borderColor: 'hsl(var(--border))', backgroundColor: 'hsl(var(--card) / 0.5)' }}>
                 <p className="text-muted-foreground text-sm font-medium">
                   Last updated: <span style={{ color: 'hsl(var(--primary-gold))' }}>{new Date().toLocaleTimeString()}</span>
-                  {!hasMore && <span className="ml-4">??? All events loaded</span>}
+                  {!hasMore && <span className="ml-4">• All events loaded</span>}
                 </p>
               </div>
             )}
