@@ -15,6 +15,7 @@ import {
   Clock
 } from 'lucide-react';
 import { ConfirmationModal } from '../components/ConfirmationModal';
+import { teamService, TeamMember as APITeamMember } from '../services/api';
 
 interface TeamMember {
   id: string;
@@ -55,22 +56,28 @@ export const TeamManagementPage = () => {
 
   const fetchTeamMembers = async () => {
     try {
-      // TODO: Replace with actual API call
-      const mockData: TeamMember[] = [
-        {
-          id: '1',
-          email: 'admin@voltaxe.com',
-          name: 'Admin User',
-          role: 'Admin',
-          status: 'active',
-          invitedAt: new Date('2025-01-01'),
-          lastActive: new Date(),
-          invitedBy: 'System'
-        }
-      ];
-      setTeamMembers(mockData);
+      setLoading(true);
+      const members = await teamService.getMembers();
+      
+      // Transform API response to component format
+      const transformedMembers: TeamMember[] = members.map(m => ({
+        id: m.id,
+        email: m.email,
+        name: m.name,
+        role: m.role as 'Admin' | 'Viewer' | 'Analyst',
+        status: m.status as 'active' | 'pending' | 'suspended',
+        invitedAt: new Date(m.invited_at),
+        lastActive: m.last_active ? new Date(m.last_active) : undefined,
+        invitedBy: m.invited_by
+      }));
+      
+      setTeamMembers(transformedMembers);
     } catch (error) {
       console.error('Failed to fetch team members:', error);
+      // If API fails, show empty list instead of mock data
+      setTeamMembers([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -82,23 +89,19 @@ export const TeamManagementPage = () => {
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      const newMember: TeamMember = {
-        id: Date.now().toString(),
+      await teamService.inviteMember({
         email: inviteForm.email,
         name: inviteForm.name,
-        role: inviteForm.role,
-        status: 'pending',
-        invitedAt: new Date(),
-        invitedBy: 'Admin User'
-      };
+        role: inviteForm.role
+      });
 
-      setTeamMembers([...teamMembers, newMember]);
+      // Refresh the team list
+      await fetchTeamMembers();
       setShowInviteModal(false);
       setInviteForm({ email: '', name: '', role: 'Viewer' });
     } catch (error) {
       console.error('Failed to invite user:', error);
-      alert('Failed to send invitation');
+      alert('Failed to invite user. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -109,8 +112,10 @@ export const TeamManagementPage = () => {
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      setTeamMembers(teamMembers.filter(m => m.id !== selectedMember.id));
+      await teamService.deleteMember(selectedMember.id);
+      
+      // Refresh the team list
+      await fetchTeamMembers();
       setShowDeleteModal(false);
       setSelectedMember(null);
     } catch (error) {

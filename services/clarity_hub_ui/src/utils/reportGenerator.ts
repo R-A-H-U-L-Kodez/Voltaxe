@@ -51,13 +51,20 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
     console.log('  - Vulnerabilities:', vulnerabilityEvents.length);
     console.log('  - Rootkits:', rootkitEvents.length);
 
+    // Count actual vulnerabilities per snapshot from vulnerability events
+    const vulnCountByHost = vulnerabilityEvents.reduce((acc: any, event: any) => {
+      const hostname = event.hostname;
+      acc[hostname] = (acc[hostname] || 0) + 1;
+      return acc;
+    }, {});
+
     const reportData: ReportData = {
       reportType,
       timeRange,
       generatedAt: new Date(),
       snapshots: snapshots.map((snap: any) => ({
         hostname: snap.hostname,
-        vulnerabilities: Math.floor(Math.random() * 5), // Mock vulnerability count
+        vulnerabilities: vulnCountByHost[snap.hostname] || 0,
         lastScan: new Date(snap.timestamp)
       })),
       alerts: alerts.map((alert: any) => {
@@ -147,56 +154,7 @@ export const generateSecurityReport = async (reportType: string, timeRange: stri
     return true;
   } catch (error) {
     console.error('Failed to generate report:', error);
-    
-    // Fallback to mock data if API calls fail
-    const mockData: ReportData = {
-      reportType,
-      timeRange,
-      generatedAt: new Date(),
-      snapshots: [
-        { hostname: 'kali', vulnerabilities: 2, lastScan: new Date() },
-        { hostname: 'workstation-01', vulnerabilities: 1, lastScan: new Date() },
-        { hostname: 'server-db-01', vulnerabilities: 3, lastScan: new Date() }
-      ],
-      alerts: [
-        { type: 'Critical', description: 'CVE-2024-12345 detected', timestamp: new Date() },
-        { type: 'Warning', description: 'Suspicious zsh spawned ping', timestamp: new Date() }
-      ],
-      events: [
-        { type: 'System Scan', hostname: 'kali', timestamp: new Date() },
-        { type: 'Vulnerability Detection', hostname: 'kali', timestamp: new Date() }
-      ],
-      malware: [
-        { 
-          fileName: 'suspicious.exe', 
-          isMalicious: true, 
-          threatLevel: 'High', 
-          scanTime: new Date(),
-          matches: ['Trojan.Generic', 'Malware.Payload']
-        }
-      ],
-      vulnerabilities: [
-        {
-          hostname: 'kali',
-          software: 'libcurl',
-          version: '7.68.0',
-          cve: 'CVE-2024-12345',
-          reason: 'Outdated version with known vulnerabilities',
-          timestamp: new Date()
-        }
-      ],
-      rootkits: [
-        {
-          hostname: 'kali',
-          detectionMethod: 'Hidden process detection',
-          recommendation: 'Immediate forensic investigation required',
-          timestamp: new Date()
-        }
-      ]
-    };
-
-    await generatePDFReport(mockData);
-    return true;
+    throw new Error('Failed to generate report. Please ensure all services are running and try again.');
   }
 };
 
