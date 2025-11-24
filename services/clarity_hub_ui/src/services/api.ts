@@ -30,8 +30,13 @@ export const snapshotService = {
 };
 
 export const eventService = {
-  getEvents: async (): Promise<Event[]> => {
-    const response = await api.get<Event[]>('/events');
+  getEvents: async (limit: number = 100, page: number = 1): Promise<Event[]> => {
+    const response = await api.get<Event[]>('/events', {
+      params: {
+        limit,
+        offset: (page - 1) * limit
+      }
+    });
     return response.data;
   },
   getEventsByHostname: async (hostname: string): Promise<Event[]> => {

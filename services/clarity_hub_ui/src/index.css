@@ -102,6 +102,20 @@ body {
   }
 }
 
+@keyframes slideInFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -131,6 +145,10 @@ body {
 
 .animate-slideIn {
   animation: slideIn 0.3s ease-out;
+}
+
+.animate-slide-in-fade {
+  animation: slideInFade 0.5s ease-out;
 }
 
 .animate-fadeIn {
