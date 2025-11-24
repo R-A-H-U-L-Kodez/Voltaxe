@@ -35,6 +35,7 @@ export const SecurityTrends = () => {
   // Process data based on selected period
   const processData = () => {
     if (!metricsData || metricsData.length === 0) {
+      console.log('No metrics data available');
       return [];
     }
 
@@ -43,40 +44,50 @@ export const SecurityTrends = () => {
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
+    console.log(`Processing ${sorted.length} data points for period: ${selectedPeriod}`);
+
     if (selectedPeriod === '7d') {
       // Last 7 days, daily granularity
-      return sorted.slice(-7).map(m => ({
+      const dailyData = sorted.slice(-7).map(m => ({
         date: new Date(m.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         score: m.resilience_score
       }));
+      console.log('7d processed data:', dailyData);
+      return dailyData;
     } else if (selectedPeriod === '30d') {
-      // Last 30 days, weekly granularity
-      const weeks: { date: string; scores: number[] }[] = [];
-      sorted.slice(-30).forEach((m, idx) => {
-        const weekIndex = Math.floor(idx / 7);
-        if (!weeks[weekIndex]) {
-          weeks[weekIndex] = { date: `Week ${weekIndex + 1}`, scores: [] };
-        }
-        weeks[weekIndex].scores.push(m.resilience_score);
-      });
-      return weeks.map(w => ({
-        date: w.date,
-        score: Math.round(w.scores.reduce((a, b) => a + b, 0) / w.scores.length)
-      }));
+      // Last 30 days, show 5 data points (weekly-ish)
+      const step = Math.max(1, Math.floor(sorted.length / 5));
+      const weeklyData = [];
+      for (let i = 0; i < sorted.length; i += step) {
+        const chunk = sorted.slice(i, i + step);
+        const avgScore = Math.round(
+          chunk.reduce((sum, m) => sum + m.resilience_score, 0) / chunk.length
+        );
+        weeklyData.push({
+          date: new Date(chunk[0].timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          score: avgScore
+        });
+      }
+      console.log('30d processed data:', weeklyData);
+      return weeklyData.slice(0, 6); // Max 6 points for clarity
     } else {
       // Last 90 days, monthly granularity
-      const months: { [key: string]: number[] } = {};
+      const months: { [key: string]: { scores: number[]; timestamp: string } } = {};
       sorted.slice(-90).forEach(m => {
-        const monthKey = new Date(m.timestamp).toLocaleDateString('en-US', { month: 'short' });
+        const monthKey = new Date(m.timestamp).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
         if (!months[monthKey]) {
-          months[monthKey] = [];
+          months[monthKey] = { scores: [], timestamp: m.timestamp };
         }
-        months[monthKey].push(m.resilience_score);
+        months[monthKey].scores.push(m.resilience_score);
       });
-      return Object.entries(months).map(([date, scores]) => ({
-        date,
-        score: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-      }));
+      const monthlyData = Object.entries(months)
+        .sort((a, b) => new Date(a[1].timestamp).getTime() - new Date(b[1].timestamp).getTime())
+        .map(([date, data]) => ({
+          date: date.split(' ')[0], // Just month name
+          score: Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length)
+        }));
+      console.log('90d processed data:', monthlyData);
+      return monthlyData;
     }
   };
 
@@ -193,7 +204,7 @@ export const SecurityTrends = () => {
       </div>
 
       {/* Chart */}
-      <div className="relative" style={{ height: '320px' }}>
+      <div key={`chart-${selectedPeriod}-${data.length}`} className="relative" style={{ height: '320px' }}>
         {/* Grid lines with Y-axis labels */}
         <div className="absolute left-0 top-0 bottom-12 flex flex-col justify-between" style={{ width: '100%' }}>
           {[100, 75, 50, 25, 0].map((value) => (
