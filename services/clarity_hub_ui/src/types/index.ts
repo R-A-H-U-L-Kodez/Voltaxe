@@ -273,3 +273,92 @@ export interface EndpointAction {
   status: 'pending' | 'success' | 'failed';
   result?: string;
 }
+
+// Audit Logs interfaces
+export type AuditActionCategory = 
+  | 'AUTH'
+  | 'ENDPOINT'
+  | 'POLICY'
+  | 'USER_MANAGEMENT'
+  | 'ALERT'
+  | 'INCIDENT'
+  | 'CONFIGURATION'
+  | 'DATA_EXPORT'
+  | 'DESTRUCTIVE';
+
+export type AuditActionType =
+  // Auth actions
+  | 'USER_LOGIN'
+  | 'USER_LOGOUT'
+  | 'USER_LOGIN_FAILED'
+  | 'PASSWORD_CHANGED'
+  | 'MFA_ENABLED'
+  | 'MFA_DISABLED'
+  // Endpoint actions
+  | 'ENDPOINT_ISOLATED'
+  | 'ENDPOINT_UNISOLATED'
+  | 'ENDPOINT_SCANNED'
+  | 'ENDPOINT_UPDATED'
+  | 'ENDPOINT_DELETED'
+  // Policy actions
+  | 'POLICY_CREATED'
+  | 'POLICY_UPDATED'
+  | 'POLICY_DELETED'
+  | 'POLICY_ENABLED'
+  | 'POLICY_DISABLED'
+  // User management
+  | 'USER_CREATED'
+  | 'USER_UPDATED'
+  | 'USER_DELETED'
+  | 'ROLE_CHANGED'
+  | 'PERMISSIONS_MODIFIED'
+  // Alert/Incident actions
+  | 'ALERT_ACKNOWLEDGED'
+  | 'ALERT_DISMISSED'
+  | 'INCIDENT_CREATED'
+  | 'INCIDENT_UPDATED'
+  | 'INCIDENT_RESOLVED'
+  | 'INCIDENT_ASSIGNED'
+  // Configuration
+  | 'SETTINGS_CHANGED'
+  | 'INTEGRATION_ADDED'
+  | 'INTEGRATION_REMOVED'
+  // Data export
+  | 'DATA_EXPORTED'
+  | 'REPORT_GENERATED';
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  actor: string; // User email or ID
+  actor_ip: string; // Source IP address
+  action: AuditActionType;
+  action_category: AuditActionCategory;
+  target_type?: string; // e.g., 'endpoint', 'user', 'policy'
+  target_id?: string; // ID of the affected resource
+  target_name?: string; // Human-readable name (e.g., hostname, username)
+  status: 'success' | 'failure';
+  failure_reason?: string;
+  metadata?: Record<string, any>; // Additional context
+  user_agent?: string;
+}
+
+export interface AuditLogFilters {
+  user?: string;
+  action_category?: AuditActionCategory;
+  action?: AuditActionType;
+  status?: 'success' | 'failure';
+  start_date?: string;
+  end_date?: string;
+  search?: string;
+  target_type?: string;
+}
+
+export interface AuditLogStats {
+  total_actions: number;
+  success_rate: number;
+  most_active_user: string;
+  most_common_action: string;
+  destructive_actions_count: number;
+  failed_logins_count: number;
+}

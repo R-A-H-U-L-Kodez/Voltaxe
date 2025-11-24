@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard, Incident, IncidentStats, Endpoint, FleetMetrics, EndpointAction } from '../types';
+import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard, Incident, IncidentStats, Endpoint, FleetMetrics, EndpointAction, AuditLog, AuditLogFilters, AuditLogStats } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -232,6 +232,27 @@ export const authService = {
   
   getProfile: async (): Promise<UserProfile> => {
     const response = await api.get('/auth/me');
+    return response.data;
+  },
+};
+
+// Audit Logs Service
+export const auditService = {
+  getAuditLogs: async (filters?: AuditLogFilters): Promise<{ logs: AuditLog[]; total: number }> => {
+    const response = await api.get<{ logs: AuditLog[]; total: number }>('/audit-logs', { params: filters });
+    return response.data;
+  },
+  
+  getAuditLogStats: async (days: number = 30): Promise<AuditLogStats> => {
+    const response = await api.get<AuditLogStats>('/audit-logs/stats', { params: { days } });
+    return response.data;
+  },
+  
+  exportAuditLogs: async (format: 'csv' | 'json', filters?: AuditLogFilters): Promise<Blob> => {
+    const response = await api.get(`/audit-logs/export/${format}`, {
+      params: filters,
+      responseType: 'blob'
+    });
     return response.data;
   },
 };

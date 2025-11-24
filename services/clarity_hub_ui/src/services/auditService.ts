@@ -151,22 +151,94 @@ class AuditService {
     endDate?: string,
     format: 'json' | 'csv' = 'json'
   ): Promise<Blob> {
-    const params = new URLSearchParams({ format });
-    if (startDate) params.append('start_date', startDate);
-    if (endDate) params.append('end_date', endDate);
+    console.log('exportLogs called with:', { startDate, endDate, format });
+    
+    try {
+      // Try backend API first
+      const params = new URLSearchParams({ format });
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
 
-    const response = await fetch(
-      `${API_BASE_URL}/audit/export?${params.toString()}`,
-      {
-        headers: this.getHeaders()
+      console.log('Attempting backend API export...');
+      const response = await fetch(
+        `${API_BASE_URL}/audit/export?${params.toString()}`,
+        {
+          headers: this.getHeaders()
+        }
+      );
+
+      if (response.ok) {
+        console.log('Backend export succeeded');
+        return response.blob();
       }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to export audit logs: ${response.statusText}`);
+      console.log('Backend export failed:', response.status, response.statusText);
+    } catch (error) {
+      console.warn('Backend export unavailable, using client-side export:', error);
     }
 
-    return response.blob();
+    // Fallback: Client-side export
+    console.log('Using client-side export fallback');
+    
+    // Fetch all logs with date filters
+    const filters: AuditFilters = {
+      limit: 10000, // Large limit to get all logs
+      offset: 0
+    };
+    if (startDate) filters.start_date = startDate;
+    if (endDate) filters.end_date = endDate;
+
+    console.log('Fetching logs with filters:', filters);
+    const logsData = await this.getAuditLogs(filters);
+    const logs = logsData.logs;
+    console.log('Retrieved logs count:', logs.length);
+
+    if (format === 'json') {
+      // JSON export
+      console.log('Creating JSON export');
+      const jsonString = JSON.stringify(logs, null, 2);
+      return new Blob([jsonString], { type: 'application/json' });
+    } else {
+      // CSV export
+      console.log('Creating CSV export');
+      const headers = [
+        'ID',
+        'Timestamp',
+        'User ID',
+        'Username',
+        'Action Type',
+        'Action Description',
+        'Severity',
+        'Resource Type',
+        'Resource ID',
+        'IP Address',
+        'Success',
+        'Error Message'
+      ];
+
+      const csvRows = [headers.join(',')];
+
+      logs.forEach(log => {
+        const row = [
+          log.id,
+          log.timestamp,
+          log.user_id,
+          log.username,
+          log.action_type,
+          `"${(log.action_description || '').replace(/"/g, '""')}"`,
+          log.severity,
+          log.resource_type || '',
+          log.resource_id || '',
+          log.ip_address || '',
+          log.success ? 'true' : 'false',
+          `"${(log.error_message || '').replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvString = csvRows.join('\n');
+      console.log('CSV export created, size:', csvString.length, 'characters');
+      return new Blob([csvString], { type: 'text/csv' });
+    }
   }
 
   async getActionTypes(): Promise<{

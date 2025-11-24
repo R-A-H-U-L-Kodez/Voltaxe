@@ -78,21 +78,11 @@ const AuditLogsPage: React.FC = () => {
 
   const handleExport = async (format: 'json' | 'csv') => {
     try {
-      console.log('Starting export with format:', format);
-      console.log('Filters:', filters);
-      
       const blob = await auditService.exportLogs(
         filters.start_date,
         filters.end_date,
         format
       );
-      
-      console.log('Export blob created:', blob.size, 'bytes');
-      
-      if (!blob || blob.size === 0) {
-        alert('No data to export. The export file is empty.');
-        return;
-      }
       
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -100,18 +90,10 @@ const AuditLogsPage: React.FC = () => {
       a.download = `audit_logs_${new Date().toISOString().split('T')[0]}.${format}`;
       document.body.appendChild(a);
       a.click();
-      
-      // Clean up
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
-      
-      console.log('Export completed successfully');
-      alert(`Audit logs exported successfully as ${format.toUpperCase()}!`);
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to export logs:', error);
-      alert(`Failed to export logs: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
