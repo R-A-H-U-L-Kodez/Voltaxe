@@ -14,10 +14,14 @@ export const SecurityTrends = () => {
         setLoading(true);
         // Fetch more data for different periods
         const limit = selectedPeriod === '7d' ? 7 : selectedPeriod === '30d' ? 30 : 90;
+        console.log(`Fetching resilience metrics for period: ${selectedPeriod}, limit: ${limit}`);
         const data = await resilienceService.getResilienceMetrics(limit);
+        console.log(`Received ${data?.length || 0} metrics for ${selectedPeriod}`);
         setMetricsData(data);
       } catch (error) {
         console.error('Failed to fetch resilience metrics', error);
+        // Set empty data on error to prevent stale data
+        setMetricsData([]);
       } finally {
         setLoading(false);
       }
@@ -113,7 +117,7 @@ export const SecurityTrends = () => {
             <span>Security Trends</span>
           </h3>
           <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-            Track your security improvements over time
+            Track your security improvements in Resilience Intelligence
           </p>
         </div>
         
@@ -189,12 +193,12 @@ export const SecurityTrends = () => {
       </div>
 
       {/* Chart */}
-      <div className="relative" style={{ height: '280px', paddingTop: '40px', paddingBottom: '30px' }}>
-        {/* Grid lines */}
-        <div className="absolute inset-0 flex flex-col justify-between" style={{ paddingTop: '40px', paddingBottom: '30px' }}>
+      <div className="relative" style={{ height: '320px' }}>
+        {/* Grid lines with Y-axis labels */}
+        <div className="absolute left-0 top-0 bottom-12 flex flex-col justify-between" style={{ width: '100%' }}>
           {[100, 75, 50, 25, 0].map((value) => (
-            <div key={value} className="flex items-center">
-              <span className="text-xs w-8" style={{ color: 'hsl(var(--muted-foreground))' }}>
+            <div key={value} className="flex items-center w-full">
+              <span className="text-xs w-10 text-right pr-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
                 {value}
               </span>
               <div 
@@ -205,9 +209,9 @@ export const SecurityTrends = () => {
           ))}
         </div>
 
-        {/* Responsive SVG Line Chart */}
-        <div className="absolute inset-0" style={{ paddingLeft: '40px', paddingBottom: '30px', paddingRight: '10px', paddingTop: '40px' }}>
-          <svg viewBox="0 0 800 200" width="100%" height="100%" style={{ overflow: 'visible' }} preserveAspectRatio="none">
+        {/* SVG Line Chart */}
+        <div className="absolute top-0 bottom-12" style={{ left: '50px', right: '20px', height: '240px' }}>
+          <svg viewBox="0 0 100 100" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{ overflow: 'visible' }}>
             {/* Define gradient for line */}
             <defs>
               <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -222,9 +226,10 @@ export const SecurityTrends = () => {
 
             {/* Calculate SVG dimensions */}
             {(() => {
-              const svgWidth = 800;
-              const svgHeight = 200;
-              // Defensive: avoid division by zero for single point
+              const svgWidth = 100;
+              const svgHeight = 100;
+              
+              // Calculate points with proper scaling
               const points = data.map((point, index) => {
                 const x = (data.length === 1)
                   ? svgWidth / 2
@@ -237,37 +242,28 @@ export const SecurityTrends = () => {
               if (points.length === 1) {
                 const p = points[0];
                 return (
-                  <g>
+                  <>
                     <circle
                       cx={p.x}
                       cy={p.y}
-                      r={8}
+                      r="2"
                       fill={'hsl(var(--primary-gold))'}
                       stroke="hsl(var(--card))"
-                      strokeWidth="2"
+                      strokeWidth="0.5"
                     >
                       <title>{p.date}: {p.score}/100</title>
                     </circle>
                     <text
                       x={p.x}
-                      y={p.y - 15}
+                      y={p.y - 5}
                       textAnchor="middle"
-                      fontSize="12"
+                      fontSize="3.5"
                       fontWeight="bold"
                       fill="hsl(var(--foreground))"
                     >
                       {p.score}
                     </text>
-                    <text
-                      x={p.x}
-                      y={svgHeight + 20}
-                      textAnchor="middle"
-                      fontSize="11"
-                      fill="hsl(var(--muted-foreground))"
-                    >
-                      {p.date}
-                    </text>
-                  </g>
+                  </>
                 );
               }
 
@@ -280,7 +276,7 @@ export const SecurityTrends = () => {
               const areaPath = `${linePath} L ${points[points.length - 1].x} ${svgHeight} L 0 ${svgHeight} Z`;
 
               return (
-                <g>
+                <>
                   {/* Area under line */}
                   <path
                     d={areaPath}
@@ -288,29 +284,12 @@ export const SecurityTrends = () => {
                     className="transition-all duration-500"
                   />
 
-                  {/* Grid lines connecting points */}
-                  {points.map((point, index) => (
-                    index < points.length - 1 && (
-                      <line
-                        key={`grid-${index}`}
-                        x1={point.x}
-                        y1={svgHeight}
-                        x2={point.x}
-                        y2={point.y}
-                        stroke="hsl(var(--border))"
-                        strokeWidth="1"
-                        strokeDasharray="2,2"
-                        opacity="0.3"
-                      />
-                    )
-                  ))}
-
                   {/* Main line */}
                   <path
                     d={linePath}
                     fill="none"
                     stroke="url(#lineGradient)"
-                    strokeWidth="3"
+                    strokeWidth="0.8"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     className="transition-all duration-500"
@@ -324,13 +303,13 @@ export const SecurityTrends = () => {
                         <circle
                           cx={point.x}
                           cy={point.y}
-                          r={isHighest ? 8 : 6}
+                          r={isHighest ? "2" : "1.5"}
                           fill={isHighest ? 'hsl(var(--primary-gold))' : 'hsl(var(--accent-gold))'}
                           stroke="hsl(var(--card))"
-                          strokeWidth="2"
-                          className="transition-all duration-300 hover:r-10 cursor-pointer"
+                          strokeWidth="0.5"
+                          className="transition-all duration-300 cursor-pointer"
                           style={{
-                            filter: isHighest ? 'drop-shadow(0 0 8px hsl(var(--primary-gold)))' : 'none'
+                            filter: isHighest ? 'drop-shadow(0 0 2px hsl(var(--primary-gold)))' : 'none'
                           }}
                         >
                           <title>
@@ -340,29 +319,20 @@ export const SecurityTrends = () => {
                         </circle>
                         <text
                           x={point.x}
-                          y={point.y - 15}
+                          y={point.y - 4}
                           textAnchor="middle"
-                          fontSize="12"
+                          fontSize="3.5"
                           fontWeight="bold"
                           fill="hsl(var(--foreground))"
                         >
                           {point.score}
                         </text>
-                        <text
-                          x={point.x}
-                          y={svgHeight + 20}
-                          textAnchor="middle"
-                          fontSize="11"
-                          fill="hsl(var(--muted-foreground))"
-                        >
-                          {point.date}
-                        </text>
                         {index > 0 && (
                           <text
                             x={point.x}
-                            y={point.y - 30}
+                            y={point.y - 8}
                             textAnchor="middle"
-                            fontSize="10"
+                            fontSize="3"
                             fontWeight="600"
                             fill={point.score > points[index - 1].score ? 'hsl(var(--success))' : 'hsl(var(--danger))'}
                           >
@@ -372,10 +342,26 @@ export const SecurityTrends = () => {
                       </g>
                     );
                   })}
-                </g>
+                </>
               );
             })()}
           </svg>
+        </div>
+
+        {/* X-axis labels (dates) */}
+        <div className="absolute bottom-0 flex justify-between" style={{ left: '50px', right: '20px' }}>
+          {data.map((point, index) => (
+            <div 
+              key={index} 
+              className="text-xs text-center"
+              style={{ 
+                color: 'hsl(var(--muted-foreground))',
+                flex: 1
+              }}
+            >
+              {point.date}
+            </div>
+          ))}
         </div>
       </div>
 
