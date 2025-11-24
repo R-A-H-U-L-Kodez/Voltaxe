@@ -6,7 +6,6 @@ import { ResilienceIntelligencePage } from './pages/ResilienceIntelligencePage';
 import { CommandCenterPage } from './pages/CommandCenterPage';
 import { AlertsPage } from './pages/AlertsPage';
 import { EndpointDetailPage } from './pages/EndpointDetailPage';
-import { LiveEventFeedPage } from './pages/LiveEventFeedPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MalwareScannerPage } from './pages/MalwareScannerPage';
 import { TeamManagementPage } from './pages/TeamManagementPage';
@@ -52,22 +51,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <AlertsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/live-events"
-            element={
-              <ProtectedRoute>
-                <LiveEventFeedPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/events"
-            element={
-              <ProtectedRoute>
-                <LiveEventFeedPage />
               </ProtectedRoute>
             }
           />

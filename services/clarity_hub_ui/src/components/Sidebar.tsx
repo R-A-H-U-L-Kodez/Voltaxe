@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   AlertTriangle, 
-  Activity, 
   LogOut, 
   Settings, 
   Shield,
@@ -92,24 +91,6 @@ export const Sidebar = () => {
         >
           <Layers size={20} />
           <span>Fleet Command</span>
-        </NavLink>
-
-        <NavLink
-          to="/live-events"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
-              isActive
-                ? 'bg-primary-gold/10 text-primary-gold'
-                : 'text-foreground hover:text-accent-gold hover:bg-white/5'
-            }`
-          }
-          style={({ isActive }) => ({
-            color: isActive ? 'hsl(var(--primary-gold))' : undefined,
-            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
-          })}
-        >
-          <Activity size={20} />
-          <span>Live Events</span>
         </NavLink>
 
         <NavLink
