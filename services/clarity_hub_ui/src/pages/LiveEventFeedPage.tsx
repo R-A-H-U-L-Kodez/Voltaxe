@@ -20,12 +20,13 @@ export const LiveEventFeedPage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const observerTarget = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
   
   const [eps, setEps] = useState(0);
   const [eventHistory, setEventHistory] = useState<{ timestamp: number; count: number }[]>([]);
 
   const fetchEvents = async (pageNum: number = 1, append: boolean = false) => {
-    if (isPaused) return;
+    if (isPaused || !isMountedRef.current) return;
     
     if (append) {
       setLoadingMore(true);
@@ -36,6 +37,8 @@ export const LiveEventFeedPage = () => {
     try {
       const limit = 100;
       const data = await eventService.getEvents(limit, pageNum);
+      
+      if (!isMountedRef.current) return; // Check before state updates
       
       if (append) {
         if (data.length === 0) {
@@ -51,14 +54,24 @@ export const LiveEventFeedPage = () => {
     } catch (error) {
       console.error('Failed to fetch events:', error);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 
   const manualRefresh = () => {
     fetchEvents();
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     fetchEvents();
