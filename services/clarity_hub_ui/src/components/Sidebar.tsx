@@ -11,7 +11,8 @@ import {
   Target,
   FileText,
   LayoutDashboard,
-  Layers
+  Layers,
+  Network
 } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 
@@ -127,6 +128,24 @@ export const Sidebar = () => {
         >
           <Target size={20} />
           <span>Incidents</span>
+        </NavLink>
+
+        <NavLink
+          to="/traffic"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
+              isActive
+                ? 'bg-primary-gold/10 text-primary-gold'
+                : 'text-foreground hover:text-accent-gold hover:bg-white/5'
+            }`
+          }
+          style={({ isActive}) => ({
+            color: isActive ? 'hsl(var(--primary-gold))' : undefined,
+            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
+          })}
+        >
+          <Network size={20} />
+          <span>Network Traffic</span>
         </NavLink>
 
         <NavLink
