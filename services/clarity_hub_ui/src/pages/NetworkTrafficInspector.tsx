@@ -743,3 +743,5 @@ export const NetworkTrafficInspector = () => {
     </div>
   );
 };
+
+export default NetworkTrafficInspector;

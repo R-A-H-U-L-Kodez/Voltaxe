@@ -20,7 +20,7 @@ const AddEndpointPage = lazy(() => import('./pages/AddEndpointPage').then(m => (
 const IncidentsPage = lazy(() => import('./pages/IncidentsPage').then(m => ({ default: m.IncidentsPage })));
 const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
 const FleetCommandCenter = lazy(() => import('./pages/FleetCommandCenter').then(m => ({ default: m.FleetCommandCenter })));
-const NetworkTrafficInspector = lazy(() => import('./pages/NetworkTrafficInspector').then(m => ({ default: m.NetworkTrafficInspector })));
+const NetworkTrafficInspector = lazy(() => import('./pages/NetworkTrafficInspector'));
 
 // Loading component
 const LoadingFallback = () => (
