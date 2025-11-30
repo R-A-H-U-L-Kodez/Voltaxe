@@ -81,12 +81,24 @@ Voltaxe_backup_old/
 *.pfx
 !nginx/ssl/*.sh
 
-# Environment files (sensitive)
+# Environment files (sensitive - NEVER COMMIT)
 .env
+.env.*
+!.env.example
+!.env.testing.example
 .env.local
-.env.*.local
+.env.development
+.env.production
+.env.staging
+.env.test
+**/.env
+**/.env.*
+!**/.env.example
 secrets/
 *.secret
+config.json
+secrets.json
+credentials.json
 
 # OS files
 Thumbs.db
