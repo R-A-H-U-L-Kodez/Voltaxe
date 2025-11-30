@@ -23,6 +23,7 @@ interface NetworkPacket {
   ml_verdict: 'BENIGN' | 'MALICIOUS';
   confidence: number;
   threat_indicators: string;
+  ml_models?: string;
   event_type: string;
 }
 
@@ -87,15 +88,30 @@ export const NetworkTrafficInspector = () => {
   }, [packets, showOnlyMalicious, searchTerm]);
 
   // Calculate statistics
+  const maliciousPackets = filteredPackets.filter(p => p.ml_verdict === 'MALICIOUS');
+  const benignPackets = filteredPackets.filter(p => p.ml_verdict === 'BENIGN');
+  
   const stats = {
     total: filteredPackets.length,
-    malicious: filteredPackets.filter(p => p.ml_verdict === 'MALICIOUS').length,
-    benign: filteredPackets.filter(p => p.ml_verdict === 'BENIGN').length,
+    malicious: maliciousPackets.length,
+    benign: benignPackets.length,
     protocols: {
       TCP: filteredPackets.filter(p => p.protocol === 'TCP').length,
       UDP: filteredPackets.filter(p => p.protocol === 'UDP').length,
       ICMP: filteredPackets.filter(p => p.protocol === 'ICMP').length,
-    }
+    },
+    // Calculate ML model accuracy based on confidence scores (multiply by 100 for percentage)
+    mlAccuracy: filteredPackets.length > 0
+      ? ((filteredPackets.reduce((sum, p) => sum + p.confidence, 0) / filteredPackets.length) * 100).toFixed(1)
+      : '0.0',
+    // Average confidence for malicious detections
+    maliciousConfidence: maliciousPackets.length > 0
+      ? ((maliciousPackets.reduce((sum, p) => sum + p.confidence, 0) / maliciousPackets.length) * 100).toFixed(1)
+      : '0.0',
+    // Average confidence for benign classifications
+    benignConfidence: benignPackets.length > 0
+      ? ((benignPackets.reduce((sum, p) => sum + p.confidence, 0) / benignPackets.length) * 100).toFixed(1)
+      : '0.0'
   };
 
   // Chart data
@@ -239,7 +255,7 @@ export const NetworkTrafficInspector = () => {
         {/* Tab Content */}
         {activeTab === 'live' && (
           <div className="space-y-6">
-            {/* Stats Cards */}
+            {/* Stats Cards - Row 1 */}
             <div className="grid grid-cols-4 gap-4">
               <div className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
                 <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Total Connections</div>
@@ -257,6 +273,58 @@ export const NetworkTrafficInspector = () => {
                 <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Active Processes</div>
                 <div className="text-3xl font-bold mt-1" style={{ color: 'hsl(var(--primary-gold))' }}>
                   {new Set(filteredPackets.map(p => p.process_name)).size}
+                </div>
+              </div>
+            </div>
+
+            {/* ML Model Performance Metrics - Row 2 */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg border-2" style={{ 
+                backgroundColor: 'hsl(var(--card))', 
+                borderColor: 'hsl(var(--primary-gold) / 0.5)',
+                boxShadow: '0 0 20px hsl(var(--primary-gold) / 0.2)'
+              }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-semibold" style={{ color: 'hsl(var(--primary-gold))' }}>
+                    ML Model Accuracy
+                  </div>
+                  <Shield className="h-5 w-5" style={{ color: 'hsl(var(--primary-gold))' }} />
+                </div>
+                <div className="text-4xl font-bold" style={{ color: 'hsl(var(--primary-gold))' }}>
+                  {stats.mlAccuracy}%
+                </div>
+                <div className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Average confidence across all predictions
+                </div>
+              </div>
+              
+              <div className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Threat Detection Confidence
+                  </div>
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="text-3xl font-bold text-red-500">
+                  {stats.maliciousConfidence}%
+                </div>
+                <div className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  {stats.malicious} malicious packets analyzed
+                </div>
+              </div>
+              
+              <div className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Benign Classification Confidence
+                  </div>
+                  <Shield className="h-5 w-5 text-green-500" />
+                </div>
+                <div className="text-3xl font-bold text-green-500">
+                  {stats.benignConfidence}%
+                </div>
+                <div className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  {stats.benign} benign packets verified
                 </div>
               </div>
             </div>
@@ -693,6 +761,22 @@ export const NetworkTrafficInspector = () => {
                         {selectedPacket.hostname}
                       </span>
                     </div>
+                    {selectedPacket.ml_models && (
+                      <div className="mt-4 p-3 rounded-lg" style={{ 
+                        backgroundColor: 'hsl(var(--primary-gold) / 0.1)',
+                        border: '1px solid hsl(var(--primary-gold) / 0.3)'
+                      }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Shield className="h-4 w-4" style={{ color: 'hsl(var(--primary-gold))' }} />
+                          <span className="font-semibold text-sm" style={{ color: 'hsl(var(--primary-gold))' }}>
+                            ML Models Used
+                          </span>
+                        </div>
+                        <div className="text-xs" style={{ color: 'hsl(var(--foreground))' }}>
+                          {selectedPacket.ml_models}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

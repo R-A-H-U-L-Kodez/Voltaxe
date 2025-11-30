@@ -21,6 +21,7 @@ const IncidentsPage = lazy(() => import('./pages/IncidentsPage').then(m => ({ de
 const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
 const FleetCommandCenter = lazy(() => import('./pages/FleetCommandCenter').then(m => ({ default: m.FleetCommandCenter })));
 const NetworkTrafficInspector = lazy(() => import('./pages/NetworkTrafficInspector'));
+const AxonEngineMetrics = lazy(() => import('./pages/AxonEngineMetrics'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -78,6 +79,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <NetworkTrafficInspector />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/axon-metrics"
+              element={
+                <ProtectedRoute>
+                  <AxonEngineMetrics />
                 </ProtectedRoute>
               }
             />

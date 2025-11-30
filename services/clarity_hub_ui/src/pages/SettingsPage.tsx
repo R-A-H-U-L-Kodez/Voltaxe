@@ -19,7 +19,8 @@ import {
   Download,
   Upload,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 
 interface SettingsData {
@@ -91,6 +92,7 @@ export const SettingsPage = () => {
   const [copiedApiKey, setCopiedApiKey] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [activeTab, setActiveTab] = useState<'settings' | 'audit-logs'>('settings');
   
   // Notification states
   // @ts-ignore - pushEnabled is set but not directly read, kept for future implementation
@@ -459,7 +461,7 @@ export const SettingsPage = () => {
               </div>
               <div>
                 <h1 className="text-4xl font-bold text-gradient-gold mb-2">
-                  Settings
+                  Settings & Configuration
                 </h1>
                 <p className="text-muted-foreground flex items-center">
                   <Settings className="h-4 w-4 mr-2" style={{ color: 'hsl(var(--primary-gold))' }} />
@@ -468,65 +470,107 @@ export const SettingsPage = () => {
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
-              {unsavedChanges && (
-                <span className="text-sm font-semibold" style={{ color: 'hsl(var(--warning))' }}>Unsaved changes</span>
-              )}
-              <button
-                onClick={importSettings}
-                className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
-                style={{ borderColor: 'hsl(var(--border))' }}
-                title="Import settings from JSON file"
-              >
-                <Upload size={16} />
-                Import
-              </button>
-              <button
-                onClick={downloadSettings}
-                className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
-                style={{ borderColor: 'hsl(var(--border))' }}
-                title="Export settings to JSON file"
-              >
-                <Download size={16} />
-                Export
-              </button>
-              <button
-                onClick={handleReset}
-                className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
-                style={{ borderColor: 'hsl(var(--border))' }}
-              >
-                <RefreshCw size={16} />
-                Reset
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!unsavedChanges || saving}
-                className="px-4 py-2 rounded-lg flex items-center gap-2 font-semibold transition-smooth disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: saved
-                    ? 'hsl(var(--success))'
-                    : unsavedChanges
-                    ? 'hsl(var(--primary-gold))'
-                    : 'hsl(var(--border))',
-                  color: saved || unsavedChanges
-                    ? 'hsl(var(--background))'
-                    : 'hsl(var(--muted-foreground))'
-                }}
-              >
-                {saving ? (
-                  <RefreshCw className="animate-spin" size={16} />
-                ) : saved ? (
-                  <Check size={16} />
-                ) : (
-                  <Save size={16} />
+            {activeTab === 'settings' && (
+              <div className="flex items-center gap-3">
+                {unsavedChanges && (
+                  <span className="text-sm font-semibold" style={{ color: 'hsl(var(--warning))' }}>Unsaved changes</span>
                 )}
-                {saved ? 'Saved!' : saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
+                <button
+                  onClick={importSettings}
+                  className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
+                  style={{ borderColor: 'hsl(var(--border))' }}
+                  title="Import settings from JSON file"
+                >
+                  <Upload size={16} />
+                  Import
+                </button>
+                <button
+                  onClick={downloadSettings}
+                  className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
+                  style={{ borderColor: 'hsl(var(--border))' }}
+                  title="Export settings to JSON file"
+                >
+                  <Download size={16} />
+                  Export
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="px-4 py-2 border rounded-lg text-foreground hover:bg-white/5 flex items-center gap-2 transition-smooth"
+                  style={{ borderColor: 'hsl(var(--border))' }}
+                >
+                  <RefreshCw size={16} />
+                  Reset
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!unsavedChanges || saving}
+                  className="px-4 py-2 rounded-lg flex items-center gap-2 font-semibold transition-smooth disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: saved
+                      ? 'hsl(var(--success))'
+                      : unsavedChanges
+                      ? 'hsl(var(--primary-gold))'
+                      : 'hsl(var(--border))',
+                    color: saved || unsavedChanges
+                      ? 'hsl(var(--background))'
+                      : 'hsl(var(--muted-foreground))'
+                  }}
+                >
+                  {saving ? (
+                    <RefreshCw className="animate-spin" size={16} />
+                  ) : saved ? (
+                    <Check size={16} />
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  {saved ? 'Saved!' : saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Tab Navigation */}
+          <div className="flex gap-2 mt-6 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-6 py-3 font-semibold transition-all duration-300 border-b-2 ${
+                activeTab === 'settings'
+                  ? 'border-primary-gold text-primary-gold'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+              style={{
+                borderBottomColor: activeTab === 'settings' ? 'hsl(var(--primary-gold))' : 'transparent',
+                color: activeTab === 'settings' ? 'hsl(var(--primary-gold))' : undefined
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <Settings size={18} />
+                Settings
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('audit-logs')}
+              className={`px-6 py-3 font-semibold transition-all duration-300 border-b-2 ${
+                activeTab === 'audit-logs'
+                  ? 'border-primary-gold text-primary-gold'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+              style={{
+                borderBottomColor: activeTab === 'audit-logs' ? 'hsl(var(--primary-gold))' : 'transparent',
+                color: activeTab === 'audit-logs' ? 'hsl(var(--primary-gold))' : undefined
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <FileText size={18} />
+                Audit Logs
+              </div>
+            </button>
           </div>
         </div>
 
-        <div className="max-w-4xl">
+        {/* Tab Content */}
+        {activeTab === 'settings' ? (
+          <div className="max-w-4xl">
           {/* User Profile */}
           <SettingsSection title="User Profile" icon={User}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -833,7 +877,17 @@ export const SettingsPage = () => {
               </p>
             </div>
           </SettingsSection>
-        </div>
+          </div>
+        ) : (
+          <div className="animate-fadeIn">
+            <iframe
+              src="/audit-logs"
+              className="w-full h-screen border-0 rounded-lg"
+              style={{ minHeight: '800px' }}
+              title="Audit Logs"
+            />
+          </div>
+        )}
       </main>
     </div>
   );

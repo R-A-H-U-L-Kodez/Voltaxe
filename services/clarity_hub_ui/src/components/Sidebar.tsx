@@ -9,7 +9,6 @@ import {
   Users,
   PlusCircle,
   Target,
-  FileText,
   LayoutDashboard,
   Layers,
   Network
@@ -218,27 +217,6 @@ export const Sidebar = () => {
         >
           <Settings size={20} />
           <span>Settings</span>
-        </NavLink>
-
-        <NavLink
-          to="/audit-logs"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
-              isActive
-                ? 'bg-primary-gold/10 text-primary-gold'
-                : 'text-foreground hover:text-accent-gold hover:bg-white/5'
-            }`
-          }
-          style={({ isActive }) => ({
-            color: isActive ? 'hsl(var(--primary-gold))' : undefined,
-            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined,
-            pointerEvents: 'auto',
-            position: 'relative',
-            zIndex: 10
-          })}
-        >
-          <FileText size={20} />
-          <span>Audit Logs</span>
         </NavLink>
       </nav>
 

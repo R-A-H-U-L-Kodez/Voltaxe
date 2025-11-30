@@ -837,6 +837,39 @@ export const CommandCenterPage = () => {
                   />
                 </button>
 
+                {/* Axon Engine Metrics */}
+                <button
+                  onClick={() => navigate('/axon-metrics')}
+                  className="w-full p-4 rounded-lg flex items-center justify-between group hover:scale-[1.02] transition-all duration-300 border"
+                  style={{
+                    backgroundColor: 'hsl(var(--muted))',
+                    borderColor: 'hsl(var(--border))',
+                    color: 'hsl(var(--foreground))'
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)' }}
+                    >
+                      <Activity 
+                        className="h-5 w-5" 
+                        style={{ color: 'hsl(var(--primary-gold))' }} 
+                      />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold">Axon Engine Metrics</p>
+                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        Real-time performance monitoring
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight 
+                    className="h-5 w-5 group-hover:translate-x-1 transition-transform" 
+                    style={{ color: 'hsl(var(--primary-gold))' }}
+                  />
+                </button>
+
                 {/* Divider */}
                 <div 
                   className="h-px my-4"
