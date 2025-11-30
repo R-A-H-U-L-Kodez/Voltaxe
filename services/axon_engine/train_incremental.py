@@ -207,12 +207,14 @@ def train_isolation_forest(df, iteration_hour):
     X = df[feature_columns].fillna(0)
     
     # Dynamic contamination rate based on data maturity
-    # Early hours: Higher contamination (5%) = more permissive
-    # Later hours: Lower contamination (1%) = more strict
+    # Progressive paranoia reduction as model matures:
+    # Hour 1-5: contamination=0.05 (High paranoia - 5% flagged)
+    # Hour 6-12: contamination=0.02 (Medium paranoia - 2% flagged)
+    # Hour 12+: contamination=0.01 (Precision mode - 1% flagged)
     if iteration_hour <= 5:
         contamination = 0.05  # 5% - Very permissive for weak early model
-    elif iteration_hour <= 24:
-        contamination = 0.03  # 3% - Getting stricter
+    elif iteration_hour <= 12:
+        contamination = 0.02  # 2% - TIGHTENED - Model is getting smarter
     else:
         contamination = 0.01  # 1% - Mature model, strict anomaly detection
     
