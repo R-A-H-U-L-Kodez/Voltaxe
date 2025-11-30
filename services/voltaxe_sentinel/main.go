@@ -60,6 +60,13 @@ type RootkitEvent struct {
 	Recommendation  string `json:"recommendation"`
 }
 
+// NEW: Process snapshot for ML training (Phase 1)
+type ProcessSnapshot struct {
+	Hostname  string   `json:"hostname"`
+	Timestamp string   `json:"timestamp"`
+	Processes []string `json:"processes"`
+}
+
 // NEW: Command handling structs
 type CommandRequest struct {
 	Command string                 `json:"command"`
@@ -81,6 +88,9 @@ func main() {
 
 	// Start command receiver HTTP server in background
 	go startCommandServer()
+
+	// NEW: Start process snapshot sender for ML training (Phase 1)
+	go startProcessSnapshotSender()
 
 	// NEW: Perform Rootkit Scan on startup
 	runRootkitScan()
@@ -409,5 +419,51 @@ func sendDataToServer(jsonData []byte, endpoint string) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		fmt.Printf("Server responded to %s with status: %s\n", endpoint, resp.Status)
+	}
+}
+
+// ============================================================================
+// PHASE 1: ML ANOMALY DETECTION - PROCESS SNAPSHOT COLLECTION
+// ============================================================================
+
+// collectProcessSnapshot collects the current list of running processes
+func collectProcessSnapshot() ProcessSnapshot {
+	hostname, _ := os.Hostname()
+	processes, _ := process.Processes()
+
+	var processNames []string
+	for _, p := range processes {
+		name, err := p.Name()
+		if err == nil {
+			processNames = append(processNames, name)
+		}
+	}
+
+	return ProcessSnapshot{
+		Hostname:  hostname,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Processes: processNames,
+	}
+}
+
+// startProcessSnapshotSender sends process snapshots every 5 minutes for ML training
+func startProcessSnapshotSender() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	fmt.Println("[ML PHASE 1] 🧠 Process snapshot sender started (every 5 minutes)")
+
+	// Send immediately on startup
+	snapshot := collectProcessSnapshot()
+	data, _ := json.Marshal(snapshot)
+	sendDataToServer(data, "/ingest/process-snapshot")
+	fmt.Printf("[ML PHASE 1] 📸 Sent %d processes at %s\n", len(snapshot.Processes), snapshot.Timestamp)
+
+	// Then every 5 minutes
+	for range ticker.C {
+		snapshot := collectProcessSnapshot()
+		data, _ := json.Marshal(snapshot)
+		sendDataToServer(data, "/ingest/process-snapshot")
+		fmt.Printf("[ML PHASE 1] 📸 Sent %d processes at %s\n", len(snapshot.Processes), snapshot.Timestamp)
 	}
 }

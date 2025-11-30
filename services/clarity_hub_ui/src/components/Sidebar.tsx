@@ -11,7 +11,8 @@ import {
   Target,
   LayoutDashboard,
   Layers,
-  Network
+  Network,
+  Rocket
 } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 
@@ -145,6 +146,24 @@ export const Sidebar = () => {
         >
           <Network size={20} />
           <span>Network Traffic</span>
+        </NavLink>
+
+        <NavLink
+          to="/live-telemetry"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
+              isActive
+                ? 'bg-primary-gold/10 text-primary-gold glow-gold'
+                : 'text-foreground hover:text-accent-gold hover:bg-white/5'
+            }`
+          }
+          style={({ isActive}) => ({
+            color: isActive ? 'hsl(var(--primary-gold))' : undefined,
+            backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
+          })}
+        >
+          <Rocket size={20} />
+          <span>Live Telemetry</span>
         </NavLink>
 
         <NavLink

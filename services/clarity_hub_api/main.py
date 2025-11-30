@@ -51,6 +51,12 @@ class EventModel(BaseModel):
     reason: Optional[str] = None
     cve: Optional[str] = None
 
+# PHASE 1: ML Process Snapshot Model
+class ProcessSnapshot(BaseModel):
+    hostname: str
+    timestamp: str
+    processes: List[str]
+
 # --- Database Models ---
 class SnapshotDB(Base):
     __tablename__ = "snapshots"
@@ -69,6 +75,16 @@ class EventDB(Base):
     event_type = Column(String, index=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     details = Column(JSON)
+
+# PHASE 1: ML Process Snapshot Database Model
+class ProcessSnapshotDB(Base):
+    __tablename__ = "process_snapshots"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    hostname = Column(String, index=True)
+    timestamp = Column(DateTime, index=True)
+    process_name = Column(String, index=True)
+    snapshot_id = Column(String, index=True)
 
 class CVEDB(Base):
     """CVE Database Model for real vulnerability data"""
@@ -593,6 +609,42 @@ def create_rootkit_event(event: EventModel, db: Session = Depends(get_db)):
     db.add(db_event); db.commit(); db.refresh(db_event)
     return {"status": "success", "event_id": db_event.id}
 
+# ============================================================================
+# PHASE 1: ML ANOMALY DETECTION - PROCESS SNAPSHOT INGESTION
+# ============================================================================
+
+@app.post("/ingest/process-snapshot")
+def ingest_process_snapshot(snapshot: ProcessSnapshot, db: Session = Depends(get_db)):
+    """Store process snapshot for ML training (Phase 1 - Anomaly Detection)"""
+    try:
+        snapshot_id = f"{snapshot.hostname}_{snapshot.timestamp}"
+        
+        # Parse timestamp
+        timestamp = datetime.datetime.fromisoformat(snapshot.timestamp.replace('Z', '+00:00'))
+        
+        # Store each process as a separate row for easy querying
+        for process_name in snapshot.processes:
+            db_entry = ProcessSnapshotDB(
+                hostname=snapshot.hostname,
+                timestamp=timestamp,
+                process_name=process_name,
+                snapshot_id=snapshot_id
+            )
+            db.add(db_entry)
+        
+        db.commit()
+        
+        print(f"[ML PHASE 1] 📸 Stored {len(snapshot.processes)} processes from {snapshot.hostname}")
+        
+        return {
+            "status": "success",
+            "message": f"Stored {len(snapshot.processes)} processes",
+            "snapshot_id": snapshot_id
+        }
+    except Exception as e:
+        print(f"[ML PHASE 1] ❌ Error storing process snapshot: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
 # --- GET Endpoints for UI ---
 @app.get("/snapshots", response_model=List[SnapshotResponse])
 def get_snapshots(db: Session = Depends(get_db)):
@@ -980,6 +1032,118 @@ def get_axon_metrics(db: Session = Depends(get_db)):
                 "active_connections": 0,
                 "ml_models_active": 0
             }
+        }
+
+# ============================================================================
+# PHASE 1: ML TELEMETRY - LIVE DATA COLLECTION MONITORING
+# ============================================================================
+
+@app.get("/api/ml/telemetry")
+def get_ml_telemetry(db: Session = Depends(get_db)):
+    """
+    Get real-time ML data collection statistics for Phase 1 monitoring.
+    Returns collection progress, training readiness, and recent snapshots.
+    """
+    from sqlalchemy import func
+    from datetime import timedelta
+    
+    try:
+        # Check if table exists and has data
+        total_records = db.query(ProcessSnapshotDB).count()
+        
+        if total_records == 0:
+            return {
+                "total_records": 0,
+                "unique_snapshots": 0,
+                "unique_processes": 0,
+                "unique_hosts": 0,
+                "oldest_snapshot": None,
+                "newest_snapshot": None,
+                "hours_collected": 0.0,
+                "training_ready": False,
+                "hours_remaining": 48.0,
+                "estimated_ready": None,
+                "collection_rate": 0.0,
+                "recent_snapshots": []
+            }
+        
+        # Calculate statistics
+        unique_snapshots = db.query(func.count(func.distinct(ProcessSnapshotDB.snapshot_id))).scalar()
+        unique_processes = db.query(func.count(func.distinct(ProcessSnapshotDB.process_name))).scalar()
+        unique_hosts = db.query(func.count(func.distinct(ProcessSnapshotDB.hostname))).scalar()
+        
+        # Time range
+        oldest = db.query(func.min(ProcessSnapshotDB.timestamp)).scalar()
+        newest = db.query(func.max(ProcessSnapshotDB.timestamp)).scalar()
+        
+        # Calculate duration
+        duration = newest - oldest
+        hours_collected = duration.total_seconds() / 3600
+        
+        # Training readiness
+        training_ready = hours_collected >= 48
+        hours_remaining = max(0, 48 - hours_collected)
+        estimated_ready = (newest + timedelta(hours=hours_remaining)).isoformat() if not training_ready else None
+        
+        # Collection rate (snapshots per hour)
+        collection_rate = unique_snapshots / hours_collected if hours_collected > 0 else 0
+        
+        # Recent snapshots with process counts
+        recent_data = db.execute(text("""
+            SELECT 
+                hostname,
+                timestamp,
+                COUNT(*) as process_count
+            FROM process_snapshots
+            GROUP BY hostname, timestamp
+            ORDER BY timestamp DESC
+            LIMIT 10
+        """)).fetchall()
+        
+        recent_snapshots = [
+            {
+                "hostname": row[0],
+                "timestamp": row[1].isoformat() if row[1] else None,
+                "process_count": row[2]
+            }
+            for row in recent_data
+        ]
+        
+        result = {
+            "total_records": total_records,
+            "unique_snapshots": unique_snapshots,
+            "unique_processes": unique_processes,
+            "unique_hosts": unique_hosts,
+            "oldest_snapshot": oldest.isoformat() if oldest else None,
+            "newest_snapshot": newest.isoformat() if newest else None,
+            "hours_collected": round(hours_collected, 2),
+            "training_ready": training_ready,
+            "hours_remaining": round(hours_remaining, 2),
+            "estimated_ready": estimated_ready,
+            "collection_rate": round(collection_rate, 2),
+            "recent_snapshots": recent_snapshots
+        }
+        
+        print(f"[ML TELEMETRY] 📊 Stats: {total_records} records, {unique_snapshots} snapshots, {hours_collected:.1f}h collected")
+        
+        return result
+        
+    except Exception as e:
+        print(f"[ML TELEMETRY] ❌ Error: {str(e)}")
+        # Return empty state on error
+        return {
+            "total_records": 0,
+            "unique_snapshots": 0,
+            "unique_processes": 0,
+            "unique_hosts": 0,
+            "oldest_snapshot": None,
+            "newest_snapshot": None,
+            "hours_collected": 0.0,
+            "training_ready": False,
+            "hours_remaining": 48.0,
+            "estimated_ready": None,
+            "collection_rate": 0.0,
+            "recent_snapshots": []
         }
 
 @app.get("/alerts", response_model=List[AlertResponse])

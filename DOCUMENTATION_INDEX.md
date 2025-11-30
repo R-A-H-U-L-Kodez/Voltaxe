@@ -1,6 +1,6 @@
 # 📚 Voltaxe Documentation Index
 
-**Last Updated:** October 5, 2025  
+**Last Updated:** November 30, 2025  
 **Purpose:** Master index for all Voltaxe documentation
 
 ---
@@ -10,12 +10,22 @@
 **New to Voltaxe?** Start here:
 
 1. **[README.md](README.md)** - Project overview and quick start
-2. **[PRODUCTION_QUICK_START.md](PRODUCTION_QUICK_START.md)** - Deploy in 5 minutes
-3. **[PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)** - Track your progress
+2. **[VOLTAXE_USER_GUIDE.md](VOLTAXE_USER_GUIDE.md)** - Complete user guide for the application
+3. **[PRODUCTION_QUICK_START.md](PRODUCTION_QUICK_START.md)** - Deploy in 5 minutes
+4. **[PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)** - Track your progress
 
 ---
 
 ## 📖 Documentation Categories
+
+### 📘 User Documentation
+
+| Document | Purpose | Audience | Priority |
+|----------|---------|----------|----------|
+| **[VOLTAXE_USER_GUIDE.md](VOLTAXE_USER_GUIDE.md)** | Complete application user guide | All Users | 🔥 Essential |
+| **[QUICK_START.md](QUICK_START.md)** | Fast startup guide | New Users | ⭐ Read First |
+| **[ML_MODELS_DOCUMENTATION.md](ML_MODELS_DOCUMENTATION.md)** | Machine learning models technical docs | ML Engineers | 🤖 Technical |
+| **[IDPS_TECHNICAL_DEEPDIVE.md](IDPS_TECHNICAL_DEEPDIVE.md)** | IDPS architecture deep dive | Architects | 🏗️ Advanced |
 
 ### 🎯 Strategic Planning
 
@@ -23,7 +33,6 @@
 |----------|---------|----------|----------|
 | **[JOURNEY_SUMMARY.md](JOURNEY_SUMMARY.md)** | Complete project retrospective & roadmap | CEO/Founder | 🔥 High |
 | **[PRODUCTION_ROADMAP.md](PRODUCTION_ROADMAP.md)** | 3-phase production plan | Tech Lead | 🔥 High |
-| **[TONIGHT_SUMMARY.md](TONIGHT_SUMMARY.md)** | October 5th achievements | Founder | ⭐ Read First |
 
 ### 🛠️ Deployment & Operations
 
