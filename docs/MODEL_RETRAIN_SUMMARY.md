@@ -1,0 +1,87 @@
+# Model Retrain & Audit Summary
+
+Date: 2025-11-30
+
+## Action performed
+- Executed retraining: `./scripts/auto_retrain.sh` (local workspace run)
+- Collected training log tail and attempted to locate model artifacts
+- Ran audit test suites:
+  - `tests/test_malware_scanner.py`
+  - `tests/test_cve_performance.py`
+
+## Training output (summary)
+- Training completed successfully (script output):
+  - Records trained: 27,731
+  - Unique processes (normalized): 206
+  - Model saved (script message): `/app/models/anomaly_model.joblib` and `/app/models/process_frequencies.joblib`
+  - Reported anomalies: 713 (2.57%)
+  - Saved model file reported: `/app/models/anomaly_model.joblib` (1370.3 KB)
+
+## Artifacts
+- `logs/ml_training.log` last entries show recurring "Automatic retraining completed" timestamps.
+- Attempted to locate model artifacts in workspace paths `models/` and `app/models/` but none were found locally.
+  - Command used: `ls -l models || ls -l app/models`
+  - Result: no local model directory found; training script may save to an absolute path (e.g., `/app/models`) or inside a container environment.
+
+## Audit: Test Runs
+### tests/test_malware_scanner.py (malware scanner suite)
+- Health endpoint: PASS (API responded: status=healthy, service=Voltaxe Clarity Hub API, version=2.0.0)
+- Authentication: FAIL (Login returned HTTP 401 - "Invalid credentials")
+- Overall: 1/2 tests passed
+
+### tests/test_cve_performance.py
+- API connectivity: PASS (API accessible)
+- NIST NVD API key: PASS (authenticated; total CVEs: 319,631)
+- CVE lookup: The script observed HTTP 401 responses for sample CVE lookups (likely protected endpoints requiring auth)
+- Monitoring data endpoints: PASS (snapshots, events, alerts returned records)
+- Overall script reported: 4/4 core systems operational (by its pass criteria)
+
+## Observations & Findings
+1. Retraining completed successfully according to the script output and repeated log entries. No script errors were printed.
+2. Training artifacts were reported to be saved under `/app/models/` by the training output, but those files are not present in the repository working tree. This suggests one of:
+   - The retrain script writes to an absolute path outside the repo (e.g., `/app/models`) — may require root or container context.
+   - The training script was written to operate inside a container image where `/app` is present; when run locally it may have simulated writes or printed paths rather than persisted them to the repo.
+3. The malware scanner test suite shows API health OK but a 401 on login — this impacts any post-retrain verification that needs authenticated endpoints (e.g., some model-serving endpoints may require auth to fetch model metadata or perform scoring).
+4. CVE performance tests indicate NIST API key is functional and general API endpoints are reachable.
+
+## Recommendations / Next Steps
+1. Locate model artifacts
+   - Check whether the retrain script writes to a container volume when run in Docker. If you run the retrain inside the same container used by production (e.g., `docker-compose run --rm trainer ./scripts/auto_retrain.sh`), the artifacts will be persisted to the container's `/app/models` volume; map that volume to a host path (e.g., `./models`) to persist artifacts locally.
+   - Alternatively, adjust `scripts/auto_retrain.sh` to write to `./models/` inside the repo when run outside of the container.
+
+2. Fix authentication test failures
+   - Investigate the API's auth/register behavior. The test registers a user then attempts login; if registration failed (e.g., email validation, denylist, or user already exists with different password), the login will 401.
+   - Re-run the registration step manually (or inspect API logs) and confirm login credentials get created.
+
+3. Verify model loading in services
+   - Ensure services that consume the trained model (e.g., `axon_engine` or `voltaxe_sentinel`) can load the model from the agreed path (`/app/models` or `./models`). Update service configuration or volume mounts accordingly.
+
+4. Re-run a focused model validation
+   - Once artifact location and auth issues are resolved, run a small scoring script to feed a sample snapshot through the model and validate expected outputs (anomaly scores and thresholds).
+
+## Quick commands / how-to
+- To persist models to repo-local `models/` when running retrain locally:
+
+```bash
+mkdir -p models
+# Edit scripts/auto_retrain.sh to write to models/ instead of /app/models
+./scripts/auto_retrain.sh
+ls -l models
+```
+
+- To run retrain in Docker and map host folder:
+
+```bash
+# example (adjust service name to trainer if defined in docker-compose):
+docker-compose run --rm -v "$(pwd)/models:/app/models" trainer ./scripts/auto_retrain.sh
+ls -l models
+```
+
+## Summary status
+- Retrain: COMPLETED (script run; logged success)
+- Artifacts located: NO (models not found in workspace; reported path /app/models)
+- Audit tests: PARTIAL PASS (API up; some auth-protected endpoints returned 401)
+
+
+---
+Generated by automated retrain+audit run on 2025-11-30
