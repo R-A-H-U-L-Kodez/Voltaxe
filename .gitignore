@@ -100,6 +100,11 @@ config.json
 secrets.json
 credentials.json
 
+# Agent configuration (use .example templates)
+config/agent.conf
+**/agent.conf
+!**/agent.conf.example
+
 # OS files
 Thumbs.db
 Desktop.ini
