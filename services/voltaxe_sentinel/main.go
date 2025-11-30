@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/tls"
+	_ "embed"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -20,6 +21,12 @@ import (
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/process"
 )
+
+// Embed default configuration into binary
+// This allows single-file deployment without requiring external config files
+//
+//go:embed default_agent.conf
+var defaultConfigContent string
 
 // --- Configuration ---
 type Config struct {
@@ -41,6 +48,7 @@ var config Config
 var httpClient *http.Client
 
 // loadConfig reads configuration from agent.conf file or command-line flags
+// Falls back to embedded default configuration if no external config found
 func loadConfig() Config {
 	// Command-line flags take precedence
 	serverFlag := flag.String("server", "", "API server URL (e.g., https://192.168.1.50)")
@@ -73,10 +81,13 @@ func loadConfig() Config {
 		fmt.Printf("[CONFIG] ⚠️  TLS certificate verification DISABLED\n")
 	}
 
-	// Try to load from config file
+	// Try to load from external config file
 	configPath := *configFileFlag
+	configSource := "embedded defaults"
+	var configReader *bufio.Scanner
+
 	if configPath == "" {
-		// Try multiple locations
+		// Try multiple locations for external config
 		possiblePaths := []string{
 			"agent.conf",
 			"./config/agent.conf",
@@ -92,58 +103,73 @@ func loadConfig() Config {
 		}
 	}
 
+	// Attempt to load external config file if found
 	if configPath != "" {
 		file, err := os.Open(configPath)
 		if err == nil {
 			defer file.Close()
-			scanner := bufio.NewScanner(file)
+			configReader = bufio.NewScanner(file)
+			configSource = configPath
+			fmt.Printf("[CONFIG] ✓ Loading external configuration from: %s\n", configPath)
+		} else {
+			fmt.Printf("[CONFIG] Warning: Could not read external config file: %v\n", err)
+		}
+	}
 
-			fmt.Printf("[CONFIG] Loading configuration from: %s\n", configPath)
+	// Fall back to embedded configuration if no external config
+	if configReader == nil {
+		fmt.Println("[CONFIG] ✓ Using embedded default configuration (no external config found)")
+		fmt.Println("[CONFIG] ℹ️  For custom configuration, create agent.conf in the same directory as the executable")
+		configReader = bufio.NewScanner(strings.NewReader(defaultConfigContent))
+	}
 
-			for scanner.Scan() {
-				line := strings.TrimSpace(scanner.Text())
+	// Parse configuration (either from file or embedded defaults)
+	for configReader.Scan() {
+		line := strings.TrimSpace(configReader.Text())
 
-				// Skip empty lines and comments
-				if line == "" || strings.HasPrefix(line, "#") {
-					continue
-				}
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
 
-				// Parse key=value pairs
-				parts := strings.SplitN(line, "=", 2)
-				if len(parts) != 2 {
-					continue
-				}
+		// Parse key=value pairs
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
 
-				key := strings.TrimSpace(parts[0])
-				value := strings.TrimSpace(parts[1])
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
 
-				switch key {
-				case "API_SERVER":
-					cfg.APIServer = value
-					fmt.Printf("[CONFIG] ✓ API Server: %s\n", value)
-				case "TLS_SKIP_VERIFY":
-					cfg.TLSSkipVerify = strings.ToLower(value) == "true"
-					if cfg.TLSSkipVerify {
-						fmt.Printf("[CONFIG] ⚠️  TLS certificate verification DISABLED\n")
-					}
-				case "HEARTBEAT_INTERVAL":
-					if duration, err := time.ParseDuration(value); err == nil {
-						cfg.HeartbeatInterval = duration
-					}
-				case "SCAN_INTERVAL":
-					if duration, err := time.ParseDuration(value); err == nil {
-						cfg.ScanInterval = duration
-					}
-				case "PROCESS_MONITORING":
-					cfg.ProcessMonitoring = strings.ToLower(value) == "true"
-				case "VULNERABILITY_SCANNING":
-					cfg.VulnScanning = strings.ToLower(value) == "true"
-				case "BEHAVIORAL_ANALYSIS":
-					cfg.BehavioralAnalysis = strings.ToLower(value) == "true"
+		switch key {
+		case "API_SERVER":
+			// Only override if not set by command-line flag
+			if *serverFlag == "" {
+				cfg.APIServer = value
+				fmt.Printf("[CONFIG] ✓ API Server: %s (from %s)\n", value, configSource)
+			}
+		case "TLS_SKIP_VERIFY":
+			// Only override if not set by command-line flag
+			if !*tlsSkipVerifyFlag {
+				cfg.TLSSkipVerify = strings.ToLower(value) == "true"
+				if cfg.TLSSkipVerify {
+					fmt.Printf("[CONFIG] ⚠️  TLS certificate verification DISABLED (from %s)\n", configSource)
 				}
 			}
-		} else {
-			fmt.Printf("[CONFIG] Warning: Could not read config file: %v\n", err)
+		case "HEARTBEAT_INTERVAL":
+			if duration, err := time.ParseDuration(value); err == nil {
+				cfg.HeartbeatInterval = duration
+			}
+		case "SCAN_INTERVAL":
+			if duration, err := time.ParseDuration(value); err == nil {
+				cfg.ScanInterval = duration
+			}
+		case "PROCESS_MONITORING":
+			cfg.ProcessMonitoring = strings.ToLower(value) == "true"
+		case "VULNERABILITY_SCANNING":
+			cfg.VulnScanning = strings.ToLower(value) == "true"
+		case "BEHAVIORAL_ANALYSIS":
+			cfg.BehavioralAnalysis = strings.ToLower(value) == "true"
 		}
 	}
 
