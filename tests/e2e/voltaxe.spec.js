@@ -4,11 +4,13 @@
 
 const { test, expect } = require('@playwright/test');
 
-// Configuration
-const BASE_URL = 'http://localhost:3000';
+// Configuration - Use environment variables for CI/CD compatibility
+// In CI/CD (e.g., GitHub Actions), set BASE_URL=http://frontend:3000
+// For local development, defaults to http://localhost:3000
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const TEST_USER = {
-  email: 'admin@voltaxe.com',
-  password: 'admin123' // Update with actual password
+  email: process.env.TEST_USER_EMAIL || 'admin@voltaxe.com',
+  password: process.env.TEST_USER_PASSWORD || 'admin123' // Update with actual password
 };
 
 // Test 1: Login and Authentication

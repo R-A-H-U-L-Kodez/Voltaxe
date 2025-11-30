@@ -14,8 +14,10 @@ from datetime import datetime
 # Add the CVE sync service path to import the module
 sys.path.append('/home/rahul/Voltaxe/Voltaxe/services/cve_sync_service')
 
-# Configuration
-API_BASE = "http://localhost:8000"
+# Configuration - Use environment variables for CI/CD compatibility
+# In CI/CD (e.g., GitHub Actions), set API_BASE=http://voltaxe_api:8000
+# For local development, defaults to http://localhost:8000
+API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 NIST_API_KEY = "b4167123-3c6a-4577-8d32-b263d0f992a0"
 
 def test_api_connectivity():
@@ -173,8 +175,8 @@ def main():
         print("⚠️  Some systems need attention")
         print("📋 Check the output above for specific issues")
     
-    print("\n🌐 Access your dashboard: http://localhost:5173")
-    print("📊 API Documentation: http://localhost:8000/docs")
+    print(f"\n🌐 Access your dashboard: {os.getenv('FRONTEND_URL', 'http://localhost:5173')}")
+    print(f"📊 API Documentation: {API_BASE}/docs")
 
 if __name__ == "__main__":
     main()

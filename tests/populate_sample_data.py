@@ -10,8 +10,10 @@ import datetime
 import time
 import os
 
-# API endpoint
-API_BASE = "http://localhost:8000"
+# API endpoint - Use environment variables for CI/CD compatibility
+# In CI/CD (e.g., GitHub Actions), set API_BASE=http://voltaxe_api:8000
+# For local development, defaults to http://localhost:8000
+API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 
 def create_sample_snapshot():
     """Create a sample system snapshot"""
@@ -176,7 +178,7 @@ def main():
         print("✅ API is running and accessible")
     except Exception as e:
         print(f"❌ Cannot connect to API: {e}")
-        print("   Make sure the backend is running on http://localhost:8000")
+        print(f"   Make sure the backend is running on {API_BASE}")
         return
     
     print("\n📸 Creating system snapshots...")
@@ -193,8 +195,8 @@ def main():
     print(f"   🔍 Security events: Created")
     print(f"   💾 CVE database: Available")
     print("\n🌐 Refresh your browser to see the populated dashboard!")
-    print(f"   Frontend: http://localhost:5173")
-    print(f"   API Docs: http://localhost:8000/docs")
+    print(f"   Frontend: {os.getenv('FRONTEND_URL', 'http://localhost:5173')}")
+    print(f"   API Docs: {API_BASE}/docs")
 
 if __name__ == "__main__":
     main()
