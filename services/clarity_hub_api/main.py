@@ -111,6 +111,23 @@ class CVEDB(Base):
     is_active = Column(Boolean, default=True, index=True)
     sync_timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
+# Command Queue for Agent Communication
+class PendingCommandDB(Base):
+    """Pending commands for agents to poll and execute"""
+    __tablename__ = "pending_commands"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    hostname = Column(String, index=True, nullable=False)
+    command = Column(String, nullable=False)  # network_isolate, network_restore, kill_process, collect_forensics
+    params = Column(JSON, nullable=True)  # Command parameters
+    status = Column(String, default="pending", index=True)  # pending, delivered, executed, failed
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    delivered_at = Column(DateTime, nullable=True)
+    executed_at = Column(DateTime, nullable=True)
+    result = Column(JSON, nullable=True)  # Execution result from agent
+    created_by = Column(String, nullable=True)  # User or system that created the command
+    priority = Column(Integer, default=0, index=True)  # Higher = more urgent
+
 # Create all database tables (including team management tables)
 Base.metadata.create_all(bind=engine)
 
@@ -177,6 +194,22 @@ class EndpointActionResponse(BaseModel):
     hostname: str
     action: str
     timestamp: str
+
+# Command Queue Models
+class CommandQueueResponse(BaseModel):
+    """Response for command polling"""
+    id: int
+    command: str
+    params: Optional[Dict[str, Any]] = None
+    created_at: str
+    priority: int
+
+class CommandExecutionResult(BaseModel):
+    """Agent reports command execution result"""
+    command_id: int
+    success: bool
+    message: str
+    data: Optional[Dict[str, Any]] = None
 
 class ResilienceScoreResponse(BaseModel):
     hostname: str
@@ -441,6 +474,96 @@ def health_check():
         "status": "healthy",
         "service": "Voltaxe Clarity Hub API",
         "version": "2.0.0",
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    }
+
+# ============================================================================
+# AGENT COMMAND QUEUE - Two-Way Communication
+# ============================================================================
+
+@app.get("/command/poll")
+def poll_commands(hostname: str, db: Session = Depends(get_db)) -> List[CommandQueueResponse]:
+    """
+    Agent polls for pending commands to execute.
+    Returns list of commands and marks them as 'delivered'.
+    
+    Args:
+        hostname: The hostname of the agent requesting commands
+        
+    Returns:
+        List of pending commands for this agent
+    """
+    # Get pending commands for this hostname, ordered by priority (highest first) and creation time
+    pending_commands = db.query(PendingCommandDB).filter(
+        PendingCommandDB.hostname == hostname,
+        PendingCommandDB.status == "pending"
+    ).order_by(
+        PendingCommandDB.priority.desc(),
+        PendingCommandDB.created_at.asc()
+    ).all()
+    
+    if not pending_commands:
+        return []
+    
+    # Mark commands as delivered
+    current_time = datetime.datetime.utcnow()
+    command_responses = []
+    
+    for cmd in pending_commands:
+        cmd.status = "delivered"
+        cmd.delivered_at = current_time
+        
+        command_responses.append(CommandQueueResponse(
+            id=cmd.id,
+            command=cmd.command,
+            params=cmd.params,
+            created_at=cmd.created_at.isoformat(),
+            priority=cmd.priority
+        ))
+        
+        print(f"[COMMAND POLL] 📤 Delivered command '{cmd.command}' (ID: {cmd.id}) to agent '{hostname}'")
+    
+    db.commit()
+    
+    return command_responses
+
+@app.post("/command/result")
+def report_command_result(result: CommandExecutionResult, db: Session = Depends(get_db)):
+    """
+    Agent reports the result of a command execution.
+    
+    Args:
+        result: Command execution result including success status and data
+        
+    Returns:
+        Status acknowledgment
+    """
+    # Find the command
+    command = db.query(PendingCommandDB).filter(
+        PendingCommandDB.id == result.command_id
+    ).first()
+    
+    if not command:
+        raise HTTPException(status_code=404, detail=f"Command ID {result.command_id} not found")
+    
+    # Update command with execution result
+    command.status = "executed" if result.success else "failed"
+    command.executed_at = datetime.datetime.utcnow()
+    command.result = {
+        "success": result.success,
+        "message": result.message,
+        "data": result.data
+    }
+    
+    db.commit()
+    
+    status_emoji = "✅" if result.success else "❌"
+    print(f"[COMMAND RESULT] {status_emoji} Command '{command.command}' (ID: {command.id}) {command.status} on '{command.hostname}'")
+    print(f"[COMMAND RESULT]    Message: {result.message}")
+    
+    return {
+        "status": "acknowledged",
+        "command_id": result.command_id,
         "timestamp": datetime.datetime.utcnow().isoformat()
     }
 

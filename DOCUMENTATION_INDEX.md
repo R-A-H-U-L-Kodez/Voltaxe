@@ -43,6 +43,14 @@
 | **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** | Detailed deployment steps | DevOps | Full deployment |
 | **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** | Common issues & solutions | Support | When debugging |
 
+### 🔧 Critical Infrastructure Fixes
+
+| Document | Purpose | Audience | Priority |
+|----------|---------|----------|----------|
+| **[CRITICAL_FIXES_SUMMARY.md](docs/CRITICAL_FIXES_SUMMARY.md)** | All three critical infrastructure fixes | All | 🔥 Essential |
+| **[TWO_WAY_COMMUNICATION.md](docs/TWO_WAY_COMMUNICATION.md)** | Complete command polling architecture | DevOps/Architects | 🔥 Essential |
+| **[TWO_WAY_COMMUNICATION_QUICKSTART.md](docs/TWO_WAY_COMMUNICATION_QUICKSTART.md)** | 5-minute setup guide for command polling | DevOps | ⭐ Read First |
+
 ### 🎨 Features & Implementation
 
 | Document | Purpose | Lines | Status |

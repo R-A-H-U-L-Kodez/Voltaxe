@@ -2,6 +2,8 @@
 Strike Module - Automated Response Orchestrator
 This module handles automated security response actions by communicating with Voltaxe Sentinels.
 This is the "A" in CRaaS (Cyber Resilience-as-a-Service).
+
+Updated with command queueing for reliable two-way communication.
 """
 
 import httpx
@@ -9,13 +11,16 @@ import asyncio
 from typing import Dict, Any, Optional
 from datetime import datetime
 import logging
+from database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
 class StrikeOrchestrator:
     """
     Orchestrates automated response actions across the Voltaxe platform.
-    Communicates with Sentinels to execute security actions like endpoint isolation.
+    Communicates with Sentinels via:
+    1. Direct HTTP (for immediate response if agent is online)
+    2. Command Queue (for reliable delivery via agent polling)
     """
     
     def __init__(self):
@@ -28,6 +33,43 @@ class StrikeOrchestrator:
         self.sentinel_registry[hostname] = sentinel_url
         logger.info(f"[STRIKE] Registered Sentinel for '{hostname}' at {sentinel_url}")
     
+    def _queue_command(self, hostname: str, command: str, params: Dict[str, Any], initiated_by: str, priority: int = 0):
+        """
+        Queue a command in the database for agent polling.
+        This ensures command delivery even if direct HTTP fails.
+        
+        Args:
+            hostname: Target endpoint hostname
+            command: Command to execute (network_isolate, network_restore, etc.)
+            params: Command parameters
+            initiated_by: User who initiated the command
+            priority: Command priority (higher = more urgent)
+        """
+        from main import PendingCommandDB
+        
+        db = SessionLocal()
+        try:
+            pending_cmd = PendingCommandDB(
+                hostname=hostname,
+                command=command,
+                params=params,
+                status="pending",
+                created_by=initiated_by,
+                priority=priority
+            )
+            db.add(pending_cmd)
+            db.commit()
+            db.refresh(pending_cmd)
+            
+            logger.info(f"[STRIKE QUEUE] ✓ Queued command '{command}' (ID: {pending_cmd.id}) for '{hostname}'")
+            return pending_cmd.id
+        except Exception as e:
+            logger.error(f"[STRIKE QUEUE] ❌ Failed to queue command: {e}")
+            db.rollback()
+            return None
+        finally:
+            db.close()
+    
     async def isolate_endpoint(
         self,
         hostname: str,
@@ -35,7 +77,10 @@ class StrikeOrchestrator:
         reason: str = "Security threat detected"
     ) -> Dict[str, Any]:
         """
-        Isolate an endpoint from the network by communicating with its Sentinel.
+        Isolate an endpoint from the network.
+        Uses dual-channel approach:
+        1. Try direct HTTP (immediate if agent online)
+        2. Queue command (ensures delivery via polling)
         
         Args:
             hostname: The hostname of the endpoint to isolate
@@ -50,30 +95,43 @@ class StrikeOrchestrator:
         logger.warning(f"[STRIKE] 🚨 ISOLATION REQUEST for '{hostname}' by {initiated_by}")
         logger.info(f"[STRIKE] Reason: {reason}")
         
+        params = {
+            "hostname": hostname,
+            "initiated_by": initiated_by,
+            "reason": reason,
+            "timestamp": timestamp
+        }
+        
+        # ALWAYS queue the command first (most reliable)
+        command_id = self._queue_command(
+            hostname=hostname,
+            command="network_isolate",
+            params=params,
+            initiated_by=initiated_by,
+            priority=10  # High priority for isolation
+        )
+        
         # Get Sentinel URL for this endpoint
         sentinel_url = self._get_sentinel_url(hostname)
         
         if not sentinel_url:
-            logger.error(f"[STRIKE] ❌ No Sentinel registered for '{hostname}'")
+            logger.warning(f"[STRIKE] ⚠️  No direct connection to '{hostname}' - command queued for polling")
             return {
-                "success": False,
-                "message": f"No Sentinel agent found for endpoint '{hostname}'",
+                "success": True,
+                "message": f"Isolation command queued for '{hostname}' - will execute when agent polls",
                 "hostname": hostname,
                 "action": "isolate",
-                "timestamp": timestamp
+                "timestamp": timestamp,
+                "command_id": command_id,
+                "delivery_method": "queued"
             }
         
+        # Try direct HTTP for immediate response
         try:
-            # Send isolation command to Sentinel
             result = await self._send_command(
                 sentinel_url=sentinel_url,
                 command="network_isolate",
-                params={
-                    "hostname": hostname,
-                    "initiated_by": initiated_by,
-                    "reason": reason,
-                    "timestamp": timestamp
-                }
+                params=params
             )
             
             # Log the action for audit trail
@@ -84,7 +142,7 @@ class StrikeOrchestrator:
                 result=result
             )
             
-            logger.info(f"[STRIKE] ✅ Endpoint '{hostname}' successfully isolated")
+            logger.info(f"[STRIKE] ✅ Endpoint '{hostname}' successfully isolated (direct)")
             
             return {
                 "success": True,
@@ -92,17 +150,23 @@ class StrikeOrchestrator:
                 "hostname": hostname,
                 "action": "isolate",
                 "timestamp": timestamp,
+                "command_id": command_id,
+                "delivery_method": "direct",
                 "details": result
             }
             
         except Exception as e:
-            logger.error(f"[STRIKE] ❌ Failed to isolate '{hostname}': {str(e)}")
+            logger.warning(f"[STRIKE] ⚠️  Direct connection failed: {str(e)}")
+            logger.info(f"[STRIKE] Command queued (ID: {command_id}) - agent will execute on next poll")
             return {
-                "success": False,
-                "message": f"Failed to isolate endpoint: {str(e)}",
+                "success": True,
+                "message": f"Direct connection failed, but isolation command is queued for '{hostname}'",
                 "hostname": hostname,
                 "action": "isolate",
-                "timestamp": timestamp
+                "timestamp": timestamp,
+                "command_id": command_id,
+                "delivery_method": "queued",
+                "note": "Agent will execute command on next poll (within 10 seconds)"
             }
     
     async def restore_endpoint(
@@ -112,31 +176,46 @@ class StrikeOrchestrator:
     ) -> Dict[str, Any]:
         """
         Restore network connectivity to a previously isolated endpoint.
+        Uses dual-channel approach (queue + direct HTTP).
         """
         timestamp = datetime.utcnow().isoformat()
         
         logger.info(f"[STRIKE] 🔓 RESTORE REQUEST for '{hostname}' by {initiated_by}")
         
+        params = {
+            "hostname": hostname,
+            "initiated_by": initiated_by,
+            "timestamp": timestamp
+        }
+        
+        # Queue the command
+        command_id = self._queue_command(
+            hostname=hostname,
+            command="network_restore",
+            params=params,
+            initiated_by=initiated_by,
+            priority=5  # Medium priority
+        )
+        
         sentinel_url = self._get_sentinel_url(hostname)
         
         if not sentinel_url:
             return {
-                "success": False,
-                "message": f"No Sentinel agent found for endpoint '{hostname}'",
+                "success": True,
+                "message": f"Restore command queued for '{hostname}'",
                 "hostname": hostname,
                 "action": "restore",
-                "timestamp": timestamp
+                "timestamp": timestamp,
+                "command_id": command_id,
+                "delivery_method": "queued"
             }
         
+        # Try direct HTTP
         try:
             result = await self._send_command(
                 sentinel_url=sentinel_url,
                 command="network_restore",
-                params={
-                    "hostname": hostname,
-                    "initiated_by": initiated_by,
-                    "timestamp": timestamp
-                }
+                params=params
             )
             
             self._log_action(
@@ -146,7 +225,7 @@ class StrikeOrchestrator:
                 result=result
             )
             
-            logger.info(f"[STRIKE] ✅ Endpoint '{hostname}' network access restored")
+            logger.info(f"[STRIKE] ✅ Endpoint '{hostname}' network access restored (direct)")
             
             return {
                 "success": True,
@@ -154,17 +233,21 @@ class StrikeOrchestrator:
                 "hostname": hostname,
                 "action": "restore",
                 "timestamp": timestamp,
+                "command_id": command_id,
+                "delivery_method": "direct",
                 "details": result
             }
             
         except Exception as e:
-            logger.error(f"[STRIKE] ❌ Failed to restore '{hostname}': {str(e)}")
+            logger.warning(f"[STRIKE] ⚠️  Direct connection failed, command queued")
             return {
-                "success": False,
-                "message": f"Failed to restore endpoint: {str(e)}",
+                "success": True,
+                "message": f"Restore command queued for '{hostname}'",
                 "hostname": hostname,
                 "action": "restore",
-                "timestamp": timestamp
+                "timestamp": timestamp,
+                "command_id": command_id,
+                "delivery_method": "queued"
             }
     
     def _get_sentinel_url(self, hostname: str) -> Optional[str]:

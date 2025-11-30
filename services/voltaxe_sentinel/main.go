@@ -201,6 +201,22 @@ type CommandResponse struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+// NEW: Command polling structs
+type PendingCommand struct {
+	ID        int                    `json:"id"`
+	Command   string                 `json:"command"`
+	Params    map[string]interface{} `json:"params"`
+	CreatedAt string                 `json:"created_at"`
+	Priority  int                    `json:"priority"`
+}
+
+type CommandExecutionResult struct {
+	CommandID int                    `json:"command_id"`
+	Success   bool                   `json:"success"`
+	Message   string                 `json:"message"`
+	Data      map[string]interface{} `json:"data,omitempty"`
+}
+
 // Global state
 var isIsolated = false
 
@@ -212,8 +228,11 @@ func main() {
 	config = loadConfig()
 	fmt.Printf("[STARTUP] 🚀 Connecting to API Server: %s\n", config.APIServer)
 
-	// Start command receiver HTTP server in background
+	// Start command receiver HTTP server in background (for direct commands)
 	go startCommandServer()
+
+	// NEW: Start command polling loop (for reliable delivery)
+	go startCommandPolling()
 
 	// NEW: Start process snapshot sender for ML training (Phase 1)
 	go startProcessSnapshotSender()
@@ -240,6 +259,115 @@ func startCommandServer() {
 	}
 }
 
+// NEW: Command polling loop - polls server for pending commands
+func startCommandPolling() {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	hostname, _ := os.Hostname()
+
+	fmt.Println("[COMMAND POLL] 🔄 Started command polling (every 10 seconds)")
+
+	// Poll immediately on startup
+	pollAndExecuteCommands(hostname)
+
+	// Then poll every 10 seconds
+	for range ticker.C {
+		pollAndExecuteCommands(hostname)
+	}
+}
+
+// Poll server for pending commands and execute them
+func pollAndExecuteCommands(hostname string) {
+	// Build poll URL
+	pollURL := fmt.Sprintf("%s/command/poll?hostname=%s", config.APIServer, hostname)
+
+	// Create HTTP client with timeout
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(pollURL)
+
+	if err != nil {
+		// Only log errors occasionally to avoid spam
+		// (network issues are common and expected)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return
+	}
+
+	// Parse response
+	var commands []PendingCommand
+	if err := json.NewDecoder(resp.Body).Decode(&commands); err != nil {
+		fmt.Printf("[COMMAND POLL] ❌ Failed to decode commands: %v\n", err)
+		return
+	}
+
+	if len(commands) == 0 {
+		// No pending commands (normal case)
+		return
+	}
+
+	// Execute each command
+	fmt.Printf("[COMMAND POLL] 📥 Received %d pending command(s)\n", len(commands))
+
+	for _, cmd := range commands {
+		fmt.Printf("[COMMAND POLL] 🎯 Executing command: %s (ID: %d, Priority: %d)\n", cmd.Command, cmd.ID, cmd.Priority)
+
+		// Execute the command
+		result := executeCommand(cmd.Command, cmd.Params)
+
+		// Report result back to server
+		reportCommandResult(cmd.ID, result)
+	}
+}
+
+// Report command execution result to server
+func reportCommandResult(commandID int, result CommandResponse) {
+	resultURL := fmt.Sprintf("%s/command/result", config.APIServer)
+
+	executionResult := CommandExecutionResult{
+		CommandID: commandID,
+		Success:   result.Success,
+		Message:   result.Message,
+		Data:      result.Data.(map[string]interface{}),
+	}
+
+	resultJSON, _ := json.Marshal(executionResult)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, _ := http.NewRequest("POST", resultURL, bytes.NewBuffer(resultJSON))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("[COMMAND POLL] ⚠️  Failed to report result: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 200 {
+		fmt.Printf("[COMMAND POLL] ✅ Result reported for command ID %d\n", commandID)
+	}
+}
+
+// Execute a command (shared by both direct HTTP and polling)
+func executeCommand(command string, params map[string]interface{}) CommandResponse {
+	switch command {
+	case "network_isolate":
+		return executeNetworkIsolate(params)
+	case "network_restore":
+		return executeNetworkRestore(params)
+	case "kill_process":
+		return executeKillProcess(params)
+	case "collect_forensics":
+		return executeCollectForensics(params)
+	default:
+		return CommandResponse{Success: false, Message: fmt.Sprintf("Unknown command: %s", command)}
+	}
+}
+
 // NEW: Handle incoming commands from Strike Module
 func handleCommand(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -255,20 +383,8 @@ func handleCommand(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("[STRIKE RECEIVER] 🎯 Command received: %s\n", req.Command)
 
-	var response CommandResponse
-
-	switch req.Command {
-	case "network_isolate":
-		response = executeNetworkIsolate(req.Params)
-	case "network_restore":
-		response = executeNetworkRestore(req.Params)
-	case "kill_process":
-		response = executeKillProcess(req.Params)
-	case "collect_forensics":
-		response = executeCollectForensics(req.Params)
-	default:
-		response = CommandResponse{Success: false, Message: fmt.Sprintf("Unknown command: %s", req.Command)}
-	}
+	// Use the shared executeCommand function
+	response := executeCommand(req.Command, req.Params)
 
 	respondJSON(w, response, http.StatusOK)
 }
