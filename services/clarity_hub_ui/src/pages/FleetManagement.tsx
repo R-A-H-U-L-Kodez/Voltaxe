@@ -90,7 +90,13 @@ export const FleetManagement = () => {
   const handleQuickScan = async (endpointId: string) => {
     setActionMessage(null);
     try {
-      await endpointService.quickScan(endpointId);
+      // Find the endpoint to get its hostname
+      const endpoint = endpoints.find((e) => e.id === endpointId);
+      if (!endpoint) {
+        throw new Error('Endpoint not found');
+      }
+      
+      await endpointService.quickScan(endpoint.hostname);
       setActionMessage({ type: 'success', message: 'Scan initiated successfully' });
       setTimeout(() => fetchFleetData(true), 2000); // Refresh after scan
     } catch (err: any) {
@@ -109,7 +115,7 @@ export const FleetManagement = () => {
 
     setActionMessage(null);
     try {
-      await endpointService.isolateEndpointById(endpointId);
+      await endpointService.isolateEndpoint(endpoint.hostname);
       setActionMessage({ type: 'success', message: `${endpoint.hostname} isolated successfully` });
       fetchFleetData(true);
     } catch (err: any) {
@@ -128,7 +134,7 @@ export const FleetManagement = () => {
 
     setActionMessage(null);
     try {
-      await endpointService.unisolateEndpoint(endpointId);
+      await endpointService.restoreEndpoint(endpoint.hostname);
       setActionMessage({ type: 'success', message: `${endpoint.hostname} isolation removed` });
       fetchFleetData(true);
     } catch (err: any) {

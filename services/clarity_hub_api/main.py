@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, o
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 import datetime
+from datetime import timedelta
 import os
 import tempfile
 import logging
@@ -142,6 +143,16 @@ class SnapshotResponse(BaseModel):
     hostname: str
     os: str
     timestamp: str
+    # Enhanced fields for SnapshotsPage
+    resilience_score: Optional[int] = None
+    risk_category: Optional[str] = None
+    last_scored: Optional[str] = None
+    status: Optional[str] = None  # online/offline
+    riskLevel: Optional[str] = None  # Alias for risk_category
+    ipAddress: Optional[str] = None
+    agentVersion: Optional[str] = None
+    lastSeen: Optional[str] = None
+    vulnerabilities: Optional[int] = None
 
 class EventResponse(BaseModel):
     id: str
@@ -2268,7 +2279,10 @@ def get_resilience_metrics(limit: int = 50, db: Session = Depends(get_db)):
 
 @app.get("/resilience/dashboard")
 def get_resilience_dashboard(db: Session = Depends(get_db)):
-    """Get dashboard data with resilience scoring overview"""
+    """
+    Get dashboard data with resilience scoring overview
+    Now includes ML anomaly detection metrics for dynamic scoring
+    """
     try:
         # Get latest resilience scores - simplified query
         snapshots = db.query(SnapshotDB).filter(
@@ -2292,32 +2306,100 @@ def get_resilience_dashboard(db: Session = Depends(get_db)):
         
         average_score = total_score / scored_endpoints if scored_endpoints > 0 else 0
         
-        # Metrics will be implemented later
+        # --- NEW: Query ML Anomaly Detection Metrics ---
+        # Get ML-detected anomalies from the last 7 days
+        seven_days_ago = datetime.datetime.utcnow() - timedelta(days=7)
+        
+        ml_anomaly_count = db.query(EventDB).filter(
+            EventDB.event_type.in_([
+                'ANOMALOUS_PROCESS_ACTIVITY',
+                'SUSPICIOUS_BEHAVIOR_DETECTED'
+            ]),
+            EventDB.timestamp >= seven_days_ago
+        ).count()
+        
+        # Get ML anomalies grouped by hostname
+        ml_anomalies_by_host = {}
+        ml_anomaly_events = db.query(EventDB).filter(
+            EventDB.event_type.in_([
+                'ANOMALOUS_PROCESS_ACTIVITY',
+                'SUSPICIOUS_BEHAVIOR_DETECTED'
+            ]),
+            EventDB.timestamp >= seven_days_ago
+        ).all()
+        
+        for event in ml_anomaly_events:
+            hostname = getattr(event, 'hostname', 'unknown')
+            ml_anomalies_by_host[hostname] = ml_anomalies_by_host.get(hostname, 0) + 1
+        
+        # Calculate average ML anomaly score impact
+        total_ml_impact = 0
+        endpoints_with_ml_anomalies = len(ml_anomalies_by_host)
+        
+        if endpoints_with_ml_anomalies > 0:
+            # Each ML anomaly reduces score by ~30 points (12 * 2.5 multiplier)
+            for hostname, count in ml_anomalies_by_host.items():
+                ml_impact = min(count * 30, 50)  # Capped at 50 points
+                total_ml_impact += ml_impact
+            
+            avg_ml_impact = total_ml_impact / endpoints_with_ml_anomalies
+        else:
+            avg_ml_impact = 0
         
         return {
             "summary": {
                 "total_endpoints": len(snapshots),
                 "average_score": round(average_score, 1),
-                "risk_distribution": risk_distribution
+                "risk_distribution": risk_distribution,
+                # NEW: ML Anomaly Detection Metrics
+                "ml_anomaly_count": ml_anomaly_count,
+                "endpoints_with_ml_anomalies": endpoints_with_ml_anomalies,
+                "avg_ml_anomaly_impact": round(avg_ml_impact, 1)
             },
             "recent_scores": [
                 {
                     "hostname": getattr(snapshot, 'hostname', ''),
                     "resilience_score": getattr(snapshot, 'resilience_score', None),
                     "risk_category": getattr(snapshot, 'risk_category', None),
-                    "last_scored": snapshot.last_scored.isoformat() if hasattr(snapshot, 'last_scored') and snapshot.last_scored is not None else None
+                    "last_scored": snapshot.last_scored.isoformat() if hasattr(snapshot, 'last_scored') and snapshot.last_scored is not None else None,
+                    # NEW: Include ML anomaly count for this host
+                    "ml_anomaly_count": ml_anomalies_by_host.get(getattr(snapshot, 'hostname', ''), 0)
                 }
                 for snapshot in snapshots[:10]
             ],
-            "score_trend": []  # Will implement metrics later
+            "score_trend": [],  # Will implement metrics later
+            # NEW: ML Anomaly Detection Summary
+            "ml_anomaly_summary": {
+                "total_ml_anomalies_7d": ml_anomaly_count,
+                "affected_endpoints": list(ml_anomalies_by_host.keys()),
+                "top_affected": sorted(
+                    ml_anomalies_by_host.items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:5]  # Top 5 most affected endpoints
+            }
         }
         
     except Exception as e:
         print(f"Error generating resilience dashboard: {e}")
+        import traceback
+        traceback.print_exc()
         return {
-            "summary": {"total_endpoints": 0, "average_score": 0, "risk_distribution": {}},
+            "summary": {
+                "total_endpoints": 0,
+                "average_score": 0,
+                "risk_distribution": {},
+                "ml_anomaly_count": 0,
+                "endpoints_with_ml_anomalies": 0,
+                "avg_ml_anomaly_impact": 0
+            },
             "recent_scores": [],
-            "score_trend": []
+            "score_trend": [],
+            "ml_anomaly_summary": {
+                "total_ml_anomalies_7d": 0,
+                "affected_endpoints": [],
+                "top_affected": []
+            }
         }
 
 # ============================================

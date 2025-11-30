@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard, Incident, IncidentStats, Endpoint, FleetMetrics, EndpointAction, AuditLog, AuditLogFilters, AuditLogStats } from '../types';
+import { Snapshot, Event, Alert, EndpointDetail, ResilienceScore, ResilienceMetrics, ResilienceDashboard, Incident, IncidentStats, Endpoint, FleetMetrics, AuditLog, AuditLogFilters, AuditLogStats } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -103,18 +103,8 @@ export const endpointService = {
     return response.data;
   },
   
-  isolateEndpointById: async (endpointId: string): Promise<EndpointAction> => {
-    const response = await api.post<EndpointAction>(`/fleet/endpoints/${endpointId}/isolate`);
-    return response.data;
-  },
-  
   restoreEndpoint: async (hostname: string): Promise<{ status: string; message: string }> => {
     const response = await api.post<{ status: string; message: string }>(`/endpoints/${hostname}/restore`);
-    return response.data;
-  },
-  
-  unisolateEndpoint: async (endpointId: string): Promise<EndpointAction> => {
-    const response = await api.post<EndpointAction>(`/fleet/endpoints/${endpointId}/unisolate`);
     return response.data;
   },
   

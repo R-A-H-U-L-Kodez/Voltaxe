@@ -202,12 +202,18 @@ class VoltaxeAxonEngine:
         return total_deduction, vulnerability_analysis
     
     def analyze_suspicious_behavior(self, hostname: str) -> Tuple[int, int]:
-        """Analyze suspicious behavioral patterns"""
+        """
+        Analyze suspicious behavioral patterns with ML anomaly detection weighting
+        
+        This method now heavily weighs ML-detected anomalies to ensure the 
+        resilience score dynamically responds to axon_engine's anomaly detection.
+        """
         
         # Look at suspicious events in the last 7 days
         seven_days_ago = datetime.utcnow() - timedelta(days=7)
         
-        suspicious_events = self.db.query(EventDB).filter(
+        # Query all suspicious events
+        suspicious_events_query = self.db.query(EventDB).filter(
             EventDB.hostname == hostname,
             EventDB.event_type.in_([
                 'SUSPICIOUS_PARENT_CHILD_PROCESS',
@@ -216,37 +222,70 @@ class VoltaxeAxonEngine:
                 'ANOMALOUS_PROCESS_ACTIVITY'
             ]),
             EventDB.timestamp >= seven_days_ago
+        )
+        
+        total_suspicious_events = suspicious_events_query.count()
+        
+        # --- NEW: ML Anomaly Detection Weighting ---
+        # Query for ML-detected anomalies specifically (from axon_engine anomaly detection)
+        ml_anomaly_events = suspicious_events_query.filter(
+            EventDB.event_type.in_([
+                'ANOMALOUS_PROCESS_ACTIVITY',
+                'SUSPICIOUS_BEHAVIOR_DETECTED'
+            ])
         ).count()
         
-        # Behavioral scoring (escalating penalty for repeated suspicious behavior)
-        if suspicious_events == 0:
-            deduction = 0
-        elif suspicious_events <= 2:
-            deduction = suspicious_events * 5    # 1-2 events: 5 points each
-        elif suspicious_events <= 5:
-            deduction = 10 + (suspicious_events - 2) * 8  # 3-5 events: escalating penalty
+        # Calculate base deduction from suspicious events
+        base_deduction = 0
+        if total_suspicious_events == 0:
+            base_deduction = 0
+        elif total_suspicious_events <= 2:
+            base_deduction = total_suspicious_events * 5    # 1-2 events: 5 points each
+        elif total_suspicious_events <= 5:
+            base_deduction = 10 + (total_suspicious_events - 2) * 8  # 3-5 events: escalating penalty
         else:
-            deduction = 34 + (suspicious_events - 5) * 10  # 6+ events: major concern
+            base_deduction = 34 + (total_suspicious_events - 5) * 10  # 6+ events: major concern
         
-        logger.info(f"🕵️ Behavioral analysis for {hostname}",
-                   suspicious_events=suspicious_events,
-                   deduction=deduction)
+        # --- NEW: Apply Heavy ML Anomaly Multiplier ---
+        # ML-detected anomalies are given significantly more weight because they represent
+        # behavioral patterns that deviate from the trained normal baseline
+        ml_anomaly_multiplier = 2.5  # ML anomalies count 2.5x more than regular suspicious events
+        ml_anomaly_penalty = int(ml_anomaly_events * 12 * ml_anomaly_multiplier)  # 30 points per ML anomaly
         
-        return deduction, suspicious_events
+        # Total behavioral deduction
+        total_deduction = base_deduction + ml_anomaly_penalty
+        
+        # Cap the maximum deduction to prevent over-penalization
+        total_deduction = min(total_deduction, 50)  # Max 50 point deduction from behavioral analysis
+        
+        logger.info(f"🕵️ Enhanced behavioral analysis for {hostname}",
+                   total_suspicious_events=total_suspicious_events,
+                   ml_anomaly_events=ml_anomaly_events,
+                   base_deduction=base_deduction,
+                   ml_anomaly_penalty=ml_anomaly_penalty,
+                   total_deduction=total_deduction)
+        
+        return total_deduction, total_suspicious_events
     
     def calculate_resilience_score(self, hostname: str) -> Dict[str, Any]:
         """
-        Calculate comprehensive resilience score for an endpoint
+        Calculate comprehensive resilience score for an endpoint with ML anomaly weighting
         
-        Scoring Algorithm:
+        Scoring Algorithm (Enhanced with ML Detection):
         - Base Score: 100 (Perfect security baseline)
         - Vulnerability Deductions: Based on CVSS severity
-        - Behavioral Deductions: Based on suspicious activities
-        - Bonus Points: For good security practices (future enhancement)
+        - Behavioral Deductions: Based on suspicious activities + ML anomaly detection
+          * ML-detected anomalies are weighted 2.5x more heavily (30 points each)
+          * This ensures the score responds dynamically to axon_engine's anomaly detection
         - Final Score: 0-100 scale with risk categorization
+        
+        ML Anomaly Impact:
+        - Each ML-detected anomaly (ANOMALOUS_PROCESS_ACTIVITY, SUSPICIOUS_BEHAVIOR_DETECTED)
+          receives a heavy penalty (~30 points) to ensure scores change in real-time
+        - Maximum behavioral deduction capped at 50 points to maintain score range
         """
         
-        logger.info(f"🎯 Calculating resilience score for '{hostname}'")
+        logger.info(f"🎯 Calculating ML-enhanced resilience score for '{hostname}'")
         
         base_score = 100
         score_breakdown = {
@@ -285,11 +324,12 @@ class VoltaxeAxonEngine:
         
         score_breakdown['risk_category'] = risk_category
         
-        logger.info(f"📊 Resilience score calculated for '{hostname}'",
+        logger.info(f"📊 ML-enhanced resilience score calculated for '{hostname}'",
                    final_score=final_score,
                    risk_category=risk_category,
                    vuln_deduction=vuln_deduction,
-                   behavioral_deduction=behavioral_deduction)
+                   behavioral_deduction=behavioral_deduction,
+                   ml_anomaly_weighted=True)
         
         return score_breakdown
     
