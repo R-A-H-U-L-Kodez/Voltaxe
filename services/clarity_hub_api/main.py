@@ -787,17 +787,68 @@ def ingest_process_snapshot(snapshot: ProcessSnapshot, db: Session = Depends(get
 # --- GET Endpoints for UI ---
 @app.get("/snapshots", response_model=List[SnapshotResponse])
 def get_snapshots(db: Session = Depends(get_db)):
-    """Get all system snapshots for dashboard"""
+    """
+    Get all system snapshots for dashboard with enriched data
+    Returns snapshots with resilience scores, status, and vulnerability counts
+    """
     snapshots = db.query(SnapshotDB).order_by(SnapshotDB.timestamp.desc()).limit(50).all()
-    return [
-        SnapshotResponse(
-            id=str(snap.id),
-            hostname=snap.hostname,  # type: ignore
-            os=snap.details.get("os", "Unknown"),  # type: ignore
-            timestamp=snap.timestamp.isoformat()  # type: ignore
+    
+    enriched_snapshots = []
+    for snap in snapshots:
+        # Get details from JSON field
+        details = snap.details if hasattr(snap, 'details') else {}  # type: ignore
+        
+        # Determine online/offline status based on last_seen
+        last_seen = snap.timestamp if hasattr(snap, 'timestamp') else None  # type: ignore
+        status = 'online'
+        if last_seen is not None:
+            time_diff = datetime.datetime.utcnow() - last_seen
+            if time_diff.total_seconds() > 300:  # Offline if no update in 5 minutes
+                status = 'offline'
+        
+        # Get vulnerability count from details
+        vuln_count = 0
+        if isinstance(details, dict):
+            software_list = details.get('software', [])
+            if isinstance(software_list, list):
+                for software in software_list:
+                    if isinstance(software, dict):
+                        vulns = software.get('vulnerabilities', [])
+                        if isinstance(vulns, list):
+                            vuln_count += len(vulns)
+        
+        # Get IP address from details
+        ip_address = None
+        if isinstance(details, dict):
+            ip_address = details.get('ip_address') or details.get('ipAddress')
+        
+        # Get agent version
+        agent_version = None
+        if isinstance(details, dict):
+            agent_info = details.get('agent', {})
+            if isinstance(agent_info, dict):
+                agent_version = agent_info.get('version', '1.0.0')
+        
+        enriched_snapshots.append(
+            SnapshotResponse(
+                id=str(snap.id),
+                hostname=snap.hostname,  # type: ignore
+                os=details.get("os", "Unknown") if isinstance(details, dict) else "Unknown",
+                timestamp=snap.timestamp.isoformat() if hasattr(snap, 'timestamp') and snap.timestamp else "",  # type: ignore
+                # Enhanced fields
+                resilience_score=snap.resilience_score if hasattr(snap, 'resilience_score') else None,  # type: ignore
+                risk_category=snap.risk_category if hasattr(snap, 'risk_category') else None,  # type: ignore
+                last_scored=snap.last_scored.isoformat() if hasattr(snap, 'last_scored') and snap.last_scored else None,  # type: ignore
+                status=status,
+                riskLevel=snap.risk_category if hasattr(snap, 'risk_category') else None,  # type: ignore
+                ipAddress=ip_address,
+                agentVersion=agent_version,
+                lastSeen=snap.timestamp.isoformat() if hasattr(snap, 'timestamp') and snap.timestamp else None,  # type: ignore
+                vulnerabilities=vuln_count
+            )
         )
-        for snap in snapshots
-    ]
+    
+    return enriched_snapshots
 
 @app.get("/events", response_model=List[EventResponse])
 def get_events(hostname: Optional[str] = None, db: Session = Depends(get_db)):
