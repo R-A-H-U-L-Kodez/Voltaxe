@@ -814,8 +814,8 @@ def get_network_traffic(
                     'RANSOMWARE_DETECTED'
                 ]
                 
-                # Access the actual value from the ORM object
-                event_id_int = event.id
+                # Access the actual value from the ORM object and convert to int
+                event_id_int: int = event.id if event.id is not None else packet_id  # type: ignore[assignment]
                 timestamp_str = event.timestamp.isoformat() if event.timestamp is not None else datetime.datetime.utcnow().isoformat()
                 
                 traffic_entry = {
@@ -856,7 +856,7 @@ def get_network_traffic(
                 'RANSOMWARE_DETECTED'
             ]
             
-            event_id_int = event.id
+            event_id_int: int = event.id if event.id is not None else packet_id  # type: ignore[assignment]
             timestamp_str = event.timestamp.isoformat() if event.timestamp is not None else datetime.datetime.utcnow().isoformat()
             
             traffic_data.append({
