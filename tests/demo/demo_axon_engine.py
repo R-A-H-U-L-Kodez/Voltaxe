@@ -3,6 +3,16 @@
 """
 Voltaxe Axon Engine - Demo Script
 Demonstrates the resilience scoring intelligence system
+
+⚠️  IMPORTANT: This is a DEMO/TEST script for LOCAL DEVELOPMENT ONLY.
+    - Uses SQLite for simplicity in local testing
+    - NOT intended for production use
+    - PRODUCTION systems MUST use PostgreSQL via docker-compose.yml
+    
+For production deployment, use:
+    docker-compose up -d
+    
+This will start all services with PostgreSQL backend.
 """
 
 import sys
@@ -14,6 +24,12 @@ sys.path.insert(0, '/home/rahul/Voltaxe/Voltaxe/services/axon_engine')
 from main import VoltaxeAxonEngine
 from datetime import datetime, timedelta
 import sqlite3
+
+print("=" * 70)
+print("⚠️  WARNING: This is a LOCAL DEMO script using SQLite")
+print("   For PRODUCTION, use docker-compose with PostgreSQL")
+print("=" * 70)
+print()
 
 def create_fresh_test_data():
     """Create fresh test data with recent timestamps"""

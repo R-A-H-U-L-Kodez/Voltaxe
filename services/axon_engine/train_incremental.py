@@ -24,8 +24,19 @@ from sklearn.ensemble import IsolationForest
 from collections import Counter
 import time
 
-# Database connection (supports both SQLite and PostgreSQL)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///voltaxe_clarity.db")
+# Database connection - PostgreSQL only
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    print("❌ CRITICAL: DATABASE_URL environment variable not set!")
+    print("   PostgreSQL is required for ML training (no SQLite support)")
+    sys.exit(1)
+
+if not DATABASE_URL.startswith("postgresql://"):
+    print(f"❌ CRITICAL: Only PostgreSQL is supported!")
+    print(f"   Current database: {DATABASE_URL.split('://')[0]}")
+    sys.exit(1)
+
 db_string = DATABASE_URL
 
 # Model paths

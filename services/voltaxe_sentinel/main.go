@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -16,6 +19,125 @@ import (
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/process"
 )
+
+// --- Configuration ---
+type Config struct {
+	APIServer          string
+	HeartbeatInterval  time.Duration
+	RetryAttempts      int
+	RetryDelay         time.Duration
+	ScanInterval       time.Duration
+	ProcessMonitoring  bool
+	VulnScanning       bool
+	BehavioralAnalysis bool
+}
+
+// Global configuration
+var config Config
+
+// loadConfig reads configuration from agent.conf file or command-line flags
+func loadConfig() Config {
+	// Command-line flags take precedence
+	serverFlag := flag.String("server", "", "API server URL (e.g., http://192.168.1.50:8000)")
+	configFileFlag := flag.String("config", "", "Path to configuration file (default: ./agent.conf)")
+	flag.Parse()
+
+	// Default configuration
+	cfg := Config{
+		APIServer:          "http://localhost:8000",
+		HeartbeatInterval:  30 * time.Second,
+		RetryAttempts:      3,
+		RetryDelay:         5 * time.Second,
+		ScanInterval:       60 * time.Second,
+		ProcessMonitoring:  true,
+		VulnScanning:       true,
+		BehavioralAnalysis: true,
+	}
+
+	// If server flag is provided, use it
+	if *serverFlag != "" {
+		cfg.APIServer = *serverFlag
+		fmt.Printf("[CONFIG] Using API server from command line: %s\n", cfg.APIServer)
+		return cfg
+	}
+
+	// Try to load from config file
+	configPath := *configFileFlag
+	if configPath == "" {
+		// Try multiple locations
+		possiblePaths := []string{
+			"agent.conf",
+			"./config/agent.conf",
+			"/etc/voltaxe/agent.conf",
+			filepath.Join(filepath.Dir(os.Args[0]), "agent.conf"),
+		}
+
+		for _, path := range possiblePaths {
+			if _, err := os.Stat(path); err == nil {
+				configPath = path
+				break
+			}
+		}
+	}
+
+	if configPath != "" {
+		file, err := os.Open(configPath)
+		if err == nil {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+
+			fmt.Printf("[CONFIG] Loading configuration from: %s\n", configPath)
+
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+
+				// Skip empty lines and comments
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+
+				// Parse key=value pairs
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) != 2 {
+					continue
+				}
+
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+
+				switch key {
+				case "API_SERVER":
+					cfg.APIServer = value
+					fmt.Printf("[CONFIG] ✓ API Server: %s\n", value)
+				case "HEARTBEAT_INTERVAL":
+					if duration, err := time.ParseDuration(value); err == nil {
+						cfg.HeartbeatInterval = duration
+					}
+				case "SCAN_INTERVAL":
+					if duration, err := time.ParseDuration(value); err == nil {
+						cfg.ScanInterval = duration
+					}
+				case "PROCESS_MONITORING":
+					cfg.ProcessMonitoring = strings.ToLower(value) == "true"
+				case "VULNERABILITY_SCANNING":
+					cfg.VulnScanning = strings.ToLower(value) == "true"
+				case "BEHAVIORAL_ANALYSIS":
+					cfg.BehavioralAnalysis = strings.ToLower(value) == "true"
+				}
+			}
+		} else {
+			fmt.Printf("[CONFIG] Warning: Could not read config file: %v\n", err)
+		}
+	}
+
+	// Fallback warning if still using localhost
+	if cfg.APIServer == "http://localhost:8000" {
+		fmt.Println("[CONFIG] ⚠️  WARNING: Using default localhost:8000. This will NOT work on remote deployments!")
+		fmt.Println("[CONFIG] ⚠️  Set API_SERVER in agent.conf or use -server flag for production deployments.")
+	}
+
+	return cfg
+}
 
 // --- Structs ---
 type ProcessInfo struct {
@@ -85,6 +207,10 @@ var isIsolated = false
 // --- Main application logic ---
 func main() {
 	fmt.Println("--- Voltaxe Sentinel v2.0.0 (Strike Module Enabled) ---")
+
+	// Load configuration first
+	config = loadConfig()
+	fmt.Printf("[STARTUP] 🚀 Connecting to API Server: %s\n", config.APIServer)
 
 	// Start command receiver HTTP server in background
 	go startCommandServer()
@@ -407,18 +533,20 @@ func isSuspiciousParentChild(parentName string, childName string) bool {
 }
 
 func sendDataToServer(jsonData []byte, endpoint string) {
-	serverURL := "http://localhost:8000" + endpoint
+	serverURL := config.APIServer + endpoint
 	req, _ := http.NewRequest("POST", serverURL, bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("Failed to send data to %s: %v\n", endpoint, err)
+		fmt.Printf("[ERROR] Failed to send data to %s: %v\n", endpoint, err)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		fmt.Printf("Server responded to %s with status: %s\n", endpoint, resp.Status)
+		fmt.Printf("[WARN] Server responded to %s with status: %s\n", endpoint, resp.Status)
+	} else {
+		fmt.Printf("[SUCCESS] ✓ Data sent to %s\n", endpoint)
 	}
 }
 

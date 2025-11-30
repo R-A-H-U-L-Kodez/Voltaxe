@@ -3,6 +3,7 @@ Voltaxe Audit Logging Service
 Comprehensive audit trail for all security-critical actions and administrative activities.
 """
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from enum import Enum
@@ -85,12 +86,33 @@ class AuditService:
     Service for logging and querying audit trails.
     """
     
-    def __init__(self, database_url: str = "sqlite:///./voltaxe_audit.db"):
-        """Initialize audit service with database connection"""
+    def __init__(self, database_url: Optional[str] = None):
+        """
+        Initialize audit service with database connection.
+        
+        Args:
+            database_url: PostgreSQL connection string. If None, uses DATABASE_URL env var.
+                         SQLite is NOT supported due to concurrency issues.
+        """
+        if database_url is None:
+            database_url = os.getenv("DATABASE_URL")
+            
+        if not database_url:
+            raise ValueError(
+                "DATABASE_URL environment variable is required for audit service. "
+                "SQLite is not supported in production environments."
+            )
+        
+        if not database_url.startswith("postgresql://"):
+            raise ValueError(
+                f"Only PostgreSQL is supported for audit logging. "
+                f"Current database: {database_url.split('://')[0]}"
+            )
+        
         self.engine = create_engine(database_url, echo=False)
         Base.metadata.create_all(self.engine)
         self.SessionLocal = sessionmaker(bind=self.engine)
-        logger.info("[AUDIT] Audit logging service initialized")
+        logger.info("[AUDIT] Audit logging service initialized with PostgreSQL")
     
     def log_action(
         self,

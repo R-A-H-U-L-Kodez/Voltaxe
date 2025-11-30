@@ -21,7 +21,20 @@ load_dotenv()
 logger = structlog.get_logger()
 
 # --- Database Configuration ---
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./voltaxe_clarity.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    logger.error("❌ CRITICAL: DATABASE_URL environment variable not set!")
+    logger.error("   PostgreSQL is required for Axon Engine (no SQLite support)")
+    logger.error("   Set: DATABASE_URL=postgresql://voltaxe_admin:password@postgres:5432/voltaxe_clarity_hub")
+    sys.exit(1)
+
+if not DATABASE_URL.startswith("postgresql://"):
+    logger.error("❌ CRITICAL: Only PostgreSQL is supported for Axon Engine!")
+    logger.error(f"   Current database: {DATABASE_URL.split('://')[0]}")
+    logger.error("   SQLite causes concurrency issues in production.")
+    sys.exit(1)
+
 SCORING_INTERVAL = int(os.getenv("AXON_SCORING_INTERVAL", "60"))  # seconds
 ACTIVE_THRESHOLD_HOURS = int(os.getenv("ACTIVE_THRESHOLD_HOURS", "24"))  # hours
 

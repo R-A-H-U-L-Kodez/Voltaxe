@@ -14,9 +14,19 @@ from datetime import datetime, timedelta
 import os
 import sys
 
-# Database setup
-DB_PATH = os.path.join(os.path.dirname(__file__), "../../voltaxe_clarity.db")
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+# Database setup - PostgreSQL only
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    print("❌ CRITICAL: DATABASE_URL environment variable not set!")
+    print("   PostgreSQL is required for ML training (no SQLite support)")
+    sys.exit(1)
+
+if not DATABASE_URL.startswith("postgresql://"):
+    print(f"❌ CRITICAL: Only PostgreSQL is supported!")
+    print(f"   Current database: {DATABASE_URL.split('://')[0]}")
+    sys.exit(1)
+
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()

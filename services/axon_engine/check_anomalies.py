@@ -7,14 +7,26 @@ This helps verify if the model is smart (catching real threats) or stupid (flagg
 """
 
 import os
+import sys
 import joblib
 import pandas as pd
 import re
 from sqlalchemy import create_engine
 from collections import Counter
 
-# Database connection
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///voltaxe_clarity.db")
+# Database connection - PostgreSQL only
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    print("❌ CRITICAL: DATABASE_URL environment variable not set!")
+    print("   PostgreSQL is required (no SQLite support in production)")
+    sys.exit(1)
+
+if not DATABASE_URL.startswith("postgresql://"):
+    print(f"❌ CRITICAL: Only PostgreSQL is supported!")
+    print(f"   Current database: {DATABASE_URL.split('://')[0]}")
+    sys.exit(1)
+
 db = create_engine(DATABASE_URL)
 
 # Model paths

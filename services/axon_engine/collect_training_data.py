@@ -9,20 +9,33 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
 import pandas as pd
 import os
+import sys
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "../../voltaxe_clarity.db")
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+# Database setup - PostgreSQL only
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    print("❌ CRITICAL: DATABASE_URL environment variable not set!")
+    print("   PostgreSQL is required (no SQLite support)")
+    sys.exit(1)
+
+if not DATABASE_URL.startswith("postgresql://"):
+    print(f"❌ CRITICAL: Only PostgreSQL is supported!")
+    print(f"   Current database: {DATABASE_URL.split('://')[0]}")
+    sys.exit(1)
+
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 
 def check_table_exists():
-    """Check if process_snapshots table exists"""
+    """Check if process_snapshots table exists (PostgreSQL compatible)"""
     db = SessionLocal()
     try:
+        # PostgreSQL-compatible query
         result = db.execute(text(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='process_snapshots'"
+            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'process_snapshots')"
         ))
-        exists = result.fetchone() is not None
+        exists = result.scalar()
         db.close()
         return exists
     except Exception as e:

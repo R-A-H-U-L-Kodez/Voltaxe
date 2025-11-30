@@ -24,18 +24,24 @@ load_dotenv()
 # Configure structured logging
 logger = structlog.get_logger()
 
-# --- Database Setup ---
-# Use SQLite by default (matches the main Voltaxe setup)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///../../voltaxe_clarity.db")
-if DATABASE_URL.startswith("postgresql"):
-    # Only use PostgreSQL if explicitly configured
-    pass
-else:
-    # Default to SQLite in parent directory
-    DB_PATH = os.path.join(os.path.dirname(__file__), "../../voltaxe_clarity.db")
-    DATABASE_URL = f"sqlite:///{DB_PATH}"
+# --- Database Setup - PostgreSQL Only ---
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-logger.info("database_config", url=DATABASE_URL)
+if not DATABASE_URL:
+    logger.error("❌ CRITICAL: DATABASE_URL environment variable not set!")
+    logger.error("   PostgreSQL is required for ML-enhanced Axon Engine")
+    logger.error("   SQLite is not supported in production due to concurrency issues")
+    import sys
+    sys.exit(1)
+
+if not DATABASE_URL.startswith("postgresql://"):
+    logger.error("❌ CRITICAL: Only PostgreSQL is supported!")
+    logger.error(f"   Current database: {DATABASE_URL.split('://')[0]}")
+    logger.error("   SQLite causes 'database is locked' errors with multiple containers")
+    import sys
+    sys.exit(1)
+
+logger.info("database_config", url=DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else DATABASE_URL)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
