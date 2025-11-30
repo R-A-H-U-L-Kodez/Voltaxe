@@ -47,9 +47,12 @@
 
 | Document | Purpose | Audience | Priority |
 |----------|---------|----------|----------|
-| **[CRITICAL_FIXES_SUMMARY.md](docs/CRITICAL_FIXES_SUMMARY.md)** | All three critical infrastructure fixes | All | 🔥 Essential |
+| **[CRITICAL_FIXES_SUMMARY.md](docs/CRITICAL_FIXES_SUMMARY.md)** | All five critical infrastructure fixes | All | 🔥 Essential |
 | **[TWO_WAY_COMMUNICATION.md](docs/TWO_WAY_COMMUNICATION.md)** | Complete command polling architecture | DevOps/Architects | 🔥 Essential |
 | **[TWO_WAY_COMMUNICATION_QUICKSTART.md](docs/TWO_WAY_COMMUNICATION_QUICKSTART.md)** | 5-minute setup guide for command polling | DevOps | ⭐ Read First |
+| **[ML_MODEL_LOADING_FIX.md](docs/ML_MODEL_LOADING_FIX.md)** | ML model race condition resolution | ML Engineers/DevOps | 🔥 Essential |
+| **[MALWARE_INPUT_VALIDATION_FIX.md](docs/MALWARE_INPUT_VALIDATION_FIX.md)** | Memory-safe file uploads (DoS prevention) | Security/DevOps | 🔥 Essential |
+| **[MALWARE_VALIDATION_QUICK_REF.md](docs/MALWARE_VALIDATION_QUICK_REF.md)** | Quick reference for upload limits | DevOps | ⭐ Read First |
 
 ### 🎨 Features & Implementation
 

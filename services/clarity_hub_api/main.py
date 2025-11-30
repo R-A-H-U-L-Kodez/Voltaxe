@@ -4,6 +4,8 @@ from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 import datetime
 import os
+import tempfile
+import logging
 from typing import List, Optional, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 from auth_service import auth_service, get_current_user, LoginRequest, RegisterRequest, LoginResponse, RegisterResponse
@@ -18,6 +20,9 @@ from audit_service import audit_service, ActionType, SeverityLevel
 
 # Load environment variables
 load_dotenv()
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 # --- Pydantic Models ---
 class ProcessInfo(BaseModel):
@@ -2412,43 +2417,92 @@ async def scan_file_for_malware(
             detail="Malware scanner is not available. YARA library may not be installed."
         )
     
+    temp_file_path = None
     try:
-        # Read file data
-        file_data = await file.read()
+        # Import scanner constants
+        from malware_scanner.scanner import MAX_FILE_SIZE, FileSizeLimitError
         
-        # No file size limit - scan any size file
-        # Large files may take longer to scan
+        # Stream file to temporary location with size validation
+        # This prevents OOM kills from zip bombs or oversized uploads
+        file_size = 0
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file.filename or 'unknown'}")
+        temp_file_path = temp_file.name
         
-        # Scan the file
-        if scanner is None:
-            raise HTTPException(
-                status_code=503,
-                detail="Malware scanner is not available"
+        try:
+            # Read and write in chunks (memory-safe)
+            # Use read() method in chunks instead of async iteration
+            chunk_size = 8192  # 8KB chunks
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                    
+                file_size += len(chunk)
+                
+                # Enforce size limit BEFORE writing to disk
+                if file_size > MAX_FILE_SIZE:
+                    temp_file.close()
+                    raise FileSizeLimitError(
+                        f"File too large: {file_size / 1024 / 1024:.2f} MB "
+                        f"(maximum: {MAX_FILE_SIZE / 1024 / 1024} MB)"
+                    )
+                
+                temp_file.write(chunk)
+            
+            temp_file.close()
+            
+            # Scan the temporary file (memory-efficient for large files)
+            if scanner is None:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Malware scanner is not available"
+                )
+            
+            scan_result = scanner.scan_file(temp_file_path, max_size=MAX_FILE_SIZE)
+            
+            # Handle size limit violations from scanner
+            if scan_result.size_limit_exceeded:
+                raise HTTPException(
+                    status_code=413,
+                    detail=scan_result.error or "File size limit exceeded"
+                )
+            
+            # Save scan result to database
+            scan_db = MalwareScanDB(
+                file_name=scan_result.file_name,
+                file_size=scan_result.file_size,
+                md5_hash=scan_result.md5_hash,
+                sha1_hash=scan_result.sha1_hash,
+                sha256_hash=scan_result.sha256_hash,
+                scan_time=datetime.datetime.fromisoformat(scan_result.scan_time),
+                is_malicious=scan_result.is_malicious,
+                threat_level=scan_result.threat_level,
+                matches=[m.to_dict() for m in scan_result.matches],
+                error=scan_result.error,
+                hostname=hostname,
+                uploaded_by=current_user.get("email", "unknown")
             )
-        scan_result = scanner.scan_bytes(file_data, file.filename or "unknown")
+            
+            db.add(scan_db)
+            db.commit()
+            db.refresh(scan_db)
+            
+            return db_to_response(scan_db)
         
-        # Save scan result to database
-        scan_db = MalwareScanDB(
-            file_name=scan_result.file_name,
-            file_size=scan_result.file_size,
-            md5_hash=scan_result.md5_hash,
-            sha1_hash=scan_result.sha1_hash,
-            sha256_hash=scan_result.sha256_hash,
-            scan_time=datetime.datetime.fromisoformat(scan_result.scan_time),
-            is_malicious=scan_result.is_malicious,
-            threat_level=scan_result.threat_level,
-            matches=[m.to_dict() for m in scan_result.matches],
-            error=scan_result.error,
-            hostname=hostname,
-            uploaded_by=current_user.get("email", "unknown")
-        )
-        
-        db.add(scan_db)
-        db.commit()
-        db.refresh(scan_db)
-        
-        return db_to_response(scan_db)
+        finally:
+            # Always cleanup temporary file
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                except Exception as e:
+                    logger.warning(f"Failed to cleanup temporary file {temp_file_path}: {e}")
     
+    except FileSizeLimitError as e:
+        # Return 413 Payload Too Large for oversized files
+        raise HTTPException(
+            status_code=413,
+            detail=str(e)
+        )
     except HTTPException:
         raise
     except Exception as e:

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -30,21 +31,26 @@ type Config struct {
 	ProcessMonitoring  bool
 	VulnScanning       bool
 	BehavioralAnalysis bool
+	TLSSkipVerify      bool // Skip TLS verification for self-signed certificates
 }
 
 // Global configuration
 var config Config
 
+// Global HTTP client with TLS configuration
+var httpClient *http.Client
+
 // loadConfig reads configuration from agent.conf file or command-line flags
 func loadConfig() Config {
 	// Command-line flags take precedence
-	serverFlag := flag.String("server", "", "API server URL (e.g., http://192.168.1.50:8000)")
+	serverFlag := flag.String("server", "", "API server URL (e.g., https://192.168.1.50)")
 	configFileFlag := flag.String("config", "", "Path to configuration file (default: ./agent.conf)")
+	tlsSkipVerifyFlag := flag.Bool("tls-skip-verify", false, "Skip TLS certificate verification (for self-signed certs)")
 	flag.Parse()
 
-	// Default configuration
+	// Default configuration - HTTPS by default
 	cfg := Config{
-		APIServer:          "http://localhost:8000",
+		APIServer:          "https://localhost",
 		HeartbeatInterval:  30 * time.Second,
 		RetryAttempts:      3,
 		RetryDelay:         5 * time.Second,
@@ -52,13 +58,19 @@ func loadConfig() Config {
 		ProcessMonitoring:  true,
 		VulnScanning:       true,
 		BehavioralAnalysis: true,
+		TLSSkipVerify:      false,
 	}
 
 	// If server flag is provided, use it
 	if *serverFlag != "" {
 		cfg.APIServer = *serverFlag
 		fmt.Printf("[CONFIG] Using API server from command line: %s\n", cfg.APIServer)
-		return cfg
+	}
+
+	// If TLS skip verify flag is provided
+	if *tlsSkipVerifyFlag {
+		cfg.TLSSkipVerify = true
+		fmt.Printf("[CONFIG] ⚠️  TLS certificate verification DISABLED\n")
 	}
 
 	// Try to load from config file
@@ -109,6 +121,11 @@ func loadConfig() Config {
 				case "API_SERVER":
 					cfg.APIServer = value
 					fmt.Printf("[CONFIG] ✓ API Server: %s\n", value)
+				case "TLS_SKIP_VERIFY":
+					cfg.TLSSkipVerify = strings.ToLower(value) == "true"
+					if cfg.TLSSkipVerify {
+						fmt.Printf("[CONFIG] ⚠️  TLS certificate verification DISABLED\n")
+					}
 				case "HEARTBEAT_INTERVAL":
 					if duration, err := time.ParseDuration(value); err == nil {
 						cfg.HeartbeatInterval = duration
@@ -130,10 +147,40 @@ func loadConfig() Config {
 		}
 	}
 
-	// Fallback warning if still using localhost
-	if cfg.APIServer == "http://localhost:8000" {
-		fmt.Println("[CONFIG] ⚠️  WARNING: Using default localhost:8000. This will NOT work on remote deployments!")
+	// Auto-detect self-signed certificate scenarios (development mode)
+	// Skip TLS verification for localhost and .local domains if not explicitly set
+	if !cfg.TLSSkipVerify && (strings.Contains(cfg.APIServer, "localhost") ||
+		strings.Contains(cfg.APIServer, ".local") ||
+		strings.Contains(cfg.APIServer, "127.0.0.1")) {
+		cfg.TLSSkipVerify = true
+		fmt.Printf("[CONFIG] ✓ Auto-enabled TLS skip verification for development URL: %s\n", cfg.APIServer)
+	}
+
+	// Fallback warning if still using default
+	if cfg.APIServer == "https://localhost" {
+		fmt.Println("[CONFIG] ⚠️  WARNING: Using default https://localhost. This may not work on remote deployments!")
 		fmt.Println("[CONFIG] ⚠️  Set API_SERVER in agent.conf or use -server flag for production deployments.")
+	}
+
+	// Initialize HTTP client with TLS configuration
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: cfg.TLSSkipVerify,
+		MinVersion:         tls.VersionTLS12,
+	}
+
+	httpClient = &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+			MaxIdleConns:    10,
+			IdleConnTimeout: 90 * time.Second,
+		},
+	}
+
+	if cfg.TLSSkipVerify {
+		fmt.Println("[CONFIG] ⚠️  TLS Skip Verify: ENABLED (insecure - only use for development)")
+	} else {
+		fmt.Println("[CONFIG] ✓ TLS Skip Verify: DISABLED (secure - verifying certificates)")
 	}
 
 	return cfg
@@ -336,11 +383,10 @@ func reportCommandResult(commandID int, result CommandResponse) {
 
 	resultJSON, _ := json.Marshal(executionResult)
 
-	client := &http.Client{Timeout: 5 * time.Second}
 	req, _ := http.NewRequest("POST", resultURL, bytes.NewBuffer(resultJSON))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Printf("[COMMAND POLL] ⚠️  Failed to report result: %v\n", err)
 		return
@@ -652,8 +698,7 @@ func sendDataToServer(jsonData []byte, endpoint string) {
 	serverURL := config.APIServer + endpoint
 	req, _ := http.NewRequest("POST", serverURL, bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to send data to %s: %v\n", endpoint, err)
 		return

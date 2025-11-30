@@ -129,6 +129,38 @@ class DeepClassifier(nn.Module):
     def forward(self, x):
         return self.network(x)
 
+# --- Dummy Models for Graceful Degradation ---
+class DummyAnomalyModel:
+    """Fallback model that always returns 'normal' (no anomaly)"""
+    def predict(self, X):
+        logger.warning("dummy_anomaly_model_active", reason="using_fallback")
+        return np.zeros(len(X))  # Return all zeros (no anomalies)
+    
+class DummyBehaviorModel:
+    """Fallback neural network that always returns low probability"""
+    def __init__(self, device):
+        self.device = device
+        self.eval_mode = True
+    
+    def eval(self):
+        self.eval_mode = True
+        return self
+    
+    def __call__(self, x):
+        logger.warning("dummy_behavior_model_active", reason="using_fallback")
+        # Return low probability (0.1) to avoid false positives
+        return torch.tensor([[0.1]], device=self.device)
+    
+    def to(self, device):
+        self.device = device
+        return self
+
+class DummyScaler:
+    """Fallback scaler that returns input unchanged"""
+    def transform(self, X):
+        logger.warning("dummy_scaler_active", reason="using_fallback")
+        return X
+
 # --- Resilience Scoring Engine ---
 class ResilienceScoringEngine:
     """Calculate endpoint resilience scores based on vulnerabilities and events"""
@@ -243,31 +275,124 @@ class MLEnhancedAxonEngine:
         logger.info("ml_enhanced_axon_initializing", device=str(self.device))
         
     def load_models(self):
-        """Load all ML models and scalers"""
+        """Load all ML models and scalers with robust fallback to dummy models"""
+        models_loaded = {"anomaly": False, "behavior": False}
+        
+        # Layer 1: Anomaly Detection Model
         try:
-            # Layer 1: Anomaly Detection
-            if os.path.exists('anomaly_model.joblib'):
+            if os.path.exists('anomaly_model.joblib') and os.path.exists('process_frequencies.joblib'):
+                logger.info("attempting_load", model="anomaly_detection")
+                
+                # Load with validation
                 self.anomaly_model = joblib.load('anomaly_model.joblib')
                 self.process_frequencies = joblib.load('process_frequencies.joblib')
-                logger.info("layer1_loaded", model="anomaly_detection")
+                
+                # Validate loaded models
+                if self.anomaly_model is None or self.process_frequencies is None:
+                    raise ValueError("Loaded model is None (corrupted file)")
+                
+                if not hasattr(self.anomaly_model, 'predict'):
+                    raise ValueError("Anomaly model missing 'predict' method")
+                
+                if not isinstance(self.process_frequencies, dict):
+                    raise ValueError("Process frequencies is not a dictionary")
+                
+                logger.info("layer1_loaded", 
+                           model="anomaly_detection", 
+                           processes_tracked=len(self.process_frequencies))
+                models_loaded["anomaly"] = True
+                
             else:
-                logger.warning("layer1_missing", files=["anomaly_model.joblib"])
-            
-            # Layer 2: Deep Behavior Detection
-            if os.path.exists('deep_classifier.pth'):
-                self.behavior_model = DeepClassifier(self.input_dim).to(self.device)
-                self.behavior_model.load_state_dict(
-                    torch.load('deep_classifier.pth', map_location=self.device)
-                )
-                self.behavior_model.eval()
-                self.behavior_scaler = joblib.load('deep_scaler.joblib')
-                logger.info("layer2_loaded", model="deep_neural_network")
-            else:
-                logger.warning("layer2_missing", files=["deep_classifier.pth"])
+                logger.warning("layer1_files_missing", 
+                             files=["anomaly_model.joblib", "process_frequencies.joblib"],
+                             action="using_dummy_model")
+                raise FileNotFoundError("Anomaly model files not found")
                 
         except Exception as e:
-            logger.error("model_loading_error", error=str(e))
-            raise
+            logger.error("layer1_load_failed", 
+                        error=str(e), 
+                        error_type=type(e).__name__,
+                        action="initializing_dummy_model")
+            
+            # Initialize dummy fallback models
+            self.anomaly_model = DummyAnomalyModel()
+            self.process_frequencies = {}  # Empty dictionary for dummy mode
+            
+            logger.warning("layer1_dummy_active", 
+                          impact="anomaly_detection_disabled",
+                          recommendation="retrain_or_restore_models")
+        
+        # Layer 2: Deep Behavior Detection Model
+        try:
+            if os.path.exists('deep_classifier.pth') and os.path.exists('deep_scaler.joblib'):
+                logger.info("attempting_load", model="deep_neural_network")
+                
+                # Load PyTorch model
+                self.behavior_model = DeepClassifier(self.input_dim).to(self.device)
+                
+                # Load state dict with validation
+                state_dict = torch.load('deep_classifier.pth', map_location=self.device)
+                
+                if not isinstance(state_dict, dict):
+                    raise ValueError("State dict is not a dictionary (corrupted file)")
+                
+                if len(state_dict) == 0:
+                    raise ValueError("State dict is empty (corrupted file)")
+                
+                self.behavior_model.load_state_dict(state_dict)
+                self.behavior_model.eval()
+                
+                # Load scaler with validation
+                self.behavior_scaler = joblib.load('deep_scaler.joblib')
+                
+                if self.behavior_scaler is None:
+                    raise ValueError("Scaler is None (corrupted file)")
+                
+                if not hasattr(self.behavior_scaler, 'transform'):
+                    raise ValueError("Scaler missing 'transform' method")
+                
+                logger.info("layer2_loaded", 
+                           model="deep_neural_network",
+                           device=str(self.device))
+                models_loaded["behavior"] = True
+                
+            else:
+                logger.warning("layer2_files_missing",
+                             files=["deep_classifier.pth", "deep_scaler.joblib"],
+                             action="using_dummy_model")
+                raise FileNotFoundError("Behavior model files not found")
+                
+        except Exception as e:
+            logger.error("layer2_load_failed",
+                        error=str(e),
+                        error_type=type(e).__name__,
+                        action="initializing_dummy_model")
+            
+            # Initialize dummy fallback models
+            self.behavior_model = DummyBehaviorModel(self.device)
+            self.behavior_scaler = DummyScaler()
+            
+            logger.warning("layer2_dummy_active",
+                          impact="malicious_behavior_detection_disabled",
+                          recommendation="retrain_or_restore_models")
+        
+        # Log final status
+        if models_loaded["anomaly"] and models_loaded["behavior"]:
+            logger.info("ml_models_status", 
+                       status="FULLY_OPERATIONAL",
+                       layers_active=2)
+        elif models_loaded["anomaly"] or models_loaded["behavior"]:
+            logger.warning("ml_models_status",
+                          status="PARTIALLY_OPERATIONAL",
+                          anomaly_active=models_loaded["anomaly"],
+                          behavior_active=models_loaded["behavior"],
+                          recommendation="restore_missing_models")
+        else:
+            logger.error("ml_models_status",
+                        status="FALLBACK_MODE",
+                        impact="ML_DETECTION_DISABLED",
+                        service_status="RESILIENCE_SCORING_ONLY",
+                        recommendation="RETRAIN_ALL_MODELS")
     
     def check_anomaly(self, process_name: str, hostname: str, db: Session) -> Optional[Dict]:
         """Layer 1: Check if process is anomalous"""
