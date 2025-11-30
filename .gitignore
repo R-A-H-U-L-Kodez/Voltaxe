@@ -1,8 +1,12 @@
 
+
 # Voltaxe Cleanup - Auto-generated
 # Database files
 *.db
 *.sqlite
+*.db-journal
+*.db-wal
+*.db-shm
 
 # Log files
 *.log
@@ -12,17 +16,88 @@ logs/
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 
 # Virtual environments
 venv/
 env/
+.venv/
+
+# Node.js dependencies (DO NOT COMMIT)
+node_modules/
+.pnpm-debug.log
+.npm/
+.yarn/
+.pnp/
+.pnp.js
+
+# ML model artifacts (generate, don't commit)
+*.joblib
+*.pkl
+*.pickle
+*.h5
+*.pt
+*.pth
+*.onnx
+models/*.joblib
+models/*.pkl
+
+# Compiled binaries (build, don't commit)
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+deployment/**/voltaxe_sentinel*
+!deployment/**/*.sh
+!deployment/**/*.ps1
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
 # Archives
 *.tar.gz
 *.zip
+*.rar
+*.7z
 
 # Build artifacts
 dist/
 build/
 *.egg-info/
 Voltaxe_backup_old/
+
+# SSL certificates (sensitive)
+*.key
+*.crt
+*.pem
+*.p12
+*.pfx
+!nginx/ssl/*.sh
+
+# Environment files (sensitive)
+.env
+.env.local
+.env.*.local
+secrets/
+*.secret
+
+# OS files
+Thumbs.db
+Desktop.ini
+.Spotlight-V100
+.Trashes
+
+# Testing & Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+coverage.xml
+
