@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Activity, Database, TrendingUp, Clock, CheckCircle, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Activity, Database, TrendingUp, Clock, CheckCircle, AlertCircle, RefreshCw, AlertTriangle, Play, Pause, Zap, Server } from 'lucide-react';
+import { Sidebar } from '../components/Sidebar';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { axonService } from '../services/api';
 
 interface TelemetryData {
@@ -21,8 +23,12 @@ interface TelemetryData {
   }>;
 }
 
+type TabType = 'overview' | 'training';
+
 export default function LiveTelemetryPage() {
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
+  const [isLiveMonitoring, setIsLiveMonitoring] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -67,10 +73,12 @@ export default function LiveTelemetryPage() {
   };
 
   useEffect(() => {
-    fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 5000); // Refresh every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
+    if (isLiveMonitoring) {
+      fetchTelemetry();
+      const interval = setInterval(fetchTelemetry, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isLiveMonitoring]);
 
   if (loading) {
     return (
@@ -99,339 +107,479 @@ export default function LiveTelemetryPage() {
 
   const progressPercentage = (telemetry.hours_collected / 48) * 100;
 
+  // Chart data
+  const collectionData = telemetry.recent_snapshots.slice(-10).map(s => ({
+    time: new Date(s.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    processes: s.process_count,
+    hostname: s.hostname
+  }));
+
+  const hostnameData = [
+    { name: 'Unique Hosts', value: telemetry.unique_hosts, fill: '#3b82f6' },
+    { name: 'Snapshots', value: telemetry.unique_snapshots, fill: '#10b981' },
+  ];
+
+  const tabs = [
+    {
+      id: 'overview' as TabType,
+      label: 'Overview',
+      icon: Activity,
+      description: 'Real-time data collection monitoring',
+    },
+    {
+      id: 'training' as TabType,
+      label: 'ML Training',
+      icon: Zap,
+      description: 'Model training status and controls',
+    },
+  ];
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <Activity className="h-8 w-8 text-blue-500 mr-3" />
-              Live Telemetry
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Real-time ML data collection monitoring
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-gray-500">Last updated</div>
-            <div className="text-lg font-semibold text-gray-700">
-              {lastUpdate.toLocaleTimeString()}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Success Message */}
-      {retrainSuccess && (
-        <div className="mb-6 bg-green-50 border-2 border-green-300 rounded-lg p-4">
-          <div className="flex items-center">
-            <CheckCircle className="h-6 w-6 text-green-600 mr-3" />
-            <div>
-              <h3 className="font-semibold text-green-900">Retraining Initiated</h3>
-              <p className="text-green-700">{retrainSuccess}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Training Status Banner */}
-      <div
-        className={`mb-6 p-6 rounded-lg border-2 ${
-          telemetry.training_ready
-            ? 'bg-green-50 border-green-300'
-            : 'bg-blue-50 border-blue-300'
-        }`}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            {telemetry.training_ready ? (
-              <CheckCircle className="h-8 w-8 text-green-600 mr-3" />
-            ) : (
-              <Clock className="h-8 w-8 text-blue-600 mr-3 animate-pulse" />
-            )}
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                {telemetry.training_ready
-                  ? '✅ Ready for Training!'
-                  : '⏳ Data Collection in Progress'}
-              </h2>
-              <p className="text-gray-700 mt-1">
-                {telemetry.training_ready
-                  ? 'You can now train the Isolation Forest model'
-                  : `${telemetry.hours_remaining.toFixed(1)} hours remaining until training ready`}
-              </p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setShowRetrainDialog(true)}
-            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-700 transition-all shadow-lg flex items-center"
-          >
-            <RefreshCw className="h-5 w-5 mr-2" />
-            🚨 Retrain Model
-          </button>
-        </div>
-
-        {/* Progress Bar */}
-        {!telemetry.training_ready && (
-          <div className="mt-4">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>{telemetry.hours_collected.toFixed(1)} hours collected</span>
-              <span>48 hours required</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-4">
-              <div
-                className="bg-blue-600 h-4 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-sm text-gray-600 mt-2 text-center">
-              {progressPercentage.toFixed(1)}% complete • Est. ready:{' '}
-              {new Date(telemetry.estimated_ready).toLocaleString()}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Statistics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Total Records */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <Database className="h-8 w-8 opacity-80" />
-            <div className="text-3xl font-bold">
-              {telemetry.total_records.toLocaleString()}
-            </div>
-          </div>
-          <div className="text-blue-100">Total Records</div>
-          <div className="text-sm text-blue-200 mt-1">
-            {telemetry.unique_snapshots} snapshots
-          </div>
-        </div>
-
-        {/* Unique Processes */}
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <Activity className="h-8 w-8 opacity-80" />
-            <div className="text-3xl font-bold">{telemetry.unique_processes}</div>
-          </div>
-          <div className="text-purple-100">Unique Processes</div>
-          <div className="text-sm text-purple-200 mt-1">
-            Discovered patterns
-          </div>
-        </div>
-
-        {/* Collection Rate */}
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="h-8 w-8 opacity-80" />
-            <div className="text-3xl font-bold">
-              {telemetry.collection_rate.toFixed(1)}
-            </div>
-          </div>
-          <div className="text-green-100">Snapshots/Hour</div>
-          <div className="text-sm text-green-200 mt-1">
-            Target: 12/hour
-          </div>
-        </div>
-
-        {/* Active Hosts */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <CheckCircle className="h-8 w-8 opacity-80" />
-            <div className="text-3xl font-bold">{telemetry.unique_hosts}</div>
-          </div>
-          <div className="text-orange-100">Active Hosts</div>
-          <div className="text-sm text-orange-200 mt-1">
-            Sending data
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Snapshots Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Recent Snapshots
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Latest process snapshots from monitored endpoints
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Timestamp
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hostname
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Processes
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {telemetry.recent_snapshots.length > 0 ? (
-                telemetry.recent_snapshots.map((snapshot, index) => (
-                  <tr
-                    key={index}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(snapshot.timestamp).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {snapshot.hostname}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {snapshot.process_count} processes
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="flex items-center text-sm text-green-600">
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Stored
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-6 py-8 text-center text-gray-500"
-                  >
-                    No snapshots collected yet
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Time Range Info */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Collection Timeline
-          </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">First Snapshot</span>
-              <span className="font-semibold text-gray-900">
-                {new Date(telemetry.oldest_snapshot).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Latest Snapshot</span>
-              <span className="font-semibold text-gray-900">
-                {new Date(telemetry.newest_snapshot).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-              <span className="text-gray-600">Duration</span>
-              <span className="font-semibold text-blue-600">
-                {telemetry.hours_collected.toFixed(1)} hours
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-md p-6 text-white">
-          <h3 className="text-lg font-semibold mb-4">Phase 1: Anomaly Detection</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              <span>Data collection active</span>
-            </div>
-            <div className="flex items-center">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              <span>Process snapshots every 5 minutes</span>
-            </div>
-            <div className="flex items-center">
-              {telemetry.training_ready ? (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              ) : (
-                <Clock className="h-4 w-4 mr-2 animate-pulse" />
-              )}
-              <span>
-                {telemetry.training_ready
-                  ? 'Ready for Isolation Forest training'
-                  : 'Collecting training data...'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Confirmation Dialog */}
-      {showRetrainDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
-            <div className="flex items-start mb-4">
-              <AlertTriangle className="h-8 w-8 text-orange-500 mr-3 flex-shrink-0" />
+    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
+      <Sidebar />
+      
+      <main className="ml-64 p-8">
+        {/* Header */}
+        <div className="border-b pb-6 mb-6" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)' }}>
+                <Activity className="h-10 w-10" style={{ color: 'hsl(var(--primary-gold))' }} />
+              </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  🚨 Panic Button: Retrain ML Model
-                </h3>
-                <p className="text-gray-700 mb-4">
-                  This will immediately retrain the anomaly detection model with all available data.
+                <h1 className="text-4xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                  Live Telemetry
+                </h1>
+                <p className="text-lg mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Real-time ML data collection monitoring with AI-powered insights
                 </p>
               </div>
             </div>
-            
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <h4 className="font-semibold text-blue-900 mb-2">When to use this:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• You installed new legitimate software (e.g., Obsidian.exe)</li>
-                <li>• The model is flagging too many false positives</li>
-                <li>• You need to incorporate recent data immediately</li>
-              </ul>
-            </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-yellow-800">
-                <strong>Note:</strong> Training will take 1-3 minutes. The model will be updated automatically when complete.
-              </p>
-            </div>
+            {/* Live Monitoring Toggle */}
+            <button
+              onClick={() => setIsLiveMonitoring(!isLiveMonitoring)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+              style={{
+                backgroundColor: isLiveMonitoring ? 'hsl(var(--primary-gold) / 0.1)' : 'hsl(var(--card))',
+                border: `2px solid ${isLiveMonitoring ? 'hsl(var(--primary-gold))' : 'hsl(var(--border))'}`,
+                color: isLiveMonitoring ? 'hsl(var(--primary-gold))' : 'hsl(var(--foreground))'
+              }}
+            >
+              {isLiveMonitoring ? (
+                <>
+                  <Pause className="h-5 w-5" />
+                  <span className="font-medium">Pause</span>
+                </>
+              ) : (
+                <>
+                  <Play className="h-5 w-5" />
+                  <span className="font-medium">Resume</span>
+                </>
+              )}
+            </button>
+          </div>
 
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowRetrainDialog(false)}
-                disabled={retraining}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRetrain}
-                disabled={retraining}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center"
-              >
-                {retraining ? (
-                  <>
-                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                    Retraining...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-5 w-5 mr-2" />
-                    Retrain Now
-                  </>
-                )}
-              </button>
+          {/* Tab Navigation */}
+          <div className="flex gap-2">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="flex items-center gap-2 px-6 py-3 rounded-lg transition-all"
+                  style={{
+                    backgroundColor: activeTab === tab.id ? 'hsl(var(--card))' : 'transparent',
+                    border: `2px solid ${activeTab === tab.id ? 'hsl(var(--primary-gold))' : 'hsl(var(--border))'}`,
+                    color: activeTab === tab.id ? 'hsl(var(--primary-gold))' : 'hsl(var(--foreground))'
+                  }}
+                >
+                  <Icon className="h-5 w-5" />
+                  <div className="text-left">
+                    <div className="font-semibold">{tab.label}</div>
+                    <div className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      {tab.description}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          </div>
+
+        {/* Success Message */}
+        {retrainSuccess && (
+          <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#10b981', color: 'white' }}>
+            <div className="flex items-center">
+              <CheckCircle className="h-6 w-6 mr-3" />
+              <div>
+                <h3 className="font-semibold">Retraining Initiated</h3>
+                <p>{retrainSuccess}</p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <Database className="h-8 w-8" style={{ color: 'hsl(var(--primary-gold))' }} />
+                  <span className="text-3xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                    {telemetry.total_records.toLocaleString()}
+                  </span>
+                </div>
+                <div className="text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Total Records
+                </div>
+                <div className="mt-2 text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  {telemetry.unique_snapshots} snapshots collected
+                </div>
+              </div>
+
+              <div className="p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <Server className="h-8 w-8" style={{ color: '#10b981' }} />
+                  <span className="text-3xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                    {telemetry.unique_processes.toLocaleString()}
+                  </span>
+                </div>
+                <div className="text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Unique Processes
+                </div>
+                <div className="mt-2 text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Across {telemetry.unique_hosts} hosts
+                </div>
+              </div>
+
+              <div className="p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <Clock className="h-8 w-8" style={{ color: '#f59e0b' }} />
+                  <span className="text-3xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                    {telemetry.hours_collected.toFixed(1)}h
+                  </span>
+                </div>
+                <div className="text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Data Collected
+                </div>
+                <div className="mt-2 text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  {telemetry.hours_remaining.toFixed(1)}h until training ready
+                </div>
+              </div>
+
+              <div className="p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingUp className="h-8 w-8" style={{ color: '#3b82f6' }} />
+                  <span className="text-3xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                    {telemetry.collection_rate.toFixed(1)}/min
+                  </span>
+                </div>
+                <div className="text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Collection Rate
+                </div>
+                <div className="mt-2 text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Last updated: {lastUpdate.toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Collection Timeline */}
+              <div className="p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}>
+                <h3 className="text-xl font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>
+                  Recent Collection Activity
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <AreaChart data={collectionData}>
+                    <defs>
+                      <linearGradient id="processGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary-gold))" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary-gold))" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" />
+                    <YAxis stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Area type="monotone" dataKey="processes" stroke="hsl(var(--primary-gold))" fillOpacity={1} fill="url(#processGradient)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Host Distribution */}
+              <div className="p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}>
+                <h3 className="text-xl font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>
+                  Data Distribution
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={hostnameData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {hostnameData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Recent Snapshots Table */}
+            <div className="p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}>
+              <h3 className="text-xl font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>
+                Recent Snapshots
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid hsl(var(--border))' }}>
+                      <th className="text-left p-3" style={{ color: 'hsl(var(--muted-foreground))' }}>Hostname</th>
+                      <th className="text-left p-3" style={{ color: 'hsl(var(--muted-foreground))' }}>Timestamp</th>
+                      <th className="text-right p-3" style={{ color: 'hsl(var(--muted-foreground))' }}>Processes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {telemetry.recent_snapshots.slice(-5).reverse().map((snapshot, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                        <td className="p-3 font-medium" style={{ color: 'hsl(var(--foreground))' }}>{snapshot.hostname}</td>
+                        <td className="p-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                          {new Date(snapshot.timestamp).toLocaleString()}
+                        </td>
+                        <td className="p-3 text-right font-semibold" style={{ color: 'hsl(var(--primary-gold))' }}>
+                          {snapshot.process_count}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Training Tab */}
+        {activeTab === 'training' && (
+          <>
+            {/* Training Status Banner */}
+            <div
+              className="mb-6 p-6 rounded-lg"
+              style={{
+                backgroundColor: telemetry.training_ready ? '#10b981' : 'hsl(var(--card))',
+                border: `2px solid ${telemetry.training_ready ? '#10b981' : 'hsl(var(--primary-gold))'}`,
+                color: telemetry.training_ready ? 'white' : 'hsl(var(--foreground))'
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  {telemetry.training_ready ? (
+                    <CheckCircle className="h-10 w-10 mr-4" />
+                  ) : (
+                    <Clock className="h-10 w-10 mr-4 animate-pulse" style={{ color: 'hsl(var(--primary-gold))' }} />
+                  )}
+                  <div>
+                    <h2 className="text-2xl font-bold">
+                      {telemetry.training_ready
+                        ? '✅ Ready for Training!'
+                        : '⏳ Data Collection in Progress'}
+                    </h2>
+                    <p className="mt-1" style={{ opacity: telemetry.training_ready ? 1 : 0.8 }}>
+                      {telemetry.training_ready
+                        ? 'You can now train the Isolation Forest model'
+                        : `${telemetry.hours_remaining.toFixed(1)} hours remaining until training ready`}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowRetrainDialog(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-700 transition-all shadow-lg flex items-center"
+                >
+                  <RefreshCw className={`h-5 w-5 mr-2 ${retraining ? 'animate-spin' : ''}`} />
+                  🚨 Retrain Model
+                </button>
+              </div>
+
+              {/* Progress Bar */}
+              {!telemetry.training_ready && (
+                <div className="mt-6">
+                  <div className="flex justify-between text-sm mb-2" style={{ opacity: 0.8 }}>
+                    <span>{telemetry.hours_collected.toFixed(1)} hours collected</span>
+                    <span>48 hours required</span>
+                  </div>
+                  <div className="w-full rounded-full h-3" style={{ backgroundColor: 'hsl(var(--border))' }}>
+                    <div
+                      className="h-3 rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${Math.min(progressPercentage, 100)}%`,
+                        backgroundColor: 'hsl(var(--primary-gold))'
+                      }}
+                    ></div>
+                  </div>
+                  <div className="text-sm mt-2 text-center" style={{ opacity: 0.8 }}>
+                    {progressPercentage.toFixed(1)}% complete • Est. ready:{' '}
+                    {new Date(telemetry.estimated_ready).toLocaleString()}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Training Information Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}>
+                <h3 className="text-xl font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>
+                  When to Retrain
+                </h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start">
+                    <CheckCircle className="h-5 w-5 mr-2 mt-0.5" style={{ color: '#10b981' }} />
+                    <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      You installed new legitimate software (e.g., Obsidian.exe)
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="h-5 w-5 mr-2 mt-0.5" style={{ color: '#10b981' }} />
+                    <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      False positive rate is too high
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="h-5 w-5 mr-2 mt-0.5" style={{ color: '#10b981' }} />
+                    <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      Need to incorporate recent data immediately
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="p-6 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}>
+                <h3 className="text-xl font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>
+                  Training Details
+                </h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start">
+                    <AlertTriangle className="h-5 w-5 mr-2 mt-0.5" style={{ color: '#f59e0b' }} />
+                    <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      Training will take 1-3 minutes
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <AlertTriangle className="h-5 w-5 mr-2 mt-0.5" style={{ color: '#f59e0b' }} />
+                    <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      Model will update automatically when complete
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <AlertTriangle className="h-5 w-5 mr-2 mt-0.5" style={{ color: '#f59e0b' }} />
+                    <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      No service interruption during training
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Retrain Confirmation Dialog */}
+        {showRetrainDialog && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={() => !retraining && setShowRetrainDialog(false)}
+          >
+            <div 
+              className="p-6 rounded-lg shadow-xl max-w-md w-full mx-4"
+              style={{ backgroundColor: 'hsl(var(--card))', border: '2px solid hsl(var(--border))' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center mb-4">
+                <AlertTriangle className="h-8 w-8 mr-3" style={{ color: '#f59e0b' }} />
+                <h3 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                  🚨 Panic Button
+                </h3>
+              </div>
+              
+              <p className="mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                This will trigger an immediate ML model retraining using all available data.
+              </p>
+
+              <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)', border: '1px solid hsl(var(--primary-gold))' }}>
+                <p className="font-semibold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Use this when:</p>
+                <ul className="space-y-1 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <li>• You installed new software being flagged</li>
+                  <li>• False positives are too high</li>
+                  <li>• Recent data needs immediate incorporation</li>
+                </ul>
+              </div>
+
+              <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', color: 'hsl(var(--foreground))' }}>
+                <p className="font-semibold mb-2">Important:</p>
+                <ul className="space-y-1 text-sm">
+                  <li>• Training will take 1-3 minutes</li>
+                  <li>• Model updates automatically when complete</li>
+                  <li>• No service interruption</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowRetrainDialog(false)}
+                  disabled={retraining}
+                  className="px-4 py-2 rounded-lg transition-all"
+                  style={{ 
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '2px solid hsl(var(--border))',
+                    color: 'hsl(var(--foreground))'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRetrain}
+                  disabled={retraining}
+                  className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-700 transition-all flex items-center"
+                >
+                  {retraining ? (
+                    <>
+                      <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                      Retraining...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-5 w-5 mr-2" />
+                      Retrain Now
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
