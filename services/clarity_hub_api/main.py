@@ -850,7 +850,7 @@ def get_snapshots(db: Session = Depends(get_db)):
     
     return enriched_snapshots
 
-@app.get("/events", response_model=List[EventResponse])
+@app.get("/api/events", response_model=List[EventResponse])
 def get_events(hostname: Optional[str] = None, db: Session = Depends(get_db)):
     """Get all events, optionally filtered by hostname for endpoint-specific views"""
     print(f"\n[API] ---> Serving events (hostname filter: {hostname or 'none'}) [API]")
@@ -1705,7 +1705,7 @@ def get_vulnerability_stats(
         raise HTTPException(status_code=500, detail=f"Error fetching statistics: {str(e)}")
 
 
-@app.get("/cve/stats")
+@app.get("/api/cve/stats")
 def get_cve_stats_alias(
     db: Session = Depends(get_db), 
     current_user: Dict[str, Any] = Depends(get_current_user)
@@ -2372,7 +2372,7 @@ def _format_event_details(details: Dict[str, Any], event_type: str) -> str:
         return f"Event: {event_type.replace('_', ' ').title()}"
 
 # --- Resilience Scoring Endpoints ---
-@app.get("/resilience/scores", response_model=List[ResilienceScoreResponse])
+@app.get("/api/resilience/scores", response_model=List[ResilienceScoreResponse])
 def get_resilience_scores(db: Session = Depends(get_db)):
     """Get resilience scores for all monitored endpoints"""
     try:
@@ -2397,7 +2397,7 @@ def get_resilience_scores(db: Session = Depends(get_db)):
         print(f"Error fetching resilience scores: {e}")
         return []
 
-@app.get("/resilience/metrics", response_model=List[ResilienceMetricsResponse]) 
+@app.get("/api/resilience/metrics", response_model=List[ResilienceMetricsResponse]) 
 def get_resilience_metrics(limit: int = 50, db: Session = Depends(get_db)):
     """Get detailed resilience metrics history"""
     try:
@@ -2445,7 +2445,7 @@ def get_resilience_metrics(limit: int = 50, db: Session = Depends(get_db)):
         print(f"Error fetching resilience metrics: {e}")
         return []
 
-@app.get("/resilience/dashboard")
+@app.get("/api/resilience/dashboard")
 def get_resilience_dashboard(db: Session = Depends(get_db)):
     """
     Get dashboard data with resilience scoring overview

@@ -116,24 +116,35 @@ router = APIRouter(prefix="/api/search", tags=["search"])
 - **Change**: Updated router prefix from `/search` to `/api/search`
 - **Impact**: Search endpoint now accessible at `/api/search`
 
-### 3. `/services/clarity_hub_api/main.py`
-- **Changes**: Added `/api` prefix to multiple direct routes:
+### 3. `/services/clarity_hub_api/main.py` (2 rounds of fixes)
+- **Round 1 Changes**: Added `/api` prefix to:
   - Fleet management routes (2 routes)
   - Alerts route (1 route)
   - Malware scanner routes (7 routes)
-- **Impact**: All routes now match frontend API calls
+- **Round 2 Changes**: Added `/api` prefix to:
+  - Core data routes: snapshots, events (2 routes)
+  - Resilience routes: scores, metrics, dashboard (3 routes)
+  - CVE stats route (1 route)
+- **Total Impact**: 21 routes fixed across 2 rounds, all now match frontend API calls
 
 ---
 
 ## Deployment
 
-### Build & Restart
-```bash
-# Rebuild API container with fixes
-docker compose up -d --build api
+### Build & Restart (2 Rounds)
 
-# Status: ✅ SUCCESS
+**Round 1**:
+```bash
+docker compose up -d --build api
 # Build time: 3.0 seconds
+# Status: ✅ SUCCESS - Fixed 10 routes
+```
+
+**Round 2**:
+```bash
+docker compose up -d --build api
+# Build time: 3.8 seconds
+# Status: ✅ SUCCESS - Fixed 6 additional routes
 # Container: Healthy
 ```
 
@@ -162,6 +173,12 @@ voltaxe_api   Up 5 minutes (healthy)
 
 | Dashboard | Endpoint | Status |
 |-----------|----------|--------|
+| **Command Center** | `GET /api/snapshots` | ✅ Fixed (Round 2) |
+| **All Pages** | `GET /api/events` | ✅ Fixed (Round 2) |
+| **Resilience** | `GET /api/resilience/scores` | ✅ Fixed (Round 2) |
+| **Resilience** | `GET /api/resilience/metrics` | ✅ Fixed (Round 2) |
+| **Resilience** | `GET /api/resilience/dashboard` | ✅ Fixed (Round 2) |
+| **CVE/Vulnerabilities** | `GET /api/cve/stats` | ✅ Fixed (Round 2) |
 | Incidents | `GET /api/incidents/` | ✅ Fixed |
 | Incidents | `GET /api/incidents/stats/summary` | ✅ Fixed |
 | Fleet | `GET /api/fleet/endpoints` | ✅ Fixed |
