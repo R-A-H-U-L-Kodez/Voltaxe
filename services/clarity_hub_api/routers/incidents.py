@@ -7,7 +7,7 @@ from database import get_db
 from auth_service import get_current_user
 from incident_correlator import IncidentCorrelator
 
-router = APIRouter(prefix="/incidents", tags=["incidents"])
+router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 
 def get_event_severity(event_type: str) -> str:
     """

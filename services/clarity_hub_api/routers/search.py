@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any, List
 from database import get_db
 from auth_service import get_current_user
 
-router = APIRouter(prefix="/search", tags=["search"])
+router = APIRouter(prefix="/api/search", tags=["search"])
 
 @router.get("")
 async def global_search(

@@ -1453,7 +1453,7 @@ def get_ml_telemetry(db: Session = Depends(get_db)):
             "recent_snapshots": []
         }
 
-@app.get("/alerts", response_model=List[AlertResponse])
+@app.get("/api/alerts", response_model=List[AlertResponse])
 def get_alerts(
     db: Session = Depends(get_db),
     search: Optional[str] = None,
@@ -1879,7 +1879,7 @@ def get_recent_vulnerabilities(
 # FLEET MANAGEMENT ENDPOINTS
 # ============================================================================
 
-@app.get("/fleet/endpoints", response_model=List[EndpointResponse])
+@app.get("/api/fleet/endpoints", response_model=List[EndpointResponse])
 def get_fleet_endpoints(db: Session = Depends(get_db)):
     """Get all endpoints (fleet devices) with their status and metrics"""
     print("\n[API] ---> Fetching fleet endpoints [API]")
@@ -1981,7 +1981,7 @@ def get_fleet_endpoints(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-@app.get("/fleet/metrics", response_model=FleetMetrics)
+@app.get("/api/fleet/metrics", response_model=FleetMetrics)
 def get_fleet_metrics(db: Session = Depends(get_db)):
     """Get fleet-wide metrics and statistics"""
     print("\n[API] ---> Fetching fleet metrics [API]")
@@ -2646,7 +2646,7 @@ except Exception as e:
     print(f"Warning: Malware scanner not available: {e}")
     SCANNER_AVAILABLE = False
 
-@app.post("/malware/scan", response_model=MalwareScanResponse)
+@app.post("/api/malware/scan", response_model=MalwareScanResponse)
 async def scan_file_for_malware(
     file: UploadFile = File(...),
     hostname: Optional[str] = None,
@@ -2760,7 +2760,7 @@ async def scan_file_for_malware(
     finally:
         db.close()
 
-@app.get("/malware/test-eicar", response_model=MalwareScanResponse)
+@app.get("/api/malware/test-eicar", response_model=MalwareScanResponse)
 def test_eicar_detection(
     current_user: Dict = Depends(get_current_user),
     db: Session = Depends(lambda: SessionLocal())
@@ -2811,7 +2811,7 @@ def test_eicar_detection(
     finally:
         db.close()
 
-@app.get("/malware/scans", response_model=List[MalwareScanResponse])
+@app.get("/api/malware/scans", response_model=List[MalwareScanResponse])
 def get_malware_scans(
     limit: int = 100,
     malicious_only: bool = False,
@@ -2839,7 +2839,7 @@ def get_malware_scans(
     finally:
         db.close()
 
-@app.get("/malware/scans/{scan_id}", response_model=MalwareScanResponse)
+@app.get("/api/malware/scans/{scan_id}", response_model=MalwareScanResponse)
 def get_malware_scan_details(
     scan_id: int,
     current_user: Dict = Depends(get_current_user),
@@ -2863,7 +2863,7 @@ def get_malware_scan_details(
     finally:
         db.close()
 
-@app.get("/malware/summary", response_model=MalwareScanSummaryResponse)
+@app.get("/api/malware/summary", response_model=MalwareScanSummaryResponse)
 def get_malware_scan_summary(
     current_user: Dict = Depends(get_current_user),
     db: Session = Depends(lambda: SessionLocal())
@@ -2916,7 +2916,7 @@ def get_malware_scan_summary(
     finally:
         db.close()
 
-@app.get("/malware/rules")
+@app.get("/api/malware/rules")
 def get_available_yara_rules(current_user: Dict = Depends(get_current_user)):
     """
     Get list of available YARA rules loaded in the scanner
@@ -2939,7 +2939,7 @@ def get_available_yara_rules(current_user: Dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching rules: {str(e)}")
 
-@app.post("/malware/reload-rules")
+@app.post("/api/malware/reload-rules")
 def reload_yara_rules(current_user: Dict = Depends(get_current_user)):
     """
     Reload YARA rules from the rules file
