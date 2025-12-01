@@ -785,7 +785,7 @@ def ingest_process_snapshot(snapshot: ProcessSnapshot, db: Session = Depends(get
         return {"status": "error", "message": str(e)}
 
 # --- GET Endpoints for UI ---
-@app.get("/snapshots", response_model=List[SnapshotResponse])
+@app.get("/api/snapshots", response_model=List[SnapshotResponse])
 def get_snapshots(db: Session = Depends(get_db)):
     """
     Get all system snapshots for dashboard with enriched data
