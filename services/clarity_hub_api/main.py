@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request, BackgroundTasks
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_, Float, Text, Boolean, text
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
@@ -1223,6 +1223,123 @@ def get_axon_metrics(db: Session = Depends(get_db)):
                 "ml_models_active": 0
             }
         }
+
+@app.post("/api/axon/retrain")
+async def retrain_ml_model(
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    🚨 PANIC BUTTON: Manual ML Model Retraining
+    
+    Triggers immediate retraining of the anomaly detection model.
+    Use this after installing new legitimate software or when false positives occur.
+    
+    Why this exists:
+    - You installed new software (e.g., Obsidian.exe) and it's flagged as anomalous
+    - False positive rate is too high
+    - Need to incorporate recent data immediately
+    
+    Returns: Task status with estimated completion time
+    """
+    import subprocess
+    import os
+    
+    try:
+        # Log the retrain request
+        print(f"\n[🚨 PANIC BUTTON] ML Model Retrain triggered by: {current_user.get('email', 'unknown')}")
+        print(f"[🚨 PANIC BUTTON] Reason: Manual trigger via dashboard")
+        
+        # Audit log the action
+        audit_service.log_action(
+            user_id=current_user.get("email") or "unknown",
+            username=current_user.get("name") or current_user.get("email") or "unknown",
+            action_type=ActionType.SYSTEM_UPDATE,
+            action_description="Manual ML model retraining triggered via dashboard",
+            severity=SeverityLevel.INFO,
+            resource_type="ml_model",
+            resource_id="anomaly_detection",
+            details={"triggered_by": current_user.get("email"), "timestamp": datetime.datetime.utcnow().isoformat()},
+            success=True
+        )
+        
+        # Check if training script exists
+        training_script = "/app/train_incremental.py"
+        if not os.path.exists(training_script):
+            print(f"[🚨 PANIC BUTTON] ❌ Training script not found: {training_script}")
+            raise HTTPException(
+                status_code=500,
+                detail="Training script not found. Please ensure train_incremental.py is in /app/"
+            )
+        
+        # Run the training in the background
+        def run_training():
+            try:
+                print(f"[🚨 PANIC BUTTON] Starting background training...")
+                result = subprocess.run(
+                    ["python", training_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minute timeout
+                )
+                
+                if result.returncode == 0:
+                    print(f"[🚨 PANIC BUTTON] ✅ Training completed successfully!")
+                    print(f"[🚨 PANIC BUTTON] Output: {result.stdout[:500]}")
+                    
+                    # Log success
+                    audit_service.log_action(
+                        user_id=current_user.get("email") or "system",
+                        username=current_user.get("name") or "System",
+                        action_type=ActionType.SYSTEM_UPDATE,
+                        action_description="ML model retraining completed successfully",
+                        severity=SeverityLevel.INFO,
+                        resource_type="ml_model",
+                        resource_id="anomaly_detection",
+                        details={"success": True, "output_preview": result.stdout[:200]},
+                        success=True
+                    )
+                else:
+                    print(f"[🚨 PANIC BUTTON] ❌ Training failed with code {result.returncode}")
+                    print(f"[🚨 PANIC BUTTON] Error: {result.stderr}")
+                    
+                    # Log failure
+                    audit_service.log_action(
+                        user_id=current_user.get("email") or "system",
+                        username=current_user.get("name") or "System",
+                        action_type=ActionType.SYSTEM_UPDATE,
+                        action_description="ML model retraining failed",
+                        severity=SeverityLevel.WARNING,
+                        resource_type="ml_model",
+                        resource_id="anomaly_detection",
+                        details={"success": False, "error": result.stderr[:200]},
+                        success=False,
+                        error_message=result.stderr[:200]
+                    )
+                    
+            except subprocess.TimeoutExpired:
+                print(f"[🚨 PANIC BUTTON] ⏰ Training timeout after 5 minutes")
+            except Exception as e:
+                print(f"[🚨 PANIC BUTTON] ❌ Training error: {e}")
+        
+        # Add to background tasks
+        background_tasks.add_task(run_training)
+        
+        return {
+            "status": "training_started",
+            "message": "ML model retraining initiated. This will take 1-3 minutes.",
+            "estimated_completion": "1-3 minutes",
+            "triggered_by": current_user.get("email"),
+            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "note": "The model will be updated automatically when training completes. Monitor the Live Telemetry dashboard for updates."
+        }
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"[🚨 PANIC BUTTON] Error triggering retrain: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to trigger retraining: {str(e)}")
 
 # ============================================================================
 # PHASE 1: ML TELEMETRY - LIVE DATA COLLECTION MONITORING

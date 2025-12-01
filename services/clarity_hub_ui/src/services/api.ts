@@ -8,8 +8,30 @@ const api = axios.create({
   },
 });
 
+// Separate axios instance for auth (no /api prefix)
+const authApi = axios.create({
+  baseURL: '/',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 // Add request interceptor to include auth token
 api.interceptors.request.use(
+  (config: any) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error: any) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add request interceptor for authApi as well
+authApi.interceptors.request.use(
   (config: any) => {
     const token = localStorage.getItem('access_token');
     if (token) {
@@ -206,22 +228,22 @@ export interface UserProfile {
 
 export const authService = {
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
-    const response = await api.post('/auth/login', credentials);
+    const response = await authApi.post('/auth/login', credentials);
     return response.data;
   },
   
   register: async (userData: RegisterRequest): Promise<AuthResponse> => {
-    const response = await api.post('/auth/register', userData);
+    const response = await authApi.post('/auth/register', userData);
     return response.data;
   },
   
   refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
-    const response = await api.post('/auth/refresh', { refresh_token: refreshToken });
+    const response = await authApi.post('/auth/refresh', { refresh_token: refreshToken });
     return response.data;
   },
   
   getProfile: async (): Promise<UserProfile> => {
-    const response = await api.get('/auth/me');
+    const response = await authApi.get('/auth/me');
     return response.data;
   },
 };
@@ -271,7 +293,7 @@ export const auditService = {
       });
     }
     
-    const response = await fetch(`http://localhost:8000/audit/logs?${params.toString()}`, {
+    const response = await fetch(`/api/audit/logs?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -289,7 +311,7 @@ export const auditService = {
     const token = getValidToken();
     if (!token) throw new Error('No valid authentication token');
     
-    const response = await fetch(`http://localhost:8000/audit/statistics?days=${days}`, {
+    const response = await fetch(`/api/audit/statistics?days=${days}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -317,7 +339,7 @@ export const auditService = {
       });
     }
     
-    const response = await fetch(`http://localhost:8000/audit/export?${params.toString()}`, {
+    const response = await fetch(`/api/audit/export?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -335,7 +357,7 @@ export const auditService = {
     const token = getValidToken();
     if (!token) throw new Error('No valid authentication token');
     
-    const response = await fetch('http://localhost:8000/audit/action-types', {
+    const response = await fetch('/api/audit/action-types', {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -347,6 +369,36 @@ export const auditService = {
     }
     
     return response.json();
+  },
+};
+
+export const axonService = {
+  /**
+   * 🚨 PANIC BUTTON: Manually trigger ML model retraining
+   * 
+   * Use this when:
+   * - You installed new legitimate software and it's being flagged
+   * - False positive rate is too high
+   * - Need to incorporate recent data immediately
+   */
+  retrainModel: async (): Promise<{ 
+    status: string; 
+    message: string; 
+    estimated_completion: string;
+    triggered_by: string;
+    timestamp: string;
+    note: string;
+  }> => {
+    const response = await api.post('/axon/retrain');
+    return response.data;
+  },
+  
+  /**
+   * Get Axon Engine performance metrics
+   */
+  getMetrics: async (): Promise<any> => {
+    const response = await api.get('/axon/metrics');
+    return response.data;
   },
 };
 

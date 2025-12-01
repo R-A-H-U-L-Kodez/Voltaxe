@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Activity, Database, TrendingUp, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Activity, Database, TrendingUp, Clock, CheckCircle, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { axonService } from '../services/api';
 
 interface TelemetryData {
   total_records: number;
@@ -25,10 +26,13 @@ export default function LiveTelemetryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [showRetrainDialog, setShowRetrainDialog] = useState(false);
+  const [retraining, setRetraining] = useState(false);
+  const [retrainSuccess, setRetrainSuccess] = useState<string | null>(null);
 
   const fetchTelemetry = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/ml/telemetry');
+      const response = await fetch('/api/ml/telemetry');
       if (!response.ok) throw new Error('Failed to fetch telemetry data');
       const data = await response.json();
       setTelemetry(data);
@@ -38,6 +42,27 @@ export default function LiveTelemetryPage() {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetrain = async () => {
+    setRetraining(true);
+    setRetrainSuccess(null);
+    setError(null);
+    
+    try {
+      const result = await axonService.retrainModel();
+      setRetrainSuccess(result.message);
+      setShowRetrainDialog(false);
+      
+      // Show success message for 5 seconds
+      setTimeout(() => {
+        setRetrainSuccess(null);
+      }, 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to trigger retraining');
+    } finally {
+      setRetraining(false);
     }
   };
 
@@ -97,6 +122,19 @@ export default function LiveTelemetryPage() {
         </div>
       </div>
 
+      {/* Success Message */}
+      {retrainSuccess && (
+        <div className="mb-6 bg-green-50 border-2 border-green-300 rounded-lg p-4">
+          <div className="flex items-center">
+            <CheckCircle className="h-6 w-6 text-green-600 mr-3" />
+            <div>
+              <h3 className="font-semibold text-green-900">Retraining Initiated</h3>
+              <p className="text-green-700">{retrainSuccess}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Training Status Banner */}
       <div
         className={`mb-6 p-6 rounded-lg border-2 ${
@@ -125,11 +163,13 @@ export default function LiveTelemetryPage() {
               </p>
             </div>
           </div>
-          {telemetry.training_ready && (
-            <button className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors">
-              Train Model
-            </button>
-          )}
+          <button 
+            onClick={() => setShowRetrainDialog(true)}
+            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-700 transition-all shadow-lg flex items-center"
+          >
+            <RefreshCw className="h-5 w-5 mr-2" />
+            🚨 Retrain Model
+          </button>
         </div>
 
         {/* Progress Bar */}
@@ -331,6 +371,67 @@ export default function LiveTelemetryPage() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      {showRetrainDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start mb-4">
+              <AlertTriangle className="h-8 w-8 text-orange-500 mr-3 flex-shrink-0" />
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  🚨 Panic Button: Retrain ML Model
+                </h3>
+                <p className="text-gray-700 mb-4">
+                  This will immediately retrain the anomaly detection model with all available data.
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <h4 className="font-semibold text-blue-900 mb-2">When to use this:</h4>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• You installed new legitimate software (e.g., Obsidian.exe)</li>
+                <li>• The model is flagging too many false positives</li>
+                <li>• You need to incorporate recent data immediately</li>
+              </ul>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> Training will take 1-3 minutes. The model will be updated automatically when complete.
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowRetrainDialog(false)}
+                disabled={retraining}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRetrain}
+                disabled={retraining}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center"
+              >
+                {retraining ? (
+                  <>
+                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                    Retraining...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-5 w-5 mr-2" />
+                    Retrain Now
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
