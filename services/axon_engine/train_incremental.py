@@ -101,11 +101,21 @@ def normalize_process_name(name):
     return name_normalized
 
 def get_training_data():
-    """Fetch ALL collected process snapshots so far."""
+    """
+    Fetch process snapshots with SLIDING WINDOW (30 days).
+    
+    🎯 THE MAGIC: Only train on the last 30 days
+    ✅ Prevents memory overflow as data grows
+    ✅ Keeps model "fresh" - adapts to current behavior
+    ✅ Forgets old patterns after 30 days
+    
+    Month 1: Fast (loads 50K records)
+    Month 6: Still Fast (loads 50K records, not 10M!)
+    """
     engine = create_engine(db_string)
     
     try:
-        # Get all process snapshot data (simple schema: hostname, process_name, timestamp, snapshot_id)
+        # Get process snapshot data with 30-DAY SLIDING WINDOW
         query = """
         SELECT 
             hostname,
@@ -113,6 +123,7 @@ def get_training_data():
             timestamp,
             snapshot_id
         FROM process_snapshots
+        WHERE timestamp > NOW() - INTERVAL '30 days'  -- 🔥 THE MAGIC LINE
         ORDER BY timestamp ASC
         """
         

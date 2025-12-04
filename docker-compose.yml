@@ -119,6 +119,30 @@ services:
       - voltaxe_network
     restart: unless-stopped
 
+  # 🧠 PERPETUAL AI TRAINER - The Forever Brain
+  axon-trainer:
+    build:
+      context: ./services/axon_engine
+      dockerfile: Dockerfile
+    container_name: voltaxe_trainer
+    command: ["python", "train_incremental.py", "--auto", "--interval", "60"]
+    environment:
+      - DATABASE_URL=postgresql://voltaxe_admin:${POSTGRES_PASSWORD:-VoltaxeSecure2025!}@postgres:5432/voltaxe_clarity_hub
+    volumes:
+      - ./services/axon_engine/models:/app/models  # 🔥 SHARED MODEL STORAGE
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - voltaxe_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/models/anomaly_model.joblib || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
 volumes:
   postgres_data:
   redis_data:

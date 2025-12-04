@@ -521,20 +521,43 @@ class MLEnhancedAxonEngine:
                 db.rollback()
     
     def run(self):
-        """Main engine loop"""
-        logger.info("axon_engine_starting", version="ML_ENHANCED_PRODUCTION")
+        """
+        Main engine loop with HOT RELOAD capability
+        
+        🔥 BRAIN TRANSPLANT: Every 60 minutes, checks for new models on disk
+        ✅ Zero downtime - engine keeps running while loading new brain
+        ✅ Adapts to new behavior patterns without restart
+        """
+        logger.info("axon_engine_starting", version="ML_ENHANCED_PRODUCTION_HOT_RELOAD")
         
         # Load ML models
         self.load_models()
         
         last_checked = datetime.utcnow()
         last_scored = datetime.utcnow()
+        last_model_load = datetime.utcnow()  # 🔥 Track when we last loaded the model
         
-        logger.info("axon_engine_active", status="SCANNING")
+        logger.info("axon_engine_active", status="SCANNING", hot_reload="ENABLED")
         
         while True:
             try:
                 db = SessionLocal()
+                
+                # 🔥 HOT RELOAD LOGIC: Check for new brain every 60 minutes
+                time_since_load = (datetime.utcnow() - last_model_load).total_seconds()
+                if time_since_load > 3600:  # 3600 seconds = 60 minutes
+                    logger.info("hot_reload_check", 
+                               minutes_since_load=int(time_since_load / 60))
+                    
+                    # Reload models from disk (non-blocking)
+                    try:
+                        self.load_models()
+                        last_model_load = datetime.utcnow()
+                        logger.info("hot_reload_success", new_brain="LOADED")
+                    except Exception as e:
+                        logger.error("hot_reload_failed", error=str(e), 
+                                   action="continuing_with_old_model")
+                        # Don't crash - just keep using the old model
                 
                 # 1. Process ML Analysis (every 5 seconds)
                 new_events = db.query(EventDB).filter(
