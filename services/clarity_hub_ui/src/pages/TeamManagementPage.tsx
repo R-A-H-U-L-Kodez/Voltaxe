@@ -55,22 +55,22 @@ export const TeamManagementPage = () => {
 
   const fetchTeamMembers = async () => {
     try {
-      // TODO: Replace with actual API call
-      const mockData: TeamMember[] = [
-        {
-          id: '1',
-          email: 'admin@voltaxe.com',
-          name: 'Admin User',
-          role: 'Admin',
-          status: 'active',
-          invitedAt: new Date('2025-01-01'),
-          lastActive: new Date(),
-          invitedBy: 'System'
+      // Real API call - endpoint needs to be implemented
+      const response = await fetch('/api/team/members', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-      ];
-      setTeamMembers(mockData);
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch team members');
+      }
+      
+      const data = await response.json();
+      setTeamMembers(data);
     } catch (error) {
       console.error('Failed to fetch team members:', error);
+      setTeamMembers([]);
     }
   };
 

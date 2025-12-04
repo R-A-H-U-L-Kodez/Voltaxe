@@ -1199,147 +1199,91 @@ def get_axon_metrics(db: Session = Depends(get_db)):
         return metrics
         
     except Exception as e:
-        print(f"[API] Error collecting metrics: {e}")
-        # Return mock data if psutil fails
-        return {
-            "system": {
-                "timestamp": datetime.datetime.utcnow().isoformat(),
-                "cpu_percent": 0.0,
-                "memory_percent": 0.0,
-                "disk_io_read_mb": 0.0,
-                "disk_io_write_mb": 0.0,
-                "network_bytes_sent_mb": 0.0,
-                "network_bytes_recv_mb": 0.0,
-                "process_count": 0,
-                "thread_count": 0,
-                "disk_usage_percent": 0.0
-            },
-            "axon": {
-                "detection_rate": 0.0,
-                "events_processed": 0,
-                "avg_response_time_ms": 0.0,
-                "threats_blocked": 0,
-                "active_connections": 0,
-                "ml_models_active": 0
-            }
-        }
+        print(f"[API] ✗ Error collecting metrics: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to collect system metrics: {str(e)}"
+        )
 
 @app.post("/axon/retrain")
 async def retrain_ml_model(
-    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    🚨 PANIC BUTTON: Manual ML Model Retraining
+    🚨 PANIC BUTTON: ML Model Retrain Status
     
-    Triggers immediate retraining of the anomaly detection model.
-    Use this after installing new legitimate software or when false positives occur.
+    Note: The ML model is continuously trained by the axon-trainer container.
+    This endpoint provides information about the automated training system.
     
-    Why this exists:
-    - You installed new software (e.g., Obsidian.exe) and it's flagged as anomalous
-    - False positive rate is too high
-    - Need to incorporate recent data immediately
+    The Forever AI Engine retrains automatically every 60 minutes with the latest data.
+    Models are hot-reloaded without service interruption.
     
-    Returns: Task status with estimated completion time
+    Returns: Current training status and next scheduled training time
     """
-    import subprocess
-    import os
-    
     try:
         # Log the retrain request
-        print(f"\n[🚨 PANIC BUTTON] ML Model Retrain triggered by: {current_user.get('email', 'unknown')}")
-        print(f"[🚨 PANIC BUTTON] Reason: Manual trigger via dashboard")
+        print(f"\n[🚨 PANIC BUTTON] ML Model status check by: {current_user.get('email', 'unknown')}")
         
         # Audit log the action
         audit_service.log_action(
             user_id=current_user.get("email") or "unknown",
             username=current_user.get("name") or current_user.get("email") or "unknown",
             action_type=ActionType.SYSTEM_UPDATE,
-            action_description="Manual ML model retraining triggered via dashboard",
+            action_description="ML model training status checked via dashboard",
             severity=SeverityLevel.INFO,
             resource_type="ml_model",
             resource_id="anomaly_detection",
-            details={"triggered_by": current_user.get("email"), "timestamp": datetime.datetime.utcnow().isoformat()},
+            details={"checked_by": current_user.get("email"), "timestamp": datetime.datetime.utcnow().isoformat()},
             success=True
         )
         
-        # Check if training script exists
-        training_script = "/app/train_incremental.py"
-        if not os.path.exists(training_script):
-            print(f"[🚨 PANIC BUTTON] ❌ Training script not found: {training_script}")
-            raise HTTPException(
-                status_code=500,
-                detail="Training script not found. Please ensure train_incremental.py is in /app/"
-            )
+        # Get model info from filesystem
+        import os
+        model_dir = "/app/models"
+        model_files = []
+        last_trained = None
         
-        # Run the training in the background
-        def run_training():
-            try:
-                print(f"[🚨 PANIC BUTTON] Starting background training...")
-                result = subprocess.run(
-                    ["python", training_script],
-                    capture_output=True,
-                    text=True,
-                    timeout=300  # 5 minute timeout
-                )
-                
-                if result.returncode == 0:
-                    print(f"[🚨 PANIC BUTTON] ✅ Training completed successfully!")
-                    print(f"[🚨 PANIC BUTTON] Output: {result.stdout[:500]}")
-                    
-                    # Log success
-                    audit_service.log_action(
-                        user_id=current_user.get("email") or "system",
-                        username=current_user.get("name") or "System",
-                        action_type=ActionType.SYSTEM_UPDATE,
-                        action_description="ML model retraining completed successfully",
-                        severity=SeverityLevel.INFO,
-                        resource_type="ml_model",
-                        resource_id="anomaly_detection",
-                        details={"success": True, "output_preview": result.stdout[:200]},
-                        success=True
-                    )
-                else:
-                    print(f"[🚨 PANIC BUTTON] ❌ Training failed with code {result.returncode}")
-                    print(f"[🚨 PANIC BUTTON] Error: {result.stderr}")
-                    
-                    # Log failure
-                    audit_service.log_action(
-                        user_id=current_user.get("email") or "system",
-                        username=current_user.get("name") or "System",
-                        action_type=ActionType.SYSTEM_UPDATE,
-                        action_description="ML model retraining failed",
-                        severity=SeverityLevel.WARNING,
-                        resource_type="ml_model",
-                        resource_id="anomaly_detection",
-                        details={"success": False, "error": result.stderr[:200]},
-                        success=False,
-                        error_message=result.stderr[:200]
-                    )
-                    
-            except subprocess.TimeoutExpired:
-                print(f"[🚨 PANIC BUTTON] ⏰ Training timeout after 5 minutes")
-            except Exception as e:
-                print(f"[🚨 PANIC BUTTON] ❌ Training error: {e}")
+        if os.path.exists(model_dir):
+            for file in os.listdir(model_dir):
+                if file.endswith('.pkl') or file.endswith('.joblib'):
+                    file_path = os.path.join(model_dir, file)
+                    mtime = os.path.getmtime(file_path)
+                    model_files.append({
+                        "name": file,
+                        "last_modified": datetime.datetime.fromtimestamp(mtime).isoformat()
+                    })
+                    if last_trained is None or mtime > last_trained:
+                        last_trained = mtime
         
-        # Add to background tasks
-        background_tasks.add_task(run_training)
+        # Calculate next training time (every 60 minutes)
+        if last_trained:
+            last_trained_dt = datetime.datetime.fromtimestamp(last_trained)
+            next_training = last_trained_dt + timedelta(minutes=60)
+            time_until_next = (next_training - datetime.datetime.utcnow()).total_seconds() / 60
+        else:
+            next_training = datetime.datetime.utcnow() + timedelta(minutes=60)
+            time_until_next = 60
         
         return {
-            "status": "training_started",
-            "message": "ML model retraining initiated. This will take 1-3 minutes.",
-            "estimated_completion": "1-3 minutes",
-            "triggered_by": current_user.get("email"),
+            "status": "automated_training",
+            "message": "ML models are automatically retrained every 60 minutes by the Forever AI Engine",
+            "model_files": model_files,
+            "last_trained": datetime.datetime.fromtimestamp(last_trained).isoformat() if last_trained else None,
+            "next_training": next_training.isoformat(),
+            "minutes_until_next": max(0, round(time_until_next, 1)),
+            "training_interval": "60 minutes",
+            "checked_by": current_user.get("email"),
             "timestamp": datetime.datetime.utcnow().isoformat(),
-            "note": "The model will be updated automatically when training completes. Monitor the Live Telemetry dashboard for updates."
+            "note": "Models are hot-reloaded automatically. No manual intervention needed."
         }
         
-    except HTTPException as he:
-        raise he
     except Exception as e:
-        print(f"[🚨 PANIC BUTTON] Error triggering retrain: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to trigger retraining: {str(e)}")
+        print(f"[🚨 PANIC BUTTON] ❌ Error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to check training status: {str(e)}"
+        )
 
 # ============================================================================
 # PHASE 1: ML TELEMETRY - LIVE DATA COLLECTION MONITORING
@@ -1587,58 +1531,11 @@ def get_vulnerability_details(cve_id: str, db: Session = Depends(get_db), curren
             references=references
         )
     else:
-        # Fallback to mock data for development/demo (only if CVE not in database)
-        print(f"[API] ---> ⚠ CVE {cve_id} not found in NIST database, checking mock data [API]")
-        
-        mock_cve_database = {
-            "CVE-2024-12345": {
-                "id": "CVE-2024-12345",
-                "cvssScore": 9.8,
-                "severity": "Critical",
-                "attackVector": "Remote Code Execution via Network",
-                "summary": "Docker Desktop for Windows allows attackers to overwrite any file through the hyperv/create Docker API by controlling the DataFolder parameter in the POST request, enabling local privilege escalation.",
-                "publishedDate": "2024-09-15",
-                "lastModified": "2024-09-20",
-                "references": [
-                    "https://nvd.nist.gov/vuln/detail/CVE-2024-12345",
-                    "https://www.docker.com/security-advisory"
-                ]
-            },
-            "CVE-2023-45678": {
-                "id": "CVE-2023-45678",
-                "cvssScore": 7.5,
-                "severity": "High",
-                "attackVector": "Information Disclosure via Local Access",
-                "summary": "A vulnerability in the system configuration allows local users to access sensitive information through improper file permissions.",
-                "publishedDate": "2023-11-10",
-                "lastModified": "2023-11-15",
-                "references": [
-                    "https://nvd.nist.gov/vuln/detail/CVE-2023-45678"
-                ]
-            }
-        }
-        
-        if cve_id not in mock_cve_database:
-            print(f"[API] ---> ✗ CVE {cve_id} not found in database or mock data [API]")
-            raise HTTPException(
-                status_code=404, 
-                detail=f"CVE {cve_id} not found. It may not be in the database yet. CVE sync service runs daily."
-            )
-        
-        print(f"[API] ---> Using mock data for {cve_id} [API]")
-        cve_data = mock_cve_database[cve_id]
-        
-        # Find affected endpoints by querying events
-        affected_events = db.query(EventDB).filter(
-            EventDB.event_type == 'VULNERABILITY_DETECTED',
-            EventDB.details.op('->>')('cve') == cve_id
-        ).all()
-        
-        affected_endpoints = list(set([str(event.hostname) for event in affected_events]))
-        
-        return CVEDetailsResponse(
-            **cve_data,
-            affectedEndpoints=affected_endpoints
+        # CVE not found in database - return 404
+        print(f"[API] ---> ✗ CVE {cve_id} not found in database [API]")
+        raise HTTPException(
+            status_code=404, 
+            detail=f"CVE {cve_id} not found in database. CVE sync service runs daily to update the database."
         )
 
 
