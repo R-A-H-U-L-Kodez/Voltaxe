@@ -255,76 +255,43 @@ export const NetworkTrafficInspector = () => {
         {/* Tab Content */}
         {activeTab === 'live' && (
           <div className="space-y-6">
-            {/* Stats Cards - Row 1 */}
-            <div className="grid grid-cols-4 gap-4">
-              <div className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
-                <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Total Connections</div>
-                <div className="text-3xl font-bold mt-1" style={{ color: 'hsl(var(--foreground))' }}>{stats.total}</div>
-              </div>
-              <div className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
-                <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Benign Traffic</div>
-                <div className="text-3xl font-bold mt-1 text-green-500">{stats.benign}</div>
-              </div>
-              <div className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
-                <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Threats Detected</div>
-                <div className="text-3xl font-bold mt-1 text-red-500">{stats.malicious}</div>
-              </div>
-              <div className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
-                <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Active Processes</div>
-                <div className="text-3xl font-bold mt-1" style={{ color: 'hsl(var(--primary-gold))' }}>
-                  {new Set(filteredPackets.map(p => p.process_name)).size}
-                </div>
-              </div>
-            </div>
-
-            {/* ML Model Performance Metrics - Row 2 */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg border-2" style={{ 
+            {/* Threat Detection Summary */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-6 rounded-lg border-2" style={{ 
                 backgroundColor: 'hsl(var(--card))', 
-                borderColor: 'hsl(var(--primary-gold) / 0.5)',
-                boxShadow: '0 0 20px hsl(var(--primary-gold) / 0.2)'
+                borderColor: 'hsl(var(--destructive) / 0.5)',
+                boxShadow: '0 0 30px hsl(var(--destructive) / 0.3)'
               }}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold" style={{ color: 'hsl(var(--primary-gold))' }}>
-                    ML Model Accuracy
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-lg font-semibold text-red-500">
+                    Malicious Packets Detected
                   </div>
-                  <Shield className="h-5 w-5" style={{ color: 'hsl(var(--primary-gold))' }} />
+                  <AlertCircle className="h-6 w-6 text-red-500" />
                 </div>
-                <div className="text-4xl font-bold" style={{ color: 'hsl(var(--primary-gold))' }}>
-                  {stats.mlAccuracy}%
+                <div className="text-5xl font-bold text-red-500">
+                  {stats.malicious}
                 </div>
-                <div className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  Average confidence across all predictions
+                <div className="text-sm mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Threats identified by ML analysis
                 </div>
               </div>
               
-              <div className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Threat Detection Confidence
+              <div className="p-6 rounded-lg border-2" style={{ 
+                backgroundColor: 'hsl(var(--card))', 
+                borderColor: 'hsl(var(--destructive) / 0.5)',
+                boxShadow: '0 0 30px hsl(var(--destructive) / 0.3)'
+              }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-lg font-semibold text-red-500">
+                    Threat Percentage
                   </div>
-                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  <Shield className="h-6 w-6 text-red-500" />
                 </div>
-                <div className="text-3xl font-bold text-red-500">
-                  {stats.maliciousConfidence}%
+                <div className="text-5xl font-bold text-red-500">
+                  {stats.total > 0 ? ((stats.malicious / stats.total) * 100).toFixed(1) : '0.0'}%
                 </div>
-                <div className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  {stats.malicious} malicious packets analyzed
-                </div>
-              </div>
-              
-              <div className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Benign Classification Confidence
-                  </div>
-                  <Shield className="h-5 w-5 text-green-500" />
-                </div>
-                <div className="text-3xl font-bold text-green-500">
-                  {stats.benignConfidence}%
-                </div>
-                <div className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  {stats.benign} benign packets verified
+                <div className="text-sm mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  of {stats.total} total connections
                 </div>
               </div>
             </div>
