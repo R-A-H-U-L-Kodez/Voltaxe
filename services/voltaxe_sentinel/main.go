@@ -13,12 +13,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/net"
 	"github.com/shirou/gopsutil/process"
 )
 
@@ -309,6 +311,9 @@ func main() {
 
 	// NEW: Start process snapshot sender for ML training (Phase 1)
 	go startProcessSnapshotSender()
+
+	// NEW: Start network traffic sender for real endpoint monitoring
+	go startNetworkTrafficSender()
 
 	// NEW: Perform Rootkit Scan on startup
 	runRootkitScan()
@@ -734,6 +739,117 @@ func sendDataToServer(jsonData []byte, endpoint string) {
 		fmt.Printf("[WARN] Server responded to %s with status: %s\n", endpoint, resp.Status)
 	} else {
 		fmt.Printf("[SUCCESS] ✓ Data sent to %s\n", endpoint)
+	}
+}
+
+// ============================================================================
+// NETWORK TRAFFIC MONITORING - REAL ENDPOINT CONNECTIONS
+// ============================================================================
+
+// NetworkConnection represents a single network connection
+type NetworkConnection struct {
+	PID         int32  `json:"pid"`
+	ProcessName string `json:"process_name"`
+	LocalAddr   string `json:"local_addr"`
+	RemoteAddr  string `json:"remote_addr"`
+	Status      string `json:"status"`
+	Protocol    string `json:"protocol"`
+}
+
+// NetworkSnapshot represents all network connections at a point in time
+type NetworkSnapshot struct {
+	Hostname    string              `json:"hostname"`
+	Timestamp   string              `json:"timestamp"`
+	Connections []NetworkConnection `json:"connections"`
+}
+
+// getProtocolName converts protocol type number to name
+func getProtocolName(connType uint32) string {
+	switch connType {
+	case 1:
+		return "TCP"
+	case 2:
+		return "UDP"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+// collectNetworkTraffic captures active network connections from THIS endpoint
+// This shows REAL connections from the monitored device, not from the server
+func collectNetworkTraffic() NetworkSnapshot {
+	hostname, _ := os.Hostname()
+	connections, err := net.Connections("all") // Get all TCP/UDP connections
+
+	if err != nil {
+		fmt.Printf("[NETWORK] Error getting network connections: %v\n", err)
+		return NetworkSnapshot{
+			Hostname:    hostname,
+			Timestamp:   time.Now().UTC().Format(time.RFC3339),
+			Connections: []NetworkConnection{},
+		}
+	}
+
+	var payload []NetworkConnection
+
+	for _, conn := range connections {
+		// Filter: Only capture connections with remote addresses (skip local/loopback)
+		if conn.Raddr.IP != "" && conn.Raddr.IP != "127.0.0.1" && conn.Raddr.IP != "::1" {
+
+			// Get process name from PID (if available)
+			procName := "unknown"
+			if conn.Pid > 0 {
+				p, err := process.NewProcess(conn.Pid)
+				if err == nil {
+					name, err := p.Name()
+					if err == nil {
+						procName = name
+					}
+				}
+			}
+
+			// Format addresses as "IP:PORT"
+			localAddr := conn.Laddr.IP + ":" + strconv.Itoa(int(conn.Laddr.Port))
+			remoteAddr := conn.Raddr.IP + ":" + strconv.Itoa(int(conn.Raddr.Port))
+
+			payload = append(payload, NetworkConnection{
+				PID:         conn.Pid,
+				ProcessName: procName,
+				LocalAddr:   localAddr,
+				RemoteAddr:  remoteAddr,
+				Status:      conn.Status,
+				Protocol:    getProtocolName(conn.Type),
+			})
+		}
+	}
+
+	return NetworkSnapshot{
+		Hostname:    hostname,
+		Timestamp:   time.Now().UTC().Format(time.RFC3339),
+		Connections: payload,
+	}
+}
+
+// startNetworkTrafficSender sends network snapshots every 30 seconds
+// This is faster than process snapshots because network state changes rapidly
+func startNetworkTrafficSender() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	fmt.Println("[NETWORK] 📡 Network traffic sender started (every 30 seconds)")
+
+	// Send immediately on startup
+	snapshot := collectNetworkTraffic()
+	data, _ := json.Marshal(snapshot)
+	sendDataToServer(data, "/ingest/network-snapshot")
+	fmt.Printf("[NETWORK] 🌐 Sent %d connections at %s\n", len(snapshot.Connections), snapshot.Timestamp)
+
+	// Then every 30 seconds
+	for range ticker.C {
+		snapshot := collectNetworkTraffic()
+		data, _ := json.Marshal(snapshot)
+		sendDataToServer(data, "/ingest/network-snapshot")
+		fmt.Printf("[NETWORK] 🌐 Sent %d connections at %s\n", len(snapshot.Connections), snapshot.Timestamp)
 	}
 }
 

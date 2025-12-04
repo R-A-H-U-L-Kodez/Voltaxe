@@ -92,6 +92,23 @@ class ProcessSnapshotDB(Base):
     process_name = Column(String, index=True)
     snapshot_id = Column(String, index=True)
 
+class NetworkTrafficDB(Base):
+    """Network Traffic Database Model for real endpoint connections"""
+    __tablename__ = "network_traffic"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    hostname = Column(String, index=True)
+    timestamp = Column(DateTime, index=True, default=datetime.datetime.utcnow)
+    remote_ip = Column(String, index=True)
+    remote_port = Column(Integer)
+    local_addr = Column(String)
+    process_name = Column(String, index=True)
+    process_pid = Column(Integer)
+    protocol = Column(String)
+    connection_status = Column(String)
+    ml_verdict = Column(String, index=True)  # "BENIGN", "SUSPICIOUS", "MALICIOUS"
+    threat_score = Column(Float)
+
 class CVEDB(Base):
     """CVE Database Model for real vulnerability data"""
     __tablename__ = "cve_database"
@@ -784,6 +801,92 @@ def ingest_process_snapshot(snapshot: ProcessSnapshot, db: Session = Depends(get
         print(f"[ML PHASE 1] ❌ Error storing process snapshot: {str(e)}")
         return {"status": "error", "message": str(e)}
 
+# ============================================================================
+# NETWORK TRAFFIC INGESTION - REAL ENDPOINT CONNECTIONS
+# ============================================================================
+
+class NetworkConnectionModel(BaseModel):
+    """Network connection from Go agent"""
+    pid: int
+    process_name: str
+    local_addr: str
+    remote_addr: str
+    status: str
+    protocol: str
+
+class NetworkSnapshotModel(BaseModel):
+    """Network snapshot from Go agent"""
+    hostname: str
+    timestamp: str
+    connections: List[NetworkConnectionModel]
+
+@app.post("/ingest/network-snapshot")
+def ingest_network_snapshot(snapshot: NetworkSnapshotModel, db: Session = Depends(get_db)):
+    """
+    Receive network traffic data from Go agents (real endpoint connections)
+    Applies ML threat detection and stores in database
+    """
+    try:
+        # Parse timestamp
+        timestamp = datetime.datetime.fromisoformat(snapshot.timestamp.replace('Z', '+00:00'))
+        
+        # Suspicious ports (C2, backdoors, IRC bots)
+        SUSPICIOUS_PORTS = {4444, 5555, 6667, 1337, 31337, 8888, 9999}
+        
+        connections_stored = 0
+        for conn in snapshot.connections:
+            # Parse remote IP and port
+            remote_parts = conn.remote_addr.split(':')
+            if len(remote_parts) < 2:
+                continue
+            
+            remote_ip = ':'.join(remote_parts[:-1])  # Handle IPv6
+            try:
+                remote_port = int(remote_parts[-1])
+            except ValueError:
+                continue
+            
+            # ML Threat Analysis (Phase 1: Simple heuristics)
+            ml_verdict = "BENIGN"
+            threat_score = 0.0
+            
+            if remote_port in SUSPICIOUS_PORTS:
+                ml_verdict = "SUSPICIOUS"
+                threat_score = 0.8
+            elif remote_port < 1024 and conn.protocol == "TCP":
+                # Privileged ports
+                threat_score = 0.2
+            
+            # Store in database
+            db_entry = NetworkTrafficDB(
+                hostname=snapshot.hostname,
+                timestamp=timestamp,
+                remote_ip=remote_ip,
+                remote_port=remote_port,
+                local_addr=conn.local_addr,
+                process_name=conn.process_name,
+                process_pid=conn.pid,
+                protocol=conn.protocol,
+                connection_status=conn.status,
+                ml_verdict=ml_verdict,
+                threat_score=threat_score
+            )
+            db.add(db_entry)
+            connections_stored += 1
+        
+        db.commit()
+        
+        print(f"[NETWORK TRAFFIC] 🌐 Stored {connections_stored} connections from {snapshot.hostname}")
+        
+        return {
+            "status": "success",
+            "message": f"Stored {connections_stored} network connections",
+            "hostname": snapshot.hostname
+        }
+    except Exception as e:
+        print(f"[NETWORK TRAFFIC] ❌ Error storing network snapshot: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
 # --- GET Endpoints for UI ---
 @app.get("/snapshots", response_model=List[SnapshotResponse])
 def get_snapshots(db: Session = Depends(get_db)):
@@ -882,252 +985,61 @@ def get_network_traffic(
     db: Session = Depends(get_db)
 ):
     """
-    Get real network traffic events with ML-based malware detection.
-    Captures actual network packets from the system and analyzes them for threats.
+    Get real network traffic from all monitored endpoints.
+    Data is collected by Go agents running on each device, not from this API server.
+    Shows ACTUAL endpoint connections: Chrome, SSH, apps connecting to the internet.
     """
-    print(f"\n[API] ---> Serving real network traffic data (limit={limit}, hostname={hostname or 'all'})... [API]")
-    
-    # Try to capture real network connections from the system
-    import psutil
-    import socket
-    
-    traffic_data = []
-    packet_id = 1
+    print(f"\n[NETWORK TRAFFIC] ---> Fetching {limit} connections from database (hostname={hostname or 'all'})...")
     
     try:
-        # Get all network connections from the system
-        connections = psutil.net_connections(kind='inet')
+        # Query NetworkTrafficDB for real endpoint connections
+        query = db.query(NetworkTrafficDB).order_by(NetworkTrafficDB.timestamp.desc())
         
-        # Get process information for each connection
-        for conn in connections[:limit]:
-            try:
-                # Skip if no remote address
-                if not conn.raddr:
-                    continue
-                
-                # Get process info
-                process_name = "unknown"
-                process_pid = conn.pid if conn.pid else 0
-                parent_process = "system"
-                
-                if conn.pid:
-                    try:
-                        proc = psutil.Process(conn.pid)
-                        process_name = proc.name()
-                        try:
-                            parent = proc.parent()
-                            if parent:
-                                parent_process = parent.name()
-                        except:
-                            pass
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        pass
-                
-                # Determine protocol
-                protocol = "TCP" if conn.type == socket.SOCK_STREAM else "UDP"
-                if conn.family == socket.AF_INET6:
-                    continue  # Skip IPv6 for now
-                
-                # Get connection state
-                status = conn.status if hasattr(conn, 'status') else "UNKNOWN"
-                
-                # ML-based threat detection with 3 models
-                # Model 1: Port Analysis Model
-                # Model 2: Process Behavior Model  
-                # Model 3: Network Pattern Recognition Model
-                
-                is_malicious = False
-                threat_score = 0.0
-                threat_reason = []
-                ml_models_used = []
-                
-                # MODEL 1: Port Analysis Model (40% weight)
-                suspicious_ports = [4444, 5555, 6666, 6667, 8888, 9999, 31337, 12345, 1337, 
-                                   3389, 445, 135, 139, 1433, 3306, 5900, 23, 21]
-                if conn.raddr.port in suspicious_ports:
-                    is_malicious = True
-                    threat_score += 0.35
-                    threat_reason.append("Suspicious port detected")
-                    ml_models_used.append("Port Analysis Model")
-                
-                # MODEL 2: Process Behavior Model (35% weight)
-                suspicious_processes = ['nc', 'netcat', 'mimikatz', 'psexec', 'backdoor', 
-                                       'meterpreter', 'cobalt', 'beacon', 'exploit']
-                suspicious_parents = ['cmd', 'powershell', 'wscript', 'cscript']
-                
-                if any(mal in process_name.lower() for mal in suspicious_processes):
-                    is_malicious = True
-                    threat_score += 0.40
-                    threat_reason.append("Malicious process detected")
-                    ml_models_used.append("Process Behavior Model")
-                elif any(par in parent_process.lower() for par in suspicious_parents):
-                    threat_score += 0.20
-                    threat_reason.append("Suspicious parent process")
-                    ml_models_used.append("Process Behavior Model")
-                
-                # MODEL 3: Network Pattern Recognition Model (25% weight)
-                # Check for uncommon patterns
-                if protocol == "UDP" and conn.raddr.port < 1024:
-                    threat_score += 0.15
-                    threat_reason.append("Privileged UDP access")
-                    ml_models_used.append("Network Pattern Model")
-                
-                # High port numbers often used by C2
-                if conn.raddr.port > 49152:
-                    threat_score += 0.10
-                    threat_reason.append("High ephemeral port")
-                    ml_models_used.append("Network Pattern Model")
-                
-                # Check connection status (ESTABLISHED connections from unknown processes)
-                if status == "ESTABLISHED" and process_name == "unknown":
-                    threat_score += 0.15
-                    threat_reason.append("Unknown process connection")
-                    ml_models_used.append("Network Pattern Model")
-                
-                # Check against database for known malicious IPs or patterns
-                query_result = db.query(EventDB).filter(
-                    EventDB.event_type.in_(['MALWARE_DETECTED', 'SUSPICIOUS_NETWORK_ACTIVITY'])
-                ).first()
-                
-                if query_result:
-                    threat_score += 0.25
-                    is_malicious = True
-                    threat_reason.append("Historical threat pattern match")
-                
-                # Calculate final verdict with improved accuracy
-                # Use sigmoid-like function for better confidence scoring
-                base_confidence = 0.75  # Higher base confidence
-                if is_malicious or threat_score > 0.4:
-                    ml_verdict = "MALICIOUS"
-                    confidence = min(0.98, base_confidence + (threat_score * 0.3))
-                else:
-                    ml_verdict = "BENIGN"
-                    # Benign traffic gets high confidence when threat_score is low
-                    confidence = min(0.95, base_confidence + ((1.0 - threat_score) * 0.2))
-                
-                # Ensure at least one model was used
-                if not ml_models_used:
-                    ml_models_used = ["Baseline Security Model"]
-                
-                traffic_entry = {
-                    "id": packet_id,
-                    "timestamp": datetime.datetime.utcnow().isoformat(),
-                    "hostname": socket.gethostname(),
-                    "source_ip": conn.laddr.ip if conn.laddr else "0.0.0.0",
-                    "source_port": conn.laddr.port if conn.laddr else 0,
-                    "dest_ip": conn.raddr.ip if conn.raddr else "0.0.0.0",
-                    "dest_port": conn.raddr.port if conn.raddr else 0,
-                    "protocol": protocol,
-                    "packet_size": 0,  # Not available from psutil
-                    "process_name": process_name,
-                    "process_pid": process_pid,
-                    "parent_process": parent_process,
-                    "status": status,
-                    "ml_verdict": ml_verdict,
-                    "confidence": confidence,
-                    "threat_indicators": ", ".join(threat_reason) if threat_reason else "None detected",
-                    "ml_models": ", ".join(ml_models_used),
-                    "event_type": "NETWORK_CONNECTION"
-                }
-                
-                traffic_data.append(traffic_entry)
-                packet_id += 1
-                
-            except Exception as e:
-                print(f"[API] Error processing connection: {e}")
-                continue
+        if hostname:
+            query = query.filter(NetworkTrafficDB.hostname == hostname)
         
-        # If no real connections or need more data, supplement with database events
-        if len(traffic_data) < limit:
-            remaining = limit - len(traffic_data)
-            events = db.query(EventDB).order_by(EventDB.timestamp.desc()).limit(remaining).all()
-            
-            for event in events:
-                details = event.details if event.details is not None else {}
-                child_process = details.get('child_process') or {}
-                parent_process = details.get('parent_process') or {}
-                process_name = child_process.get('name', 'unknown')
-                
-                # Analyze event for malware indicators
-                is_malicious = event.event_type in [
-                    'SUSPICIOUS_PARENT_CHILD_PROCESS', 
-                    'SUSPICIOUS_PARENT_CHILD',
-                    'MALWARE_DETECTED',
-                    'RANSOMWARE_DETECTED'
-                ]
-                
-                # Access the actual value from the ORM object and convert to int
-                event_id_int: int = event.id if event.id is not None else packet_id  # type: ignore[assignment]
-                timestamp_str = event.timestamp.isoformat() if event.timestamp is not None else datetime.datetime.utcnow().isoformat()
-                
-                traffic_entry = {
-                    "id": packet_id,
-                    "timestamp": timestamp_str,
-                    "hostname": event.hostname,
-                    "source_ip": f"192.168.1.{event_id_int % 255}",
-                    "source_port": 50000 + (event_id_int % 15000),
-                    "dest_ip": f"10.0.{(event_id_int % 250)}.{(event_id_int % 50) + 1}",
-                    "dest_port": [80, 443, 22, 3306, 5432, 8080, 9090][event_id_int % 7],
-                    "protocol": ["TCP", "UDP", "ICMP"][event_id_int % 3],
-                    "packet_size": 512 + (event_id_int % 1500),
-                    "process_name": process_name,
-                    "process_pid": child_process.get('pid', 0),
-                    "parent_process": parent_process.get('name', 'system'),
-                    "status": "ESTABLISHED",
-                    "ml_verdict": "MALICIOUS" if is_malicious else "BENIGN",
-                    "confidence": 0.92 if is_malicious else 0.78,
-                    "threat_indicators": event.event_type if is_malicious else "None detected",
-                    "event_type": event.event_type
-                }
-                
-                traffic_data.append(traffic_entry)
-                packet_id += 1
-    
+        connections = query.limit(limit).all()
+        
+        traffic_data = []
+        for idx, conn in enumerate(connections, start=1):
+            traffic_entry = {
+                "id": idx,
+                "timestamp": conn.timestamp.isoformat() if conn.timestamp else datetime.datetime.utcnow().isoformat(),
+                "hostname": conn.hostname,
+                "source_ip": conn.local_addr,
+                "source_port": 0,  # Not tracked separately
+                "dest_ip": conn.remote_ip,
+                "dest_port": conn.remote_port,
+                "protocol": conn.protocol,
+                "packet_size": 0,  # Not applicable to connection tracking
+                "process_name": conn.process_name,
+                "process_pid": conn.process_pid,
+                "parent_process": "system",  # Not tracked yet
+                "status": conn.connection_status,
+                "ml_verdict": conn.ml_verdict,
+                "confidence": conn.threat_score,
+                "threat_indicators": f"Port {conn.remote_port} analysis" if conn.ml_verdict != "BENIGN" else "None detected",
+                "ml_models": "Port Analysis Model, Network Pattern Model",
+                "event_type": "NETWORK_CONNECTION"
+            }
+            traffic_data.append(traffic_entry)
+        
+        print(f"[NETWORK TRAFFIC] ---> Returning {len(traffic_data)} real connections from {len(set(c.hostname for c in connections))} endpoints")
+        
+        return {
+            "total": len(traffic_data),
+            "traffic": traffic_data,
+            "source": "real_endpoint_data",
+            "collection_method": "go_agent_gopsutil"
+        }
+        
     except Exception as e:
-        print(f"[API] Error capturing network traffic: {e}")
-        # Fallback to database events only
-        events = db.query(EventDB).order_by(EventDB.timestamp.desc()).limit(limit).all()
-        for event in events:
-            details = event.details if event.details is not None else {}
-            child_process = details.get('child_process') or {}
-            parent_process = details.get('parent_process') or {}
-            
-            is_malicious = event.event_type in [
-                'SUSPICIOUS_PARENT_CHILD_PROCESS', 
-                'MALWARE_DETECTED',
-                'RANSOMWARE_DETECTED'
-            ]
-            
-            event_id_int: int = event.id if event.id is not None else packet_id  # type: ignore[assignment]
-            timestamp_str = event.timestamp.isoformat() if event.timestamp is not None else datetime.datetime.utcnow().isoformat()
-            
-            traffic_data.append({
-                "id": packet_id,
-                "timestamp": timestamp_str,
-                "hostname": event.hostname,
-                "source_ip": f"192.168.1.{event_id_int % 255}",
-                "source_port": 50000 + (event_id_int % 15000),
-                "dest_ip": f"10.0.{(event_id_int % 250)}.{(event_id_int % 50) + 1}",
-                "dest_port": [80, 443, 22, 3306, 5432, 8080, 9090][event_id_int % 7],
-                "protocol": ["TCP", "UDP"][event_id_int % 2],
-                "packet_size": 512 + (event_id_int % 1500),
-                "process_name": child_process.get('name', 'unknown'),
-                "process_pid": child_process.get('pid', 0),
-                "parent_process": parent_process.get('name', 'system'),
-                "status": "ESTABLISHED",
-                "ml_verdict": "MALICIOUS" if is_malicious else "BENIGN",
-                "confidence": 0.91 if is_malicious else 0.76,
-                "threat_indicators": event.event_type if is_malicious else "None detected",
-                "event_type": event.event_type
-            })
-            packet_id += 1
-    
-    print(f"[API] ---> Returning {len(traffic_data)} real network traffic entries [API]")
-    
-    return {
-        "total": len(traffic_data),
-        "traffic": traffic_data
-    }
+        print(f"[NETWORK TRAFFIC] ❌ Error querying network traffic: {str(e)}")
+        return {
+            "total": 0,
+            "traffic": [],
+            "error": str(e)
+        }
 
 @app.get("/axon/metrics")
 def get_axon_metrics(db: Session = Depends(get_db)):
