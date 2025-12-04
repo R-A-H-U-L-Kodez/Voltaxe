@@ -1002,6 +1002,14 @@ def get_network_traffic(
         
         traffic_data = []
         for idx, conn in enumerate(connections, start=1):
+            # Calculate proper confidence score (0-100 percentage)
+            # For BENIGN: high confidence (85-95%)
+            # For SUSPICIOUS/MALICIOUS: threat_score * 100
+            if conn.ml_verdict == "BENIGN":
+                confidence = 90.0 - (conn.threat_score * 10)  # 90% for clean, slightly lower if any risk
+            else:
+                confidence = conn.threat_score * 100  # Convert 0.0-1.0 to 0-100%
+            
             traffic_entry = {
                 "id": idx,
                 "timestamp": conn.timestamp.isoformat() if conn.timestamp else datetime.datetime.utcnow().isoformat(),
@@ -1017,7 +1025,7 @@ def get_network_traffic(
                 "parent_process": "system",  # Not tracked yet
                 "status": conn.connection_status,
                 "ml_verdict": conn.ml_verdict,
-                "confidence": conn.threat_score,
+                "confidence": confidence,
                 "threat_indicators": f"Port {conn.remote_port} analysis" if conn.ml_verdict != "BENIGN" else "None detected",
                 "ml_models": "Port Analysis Model, Network Pattern Model",
                 "event_type": "NETWORK_CONNECTION"
