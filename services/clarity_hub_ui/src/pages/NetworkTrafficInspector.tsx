@@ -48,7 +48,7 @@ export const NetworkTrafficInspector = () => {
   useEffect(() => {
     const fetchTrafficData = async () => {
       try {
-        const response = await axios.get<TrafficData>(`${API_BASE_URL}/api/network-traffic?limit=100`);
+        const response = await axios.get<TrafficData>(`${API_BASE_URL}/network-traffic?limit=100`);
         setPackets(response.data.traffic);
         setLoading(false);
       } catch (error) {
