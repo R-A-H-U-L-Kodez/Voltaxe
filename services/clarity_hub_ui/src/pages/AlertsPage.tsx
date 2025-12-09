@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { AlertsTable } from '../components/AlertsTable';
 import { CVEDetailsModal } from '../components/CVEDetailsModal';
+import { RootkitDashboard } from '../components/RootkitDashboard';
 import { alertService } from '../services/api';
 import { Alert } from '../types';
-import { Search, AlertCircle, Download, TrendingUp, Clock, Activity } from 'lucide-react';
+import { Search, AlertCircle, Download, TrendingUp, Clock, Activity, Shield } from 'lucide-react';
 
 export const AlertsPage = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -16,6 +17,7 @@ export const AlertsPage = () => {
   const [endDate, setEndDate] = useState('');
   const [selectedCVE, setSelectedCVE] = useState<string | null>(null);
   const [isCVEModalOpen, setIsCVEModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'alerts' | 'rootkit'>('alerts'); // New tab state
   
   // Metrics state
   const [criticalCount, setCriticalCount] = useState(0);
@@ -130,207 +132,254 @@ export const AlertsPage = () => {
               </div>
               <div>
                 <h1 className="text-4xl font-bold text-gradient-gold mb-2">
-                  Security Alerts
+                  Security Monitoring
                 </h1>
                 <p className="text-muted-foreground flex items-center">
                   <AlertCircle className="h-4 w-4 mr-2" style={{ color: 'hsl(var(--danger))' }} />
-                  Monitor and manage security events across your infrastructure
+                  Monitor alerts and rootkit detection across your infrastructure
                 </p>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Summary Metrics - Sparkline Row */}
-        <div className="grid grid-cols-3 gap-4 mb-6 animate-fadeIn">
-          <div className="card p-5 hover-lift">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                Open Critical Alerts
-              </p>
-              <AlertCircle className="h-4 w-4" style={{ color: 'hsl(var(--danger))' }} />
-            </div>
-            <p className="text-3xl font-bold" style={{ color: 'hsl(var(--danger))' }}>
-              {criticalCount}
-            </p>
-            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              Requiring immediate attention
-            </p>
-          </div>
-
-          <div className="card p-5 hover-lift">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                Avg. Response Time
-              </p>
-              <Clock className="h-4 w-4" style={{ color: 'hsl(var(--accent-gold))' }} />
-            </div>
-            <p className="text-3xl font-bold" style={{ color: 'hsl(var(--accent-gold))' }}>
-              {avgResponseTime}
-            </p>
-            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              From detection to acknowledgment
-            </p>
-          </div>
-
-          <div className="card p-5 hover-lift">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                Today's Volume
-              </p>
-              <Activity className="h-4 w-4" style={{ color: 'hsl(var(--primary-gold))' }} />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-bold" style={{ color: 'hsl(var(--primary-gold))' }}>
-                {todayVolume}
-              </p>
-              {volumeTrend !== 0 && (
-                <span className="text-sm font-medium flex items-center gap-1" style={{ 
-                  color: volumeTrend > 0 ? 'hsl(var(--danger))' : 'hsl(var(--success))' 
-                }}>
-                  <TrendingUp className="h-3 w-3" style={{ 
-                    transform: volumeTrend < 0 ? 'rotate(180deg)' : 'none' 
-                  }} />
-                  {Math.abs(volumeTrend)}%
-                </span>
-              )}
-            </div>
-            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              {volumeTrend > 0 ? 'Above' : volumeTrend < 0 ? 'Below' : 'At'} average
-            </p>
+          {/* Tab Navigation */}
+          <div className="mt-6 border-b border-border">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('alerts')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  activeTab === 'alerts'
+                    ? 'border-primary-gold text-primary-gold'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  Security Alerts
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('rootkit')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  activeTab === 'rootkit'
+                    ? 'border-primary-gold text-primary-gold'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Rootkit Detection
+                </div>
+              </button>
+            </nav>
           </div>
         </div>
 
-        <div className="card p-6 mb-6">
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <label className="block text-foreground text-sm mb-2">Search</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by hostname or event type..."
-                    className="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-foreground/40 focus:outline-none focus:border-primary-gold"
-                  />
+        {/* Tab Content */}
+        {activeTab === 'alerts' ? (
+          <>
+            {/* Summary Metrics - Sparkline Row */}
+            <div className="grid grid-cols-3 gap-4 mb-6 animate-fadeIn">
+              <div className="card p-5 hover-lift">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Open Critical Alerts
+                  </p>
+                  <AlertCircle className="h-4 w-4" style={{ color: 'hsl(var(--danger))' }} />
                 </div>
-              </div>
-              <div className="flex gap-4">
-                <div>
-                  <label className="block text-foreground text-sm mb-2">Start Date</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-gold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-foreground text-sm mb-2">End Date</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-gold"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-end justify-between gap-4">
-              <div className="flex-1">
-                <label className="block text-foreground text-sm mb-2">Severity Filter</label>
-                <div className="flex gap-2">
-                  {severityButtons.map((btn) => (
-                    <button
-                      key={btn.value}
-                      type="button"
-                      onClick={() => setSelectedSeverity(btn.value)}
-                      className="px-4 py-2 rounded-lg font-medium text-sm transition-smooth"
-                      style={{
-                        backgroundColor: selectedSeverity === btn.value 
-                          ? 'hsl(var(--primary-gold))' 
-                          : 'hsl(var(--input))',
-                        color: selectedSeverity === btn.value 
-                          ? 'hsl(var(--background))' 
-                          : 'hsl(var(--foreground))'
-                      }}
-                    >
-                      {btn.label}
-                    </button>
-                  ))}
-                </div>
+                <p className="text-3xl font-bold" style={{ color: 'hsl(var(--danger))' }}>
+                  {criticalCount}
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Requiring immediate attention
+                </p>
               </div>
 
-              <div className="flex gap-3">
-                <div>
-                  <label className="block text-foreground text-sm mb-2">Status Filter</label>
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-gold cursor-pointer"
-                  >
-                    <option value="all">All Alerts</option>
-                    <option value="active">New/Active</option>
-                    <option value="acknowledged">Acknowledged</option>
-                  </select>
+              <div className="card p-5 hover-lift">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Avg. Response Time
+                  </p>
+                  <Clock className="h-4 w-4" style={{ color: 'hsl(var(--accent-gold))' }} />
                 </div>
+                <p className="text-3xl font-bold" style={{ color: 'hsl(var(--accent-gold))' }}>
+                  {avgResponseTime}
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  From detection to acknowledgment
+                </p>
+              </div>
 
-                <div>
-                  <label className="block text-foreground text-sm mb-2">&nbsp;</label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Export functionality
-                      const csv = [
-                        ['Severity', 'Timestamp', 'Hostname', 'Details', 'Status'].join(','),
-                        ...alerts.map(a => [
-                          a.severity,
-                          new Date(a.timestamp).toLocaleString(),
-                          a.hostname,
-                          `"${a.details.replace(/"/g, '""')}"`,
-                          a.status
-                        ].join(','))
-                      ].join('\n');
-                      
-                      const blob = new Blob([csv], { type: 'text/csv' });
-                      const url = window.URL.createObjectURL(blob);
-                      const link = document.createElement('a');
-                      link.href = url;
-                      link.download = `security-alerts-${new Date().toISOString().split('T')[0]}.csv`;
-                      link.click();
-                      window.URL.revokeObjectURL(url);
-                    }}
-                    className="px-4 py-2 rounded-lg font-medium text-sm transition-smooth flex items-center gap-2 hover-lift"
-                    style={{
-                      backgroundColor: 'hsl(var(--success))',
-                      color: 'hsl(var(--background))'
-                    }}
-                  >
-                    <Download className="h-4 w-4" />
-                    Export CSV
-                  </button>
+              <div className="card p-5 hover-lift">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Today's Volume
+                  </p>
+                  <Activity className="h-4 w-4" style={{ color: 'hsl(var(--primary-gold))' }} />
                 </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-3xl font-bold" style={{ color: 'hsl(var(--primary-gold))' }}>
+                    {todayVolume}
+                  </p>
+                  {volumeTrend !== 0 && (
+                    <span className="text-sm font-medium flex items-center gap-1" style={{ 
+                      color: volumeTrend > 0 ? 'hsl(var(--danger))' : 'hsl(var(--success))' 
+                    }}>
+                      <TrendingUp className="h-3 w-3" style={{ 
+                        transform: volumeTrend < 0 ? 'rotate(180deg)' : 'none' 
+                      }} />
+                      {Math.abs(volumeTrend)}%
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  {volumeTrend > 0 ? 'Above' : volumeTrend < 0 ? 'Below' : 'At'} average
+                </p>
               </div>
             </div>
-          </form>
-        </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="relative inline-block">
-              <div className="animate-spin rounded-full h-16 w-16 border-4" style={{ borderColor: 'hsl(var(--border))' }}></div>
-              <div className="animate-spin rounded-full h-16 w-16 border-t-4 absolute top-0 left-0" style={{ borderColor: 'hsl(var(--primary-gold))' }}></div>
+            <div className="card p-6 mb-6">
+              <form onSubmit={handleSearch} className="space-y-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="block text-foreground text-sm mb-2">Search</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Search by hostname or event type..."
+                        className="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-foreground/40 focus:outline-none focus:border-primary-gold"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <div>
+                      <label className="block text-foreground text-sm mb-2">Start Date</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-gold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-foreground text-sm mb-2">End Date</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-gold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-end justify-between gap-4">
+                  <div className="flex-1">
+                    <label className="block text-foreground text-sm mb-2">Severity Filter</label>
+                    <div className="flex gap-2">
+                      {severityButtons.map((btn) => (
+                        <button
+                          key={btn.value}
+                          type="button"
+                          onClick={() => setSelectedSeverity(btn.value)}
+                          className="px-4 py-2 rounded-lg font-medium text-sm transition-smooth"
+                          style={{
+                            backgroundColor: selectedSeverity === btn.value 
+                              ? 'hsl(var(--primary-gold))' 
+                              : 'hsl(var(--input))',
+                            color: selectedSeverity === btn.value 
+                              ? 'hsl(var(--background))' 
+                              : 'hsl(var(--foreground))'
+                          }}
+                        >
+                          {btn.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div>
+                      <label className="block text-foreground text-sm mb-2">Status Filter</label>
+                      <select
+                        value={selectedStatus}
+                        onChange={(e) => setSelectedStatus(e.target.value)}
+                        className="px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-gold cursor-pointer"
+                      >
+                        <option value="all">All Alerts</option>
+                        <option value="active">New/Active</option>
+                        <option value="acknowledged">Acknowledged</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-foreground text-sm mb-2">&nbsp;</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Export functionality
+                          const csv = [
+                            ['Severity', 'Timestamp', 'Hostname', 'Details', 'Status'].join(','),
+                            ...alerts.map(a => [
+                              a.severity,
+                              new Date(a.timestamp).toLocaleString(),
+                              a.hostname,
+                              `"${a.details.replace(/"/g, '""')}"`,
+                              a.status
+                            ].join(','))
+                          ].join('\n');
+                          
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = window.URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = `security-alerts-${new Date().toISOString().split('T')[0]}.csv`;
+                          link.click();
+                          window.URL.revokeObjectURL(url);
+                        }}
+                        className="px-4 py-2 rounded-lg font-medium text-sm transition-smooth flex items-center gap-2 hover-lift"
+                        style={{
+                          backgroundColor: 'hsl(var(--success))',
+                          color: 'hsl(var(--background))'
+                        }}
+                      >
+                        <Download className="h-4 w-4" />
+                        Export CSV
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
             </div>
-          </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="relative inline-block">
+                  <div className="animate-spin rounded-full h-16 w-16 border-4" style={{ borderColor: 'hsl(var(--border))' }}></div>
+                  <div className="animate-spin rounded-full h-16 w-16 border-t-4 absolute top-0 left-0" style={{ borderColor: 'hsl(var(--primary-gold))' }}></div>
+                </div>
+              </div>
+            ) : (
+              <AlertsTable 
+                alerts={alerts} 
+                onAlertUpdate={fetchAlerts} 
+                onCVEClick={handleCVEClick}
+              />
+            )}
+          </>
         ) : (
-          <AlertsTable 
-            alerts={alerts} 
-            onAlertUpdate={fetchAlerts} 
-            onCVEClick={handleCVEClick}
-          />
+          <>
+            {/* Rootkit Dashboard */}
+            <RootkitDashboard 
+              onManualScanTriggered={(scanId) => {
+                console.log('Manual scan triggered:', scanId);
+                // You can add additional handling here if needed
+              }}
+            />
+          </>
         )}
 
         <CVEDetailsModal 

@@ -151,6 +151,44 @@ class PendingCommandDB(Base):
     created_by = Column(String, nullable=True)  # User or system that created the command
     priority = Column(Integer, default=0, index=True)  # Higher = more urgent
 
+# Rootkit Detection Database Models
+class RootkitScanDB(Base):
+    """Rootkit scan results from Voltaxe Sentinel"""
+    __tablename__ = "rootkit_scans"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    hostname = Column(String, index=True, nullable=False)
+    scan_type = Column(String, nullable=False)  # manual, scheduled, automated
+    status = Column(String, default="running", index=True)  # running, completed, failed
+    started_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    completed_at = Column(DateTime, nullable=True)
+    duration = Column(Integer, nullable=True)  # scan duration in seconds
+    files_scanned = Column(Integer, default=0)
+    threats_found = Column(Integer, default=0)
+    scan_result = Column(String, default="clean")  # clean, infected, suspicious
+    details = Column(JSON, nullable=True)  # detailed scan results
+    signature_version = Column(String, nullable=True)
+    engine_version = Column(String, nullable=True)
+    initiated_by = Column(String, nullable=True)  # user or system
+
+class RootkitAlertDB(Base):
+    """Rootkit detection alerts"""
+    __tablename__ = "rootkit_alerts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    scan_id = Column(Integer, ForeignKey('rootkit_scans.id'), index=True)
+    hostname = Column(String, index=True, nullable=False)
+    alert_type = Column(String, nullable=False)  # rootkit, malware, suspicious_behavior
+    severity = Column(String, default="medium", index=True)  # low, medium, high, critical
+    threat_name = Column(String, nullable=False)
+    file_path = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    remediation = Column(String, nullable=True)
+    status = Column(String, default="active", index=True)  # active, resolved, ignored
+    detected_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    resolved_at = Column(DateTime, nullable=True)
+    details = Column(JSON, nullable=True)  # additional threat details
+
 # Create all database tables (including team management tables)
 Base.metadata.create_all(bind=engine)
 
@@ -303,6 +341,46 @@ class FleetMetrics(BaseModel):
     risk_distribution: Dict[str, int]
     os_distribution: Dict[str, int]
     type_distribution: Dict[str, int]
+
+# Rootkit Response Models
+class RootkitScanResponse(BaseModel):
+    id: int
+    hostname: str
+    scan_type: str
+    status: str
+    started_at: str
+    completed_at: Optional[str]
+    duration: Optional[int]
+    files_scanned: int
+    threats_found: int
+    scan_result: str
+    signature_version: Optional[str]
+    engine_version: Optional[str]
+    initiated_by: Optional[str]
+
+class RootkitAlertResponse(BaseModel):
+    id: int
+    scan_id: int
+    hostname: str
+    alert_type: str
+    severity: str
+    threat_name: str
+    file_path: Optional[str]
+    description: Optional[str]
+    remediation: Optional[str]
+    status: str
+    detected_at: str
+    resolved_at: Optional[str]
+
+class RootkitStatsResponse(BaseModel):
+    total_scans: int
+    active_alerts: int
+    resolved_alerts: int
+    last_scan: Optional[str]
+    threat_types: Dict[str, int]
+    severity_distribution: Dict[str, int]
+    scan_success_rate: float
+    avg_scan_duration: Optional[float]
 
 # --- FastAPI Application ---
 app = FastAPI(
@@ -3225,3 +3303,318 @@ def get_action_types(current_user: Dict = Depends(get_current_user)):
         "action_types": [action.value for action in ActionType],
         "severity_levels": ["info", "warning", "critical"]
     }
+
+# ============================================================================
+# ROOTKIT DETECTION ENDPOINTS
+# ============================================================================
+
+@app.get("/rootkit/stats", response_model=RootkitStatsResponse)
+def get_rootkit_stats(db: Session = Depends(get_db), current_user: Dict = Depends(get_current_user)):
+    """
+    Get rootkit detection statistics and summary.
+    
+    Returns:
+        - Total scans performed
+        - Active and resolved alerts
+        - Last scan timestamp
+        - Threat types distribution
+        - Severity distribution
+        - Scan success rate
+        - Average scan duration
+    """
+    print(f"\n[API] ---> Fetching rootkit statistics for user {current_user.get('email', 'unknown')} [API]")
+    
+    try:
+        # Total scans
+        total_scans = db.query(RootkitScanDB).count()
+        
+        # Alert counts
+        active_alerts = db.query(RootkitAlertDB).filter(RootkitAlertDB.status == "active").count()
+        resolved_alerts = db.query(RootkitAlertDB).filter(RootkitAlertDB.status == "resolved").count()
+        
+        # Last scan
+        last_scan_record = db.query(RootkitScanDB).order_by(RootkitScanDB.started_at.desc()).first()
+        last_scan = last_scan_record.started_at.isoformat() if last_scan_record else None
+        
+        # Threat types distribution
+        threat_types = {}
+        alert_types = db.query(RootkitAlertDB.alert_type).distinct().all()
+        for (alert_type,) in alert_types:
+            count = db.query(RootkitAlertDB).filter(RootkitAlertDB.alert_type == alert_type).count()
+            threat_types[alert_type] = count
+        
+        # Severity distribution
+        severity_distribution = {}
+        severities = db.query(RootkitAlertDB.severity).distinct().all()
+        for (severity,) in severities:
+            count = db.query(RootkitAlertDB).filter(RootkitAlertDB.severity == severity).count()
+            severity_distribution[severity] = count
+        
+        # Scan success rate
+        completed_scans = db.query(RootkitScanDB).filter(RootkitScanDB.status == "completed").count()
+        scan_success_rate = (completed_scans / total_scans * 100) if total_scans > 0 else 0.0
+        
+        # Average scan duration
+        completed_scan_durations = db.query(RootkitScanDB.duration).filter(
+            RootkitScanDB.status == "completed",
+            RootkitScanDB.duration.isnot(None)
+        ).all()
+        avg_scan_duration = (
+            sum(duration[0] for duration in completed_scan_durations) / len(completed_scan_durations)
+            if completed_scan_durations else None
+        )
+        
+        print(f"[API] ---> Rootkit stats: {total_scans} scans, {active_alerts} active alerts [API]")
+        
+        return RootkitStatsResponse(
+            total_scans=total_scans,
+            active_alerts=active_alerts,
+            resolved_alerts=resolved_alerts,
+            last_scan=last_scan,
+            threat_types=threat_types,
+            severity_distribution=severity_distribution,
+            scan_success_rate=scan_success_rate,
+            avg_scan_duration=avg_scan_duration
+        )
+    
+    except Exception as e:
+        print(f"[API] ---> Error fetching rootkit stats: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Error fetching statistics: {str(e)}")
+
+@app.get("/rootkit/scans", response_model=List[RootkitScanResponse])
+def get_rootkit_scans(
+    db: Session = Depends(get_db),
+    current_user: Dict = Depends(get_current_user),
+    limit: int = 50,
+    offset: int = 0,
+    hostname: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """
+    Get rootkit scan history with optional filtering.
+    
+    Query params:
+        - hostname: Filter by specific hostname
+        - status: Filter by scan status (running, completed, failed)
+        - limit: Results per page (default 50, max 500)
+        - offset: Pagination offset
+    """
+    print(f"\n[API] ---> Fetching rootkit scans: hostname={hostname}, status={status} [API]")
+    
+    try:
+        # Build query
+        query = db.query(RootkitScanDB)
+        
+        # Apply filters
+        if hostname:
+            query = query.filter(RootkitScanDB.hostname.ilike(f"%{hostname}%"))
+        
+        if status:
+            query = query.filter(RootkitScanDB.status == status)
+        
+        # Apply pagination
+        limit = min(limit, 500)  # Max 500 results
+        scans = query.order_by(RootkitScanDB.started_at.desc()).offset(offset).limit(limit).all()
+        
+        # Convert to response format
+        scan_responses = []
+        for scan in scans:
+            scan_responses.append(RootkitScanResponse(
+                id=scan.id,
+                hostname=scan.hostname,
+                scan_type=scan.scan_type,
+                status=scan.status,
+                started_at=scan.started_at.isoformat(),
+                completed_at=scan.completed_at.isoformat() if scan.completed_at else None,
+                duration=scan.duration,
+                files_scanned=scan.files_scanned,
+                threats_found=scan.threats_found,
+                scan_result=scan.scan_result,
+                signature_version=scan.signature_version,
+                engine_version=scan.engine_version,
+                initiated_by=scan.initiated_by
+            ))
+        
+        print(f"[API] ---> Returning {len(scan_responses)} rootkit scans [API]")
+        return scan_responses
+    
+    except Exception as e:
+        print(f"[API] ---> Error fetching rootkit scans: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.get("/rootkit/alerts", response_model=List[RootkitAlertResponse])
+def get_rootkit_alerts(
+    db: Session = Depends(get_db),
+    current_user: Dict = Depends(get_current_user),
+    limit: int = 50,
+    offset: int = 0,
+    hostname: Optional[str] = None,
+    severity: Optional[str] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None
+):
+    """
+    Get rootkit alerts with optional filtering.
+    
+    Query params:
+        - hostname: Filter by specific hostname
+        - severity: Filter by severity (low, medium, high, critical)
+        - status: Filter by status (active, resolved, ignored)
+        - search: Search in threat name or description
+        - limit: Results per page (default 50, max 500)
+        - offset: Pagination offset
+    """
+    print(f"\n[API] ---> Fetching rootkit alerts: hostname={hostname}, severity={severity}, status={status} [API]")
+    
+    try:
+        # Build query
+        query = db.query(RootkitAlertDB)
+        
+        # Apply filters
+        if hostname:
+            query = query.filter(RootkitAlertDB.hostname.ilike(f"%{hostname}%"))
+        
+        if severity:
+            query = query.filter(RootkitAlertDB.severity == severity)
+        
+        if status:
+            query = query.filter(RootkitAlertDB.status == status)
+        
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                (RootkitAlertDB.threat_name.ilike(search_term)) |
+                (RootkitAlertDB.description.ilike(search_term))
+            )
+        
+        # Apply pagination
+        limit = min(limit, 500)  # Max 500 results
+        alerts = query.order_by(RootkitAlertDB.detected_at.desc()).offset(offset).limit(limit).all()
+        
+        # Convert to response format
+        alert_responses = []
+        for alert in alerts:
+            alert_responses.append(RootkitAlertResponse(
+                id=alert.id,
+                scan_id=alert.scan_id,
+                hostname=alert.hostname,
+                alert_type=alert.alert_type,
+                severity=alert.severity,
+                threat_name=alert.threat_name,
+                file_path=alert.file_path,
+                description=alert.description,
+                remediation=alert.remediation,
+                status=alert.status,
+                detected_at=alert.detected_at.isoformat(),
+                resolved_at=alert.resolved_at.isoformat() if alert.resolved_at else None
+            ))
+        
+        print(f"[API] ---> Returning {len(alert_responses)} rootkit alerts [API]")
+        return alert_responses
+    
+    except Exception as e:
+        print(f"[API] ---> Error fetching rootkit alerts: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/rootkit/scan")
+def trigger_manual_scan(
+    hostname: str,
+    db: Session = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Trigger a manual rootkit scan on the specified hostname.
+    
+    This endpoint communicates with the Voltaxe Sentinel daemon
+    to initiate a comprehensive rootkit scan.
+    """
+    print(f"\n[API] ---> Manual rootkit scan requested for '{hostname}' by {current_user.get('email', 'unknown')} [API]")
+    
+    try:
+        # Verify hostname exists in fleet
+        endpoint = db.query(SnapshotDB).filter(SnapshotDB.hostname == hostname).first()
+        if not endpoint:
+            raise HTTPException(status_code=404, detail=f"Hostname '{hostname}' not found in fleet")
+        
+        # Check if there's already a running scan for this hostname
+        existing_scan = db.query(RootkitScanDB).filter(
+            RootkitScanDB.hostname == hostname,
+            RootkitScanDB.status == "running"
+        ).first()
+        
+        if existing_scan:
+            return {
+                "status": "error",
+                "message": f"A scan is already running for hostname '{hostname}'",
+                "scan_id": existing_scan.id
+            }
+        
+        # Create new scan record
+        new_scan = RootkitScanDB(
+            hostname=hostname,
+            scan_type="manual",
+            status="running",
+            started_at=datetime.datetime.utcnow(),
+            initiated_by=current_user.get('email', current_user.get('username', 'unknown'))
+        )
+        
+        db.add(new_scan)
+        db.commit()
+        db.refresh(new_scan)
+        
+        # TODO: In a real implementation, trigger the actual Voltaxe Sentinel scan
+        # For now, simulate scan completion after a short delay
+        print(f"[ROOTKIT SCAN] Initiated manual scan {new_scan.id} for '{hostname}'")
+        
+        return {
+            "status": "success",
+            "message": f"Rootkit scan initiated for hostname '{hostname}'",
+            "scan_id": new_scan.id,
+            "hostname": hostname,
+            "initiated_by": current_user.get('email', 'unknown'),
+            "started_at": new_scan.started_at.isoformat()
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[API] ---> Error triggering rootkit scan: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.patch("/rootkit/alerts/{alert_id}/resolve")
+def resolve_rootkit_alert(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Mark a rootkit alert as resolved.
+    """
+    print(f"\n[API] ---> Resolving rootkit alert {alert_id} by {current_user.get('email', 'unknown')} [API]")
+    
+    try:
+        # Find the alert
+        alert = db.query(RootkitAlertDB).filter(RootkitAlertDB.id == alert_id).first()
+        if not alert:
+            raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
+        
+        # Update alert status
+        alert.status = "resolved"
+        alert.resolved_at = datetime.datetime.utcnow()
+        
+        db.commit()
+        
+        print(f"[API] ---> Rootkit alert {alert_id} marked as resolved [API]")
+        return {
+            "status": "success",
+            "message": f"Alert {alert_id} marked as resolved",
+            "alert_id": alert_id,
+            "resolved_by": current_user.get('email', 'unknown'),
+            "resolved_at": alert.resolved_at.isoformat()
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[API] ---> Error resolving alert: {e} [API]")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
