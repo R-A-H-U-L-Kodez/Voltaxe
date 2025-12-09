@@ -5,14 +5,14 @@ import {
   LogOut, 
   Settings, 
   Shield,
-  FileWarning,
   Users,
   PlusCircle,
   Target,
   LayoutDashboard,
   Layers,
   Network,
-  Rocket
+  Rocket,
+  Bug
 } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 
@@ -180,7 +180,7 @@ export const Sidebar = () => {
             backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
           })}
         >
-          <FileWarning size={20} />
+          <Bug size={20} />
           <span>Malware Scanner</span>
         </NavLink>
 
