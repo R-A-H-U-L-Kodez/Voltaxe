@@ -2781,10 +2781,13 @@ def delete_malware_scan(
         # Log audit event
         audit_service.log_action(
             user_id=current_user.get("user_id", "unknown"),
-            action="malware_scan_deleted",
+            username=current_user.get("username", current_user.get("email", "unknown")),
+            action_type=ActionType.DATA_EXPORTED,  # Using closest available action type
+            action_description=f"Deleted malware scan record: {file_name}",
             resource_type="malware_scan",
             resource_id=str(scan_id),
-            details={"file_name": file_name},
+            severity=SeverityLevel.WARNING,
+            details={"file_name": file_name, "action": "delete"},
             ip_address=current_user.get("ip_address", "unknown")
         )
         
