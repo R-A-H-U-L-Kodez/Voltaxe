@@ -2756,6 +2756,48 @@ def get_available_yara_rules(current_user: Dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching rules: {str(e)}")
 
+@app.delete("/malware/scans/{scan_id}")
+def delete_malware_scan(
+    scan_id: int,
+    current_user: Dict = Depends(get_current_user),
+    db: Session = Depends(lambda: SessionLocal())
+):
+    """
+    Delete a malware scan record
+    """
+    try:
+        scan = db.query(MalwareScanDB).filter(MalwareScanDB.id == scan_id).first()
+        
+        if not scan:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        
+        # Store scan details for audit log before deletion
+        file_name = scan.file_name
+        
+        # Delete the scan
+        db.delete(scan)
+        db.commit()
+        
+        # Log audit event
+        audit_service.log_action(
+            user_id=current_user.get("user_id", "unknown"),
+            action="malware_scan_deleted",
+            resource_type="malware_scan",
+            resource_id=str(scan_id),
+            details={"file_name": file_name},
+            ip_address=current_user.get("ip_address", "unknown")
+        )
+        
+        return {"success": True, "message": f"Scan record deleted successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting scan: {str(e)}")
+    finally:
+        db.close()
+
 @app.post("/malware/reload-rules")
 def reload_yara_rules(current_user: Dict = Depends(get_current_user)):
     """
