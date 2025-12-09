@@ -1,24 +1,32 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { ResilienceDashboardComponent } from '../components/ResilienceDashboard.tsx';
-import { ResilienceScoreWidget } from '../components/ResilienceScoreWidget';
+import { NorthStarScore } from '../components/NorthStarScore';
+import { RiskBreakdown } from '../components/RiskBreakdown';
 import { SecurityTrends } from '../components/SecurityTrends';
 import { AxonEngineMonitor } from '../components/AxonEngineMonitor';
 import { PathToGreen } from '../components/PathToGreen';
-import { Shield, TrendingUp, Activity, AlertTriangle } from 'lucide-react';
+import { Shield, Download, FileText } from 'lucide-react';
 import { resilienceService } from '../services/api';
 import { ResilienceDashboard } from '../types';
 
 export const ResilienceIntelligencePage = () => {
   const [dashboard, setDashboard] = useState<ResilienceDashboard | null>(null);
   const [loading, setLoading] = useState(true);
-  const [scoreBonus, setScoreBonus] = useState(0); // Track bonus points from completed tasks
-  const [priorityActionsCount, setPriorityActionsCount] = useState(0); // Track high-priority pending actions
+  const [scoreBonus, setScoreBonus] = useState(0);
+  const [priorityActionsCount, setPriorityActionsCount] = useState(0);
+  const [previousScore, setPreviousScore] = useState(0);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const data = await resilienceService.getResilienceDashboard();
+      
+      // Store previous score before updating
+      if (dashboard) {
+        setPreviousScore(Math.round(dashboard.summary.average_score));
+      }
+      
       setDashboard(data);
     } catch (error) {
       console.error('Failed to fetch resilience dashboard', error);
@@ -29,31 +37,23 @@ export const ResilienceIntelligencePage = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Handle score updates from PathToGreen
   const handleScoreChange = (bonusPoints: number) => {
     setScoreBonus(bonusPoints);
-    console.log(`📊 Score bonus updated: +${bonusPoints} points`);
   };
 
-  // Handle priority actions count updates from PathToGreen
   const handlePriorityActionsUpdate = (count: number) => {
     setPriorityActionsCount(count);
-    console.log(`⚠️  Priority actions count: ${count}`);
   };
 
-  const getRiskLevel = () => {
-    if (!dashboard) return 'Calculating...';
-    const criticalCount = dashboard.summary.risk_distribution.CRITICAL || 0;
-    const highCount = dashboard.summary.risk_distribution.HIGH || 0;
-    
-    if (criticalCount > 0) return 'Critical';
-    if (highCount > 5) return 'High';
-    if (highCount > 0) return 'Moderate';
-    return 'Low';
+  const currentScore = dashboard ? Math.min(100, dashboard.summary.average_score + scoreBonus) : 0;
+
+  const handleExportPDF = () => {
+    // TODO: Implement PDF export
+    alert('PDF export coming soon! This will generate an executive summary report.');
   };
 
   return (
@@ -61,98 +61,105 @@ export const ResilienceIntelligencePage = () => {
       <Sidebar />
 
       <main className="ml-64 p-8">
-        {/* Page Header */}
+        {/* Page Header with Export Button */}
         <div className="mb-8 animate-fadeIn">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 gradient-gold rounded-2xl flex items-center justify-center shadow-xl">
-              <Shield size={32} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold text-gradient-gold">Resilience Intelligence</h1>
-              <p className="mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Real-time security posture analysis powered by AI</p>
-            </div>
-          </div>
-          
-          {/* Quick Stats Bar */}
-          <div className="grid grid-cols-4 gap-4 mt-6">
-            <div className="card p-4 hover-lift">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.1)' }}>
-                  <Shield className="h-5 w-5" style={{ color: 'hsl(var(--primary-gold))' }} />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Security Score</p>
-                  <p className="text-xl font-bold text-gradient-gold">
-                    {loading ? '...' : dashboard ? `${Math.round(Math.min(100, dashboard.summary.average_score + scoreBonus))}%` : 'N/A'}
-                  </p>
-                </div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 gradient-gold rounded-2xl flex items-center justify-center shadow-xl">
+                <Shield size={32} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-gradient-gold">Resilience Intelligence</h1>
+                <p className="mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Security Gamification Engine • Real-time AI Analysis
+                </p>
               </div>
             </div>
             
-            <div className="card p-4 hover-lift">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: 'hsl(var(--success) / 0.1)' }}>
-                  <TrendingUp className="h-5 w-5" style={{ color: 'hsl(var(--success))' }} />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Risk Assessment</p>
-                  <p className="text-xl font-bold" style={{ color: 'hsl(var(--success))' }}>
-                    {loading ? '...' : getRiskLevel()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="card p-4 hover-lift">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: 'hsl(var(--accent-gold) / 0.1)' }}>
-                  <Activity className="h-5 w-5" style={{ color: 'hsl(var(--accent-gold))' }} />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Total Endpoints</p>
-                  <p className="text-xl font-bold" style={{ color: 'hsl(var(--accent-gold))' }}>
-                    {loading ? '...' : dashboard ? dashboard.summary.total_endpoints : '0'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="card p-4 hover-lift">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: priorityActionsCount > 0 ? 'hsl(var(--danger) / 0.1)' : 'hsl(var(--success) / 0.1)' }}>
-                  <AlertTriangle className="h-5 w-5" style={{ color: priorityActionsCount > 0 ? 'hsl(var(--danger))' : 'hsl(var(--success))' }} />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Priority Actions</p>
-                  <p className="text-xl font-bold" style={{ color: priorityActionsCount > 0 ? 'hsl(var(--danger))' : 'hsl(var(--success))' }}>
-                    {loading ? '...' : priorityActionsCount}
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* PDF Export Button */}
+            <button
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl"
+              style={{
+                backgroundColor: 'hsl(var(--primary-gold))',
+                color: 'hsl(var(--background))'
+              }}
+            >
+              <Download size={20} />
+              Export Monthly Report
+            </button>
           </div>
         </div>
 
-        {/* Resilience Score Widget */}
+        {/* North Star Score - The Hero Section */}
         <div className="mb-8 animate-fadeIn">
-          <ResilienceScoreWidget scoreBonus={scoreBonus} />
+          <NorthStarScore 
+            score={currentScore}
+            previousScore={previousScore}
+            loading={loading}
+          />
         </div>
 
-        {/* Security Trends - Historical Score Analysis */}
-        <div className="mb-8 animate-fadeIn">
-          <SecurityTrends />
-        </div>
-
-        {/* Two Column Layout: Axon Engine Monitor & Path to Green */}
+        {/* Two Column: Risk Breakdown & Path to Green */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 animate-fadeIn">
-          <AxonEngineMonitor />
+          <RiskBreakdown />
           <PathToGreen 
             onScoreChange={handleScoreChange}
             onPriorityActionsUpdate={handlePriorityActionsUpdate}
           />
         </div>
 
-        {/* Resilience Dashboard */}
+        {/* Security Trends - Historical Analysis */}
+        <div className="mb-8 animate-fadeIn">
+          <SecurityTrends />
+        </div>
+
+        {/* Two Column: Axon Engine Monitor & Detailed Dashboard */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 animate-fadeIn">
+          <AxonEngineMonitor />
+          <div 
+            className="rounded-2xl p-6 border"
+            style={{ 
+              backgroundColor: 'hsl(var(--card))',
+              borderColor: 'hsl(var(--border))'
+            }}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <FileText size={24} style={{ color: 'hsl(var(--primary-gold))' }} />
+              <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                Quick Stats
+              </h2>
+            </div>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--background))' }}>
+                <span style={{ color: 'hsl(var(--muted-foreground))' }}>Total Endpoints</span>
+                <span className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                  {loading ? '...' : dashboard?.summary.total_endpoints || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--background))' }}>
+                <span style={{ color: 'hsl(var(--muted-foreground))' }}>Critical Risks</span>
+                <span className="text-xl font-bold text-red-500">
+                  {loading ? '...' : dashboard?.summary.risk_distribution.CRITICAL || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--background))' }}>
+                <span style={{ color: 'hsl(var(--muted-foreground))' }}>High Risks</span>
+                <span className="text-xl font-bold text-orange-500">
+                  {loading ? '...' : dashboard?.summary.risk_distribution.HIGH || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--background))' }}>
+                <span style={{ color: 'hsl(var(--muted-foreground))' }}>Priority Actions</span>
+                <span className="text-xl font-bold" style={{ color: priorityActionsCount > 0 ? '#ef4444' : '#10b981' }}>
+                  {priorityActionsCount}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Detailed Resilience Dashboard */}
         <div className="animate-fadeIn">
           <ResilienceDashboardComponent />
         </div>
