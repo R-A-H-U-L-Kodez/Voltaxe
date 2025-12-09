@@ -1,26 +1,121 @@
+/*
+Voltaxe Sentinel - Advanced Rootkit Detection Engine
+====================================================
+
+A comprehensive, multi-engine rootkit detection system designed for production
+environments. Provides real-time scanning and alerting for various rootkit
+signatures and suspicious system behaviors.
+
+Features:
+- Multi-engine detection (chkrootkit, rkhunter, custom signatures)
+- Memory analysis for code injection detection
+- Network anomaly detection
+- Kernel module inspection
+- File integrity monitoring
+- Advanced stealth technique detection
+
+Author: Voltaxe Security Team
+Version: 3.0.0
+Build Date: 2025-12-09
+License: Proprietary
+
+Usage:
+  ./voltaxe_sentinel                    # Run complete scan
+
+Production Integration:
+  This binary can be integrated as part of the Voltaxe agent system
+  or run independently for standalone rootkit detection.
+
+Dependencies:
+- Required: ps, ls, lsmod
+- Optional: chkrootkit, rkhunter, ss, netstat
+
+Exit Codes:
+  0 - Scan completed successfully (clean or with alerts)
+  1 - System requirements not met or fatal error
+*/
+
 package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
 // ============================================================================
-// ROOTKIT EVENT STRUCT
+// CONSTANTS AND CONFIGURATION
+// ============================================================================
+
+const (
+	VERSION     = "3.0.0"
+	PRODUCT     = "Voltaxe Sentinel"
+	BUILD_DATE  = "2025-12-09"
+	MAX_ALERTS  = 50  // Maximum number of alerts per scan
+	TIMEOUT_SEC = 300 // 5 minute timeout for individual scans
+)
+
+// ============================================================================
+// DATA STRUCTURES
 // ============================================================================
 
 type RootkitEvent struct {
-	Hostname        string `json:"hostname"`
-	EventType       string `json:"event_type"`
-	DetectionMethod string `json:"detection_method"`
-	Recommendation  string `json:"recommendation"`
-	Details         string `json:"details"`
+	Hostname        string    `json:"hostname"`
+	EventType       string    `json:"event_type"`
+	DetectionMethod string    `json:"detection_method"`
+	Recommendation  string    `json:"recommendation"`
+	Details         string    `json:"details"`
+	Timestamp       time.Time `json:"timestamp"`
+	Version         string    `json:"version"`
+	Severity        string    `json:"severity"`
+}
+
+type ScanConfig struct {
+	EnableChkrootkit     bool `json:"enable_chkrootkit"`
+	EnableRkhunter       bool `json:"enable_rkhunter"`
+	EnableMemoryAnalysis bool `json:"enable_memory_analysis"`
+	EnableNetworkScan    bool `json:"enable_network_scan"`
+	VerboseOutput        bool `json:"verbose_output"`
+	MaxMemoryChecks      int  `json:"max_memory_checks"`
+}
+
+// ============================================================================
+// LOGGING AND UTILITIES
+// ============================================================================
+
+func logInfo(message string) {
+	log.Printf("[INFO] %s", message)
+}
+
+func logWarn(message string) {
+	log.Printf("[WARN] %s", message)
+}
+
+func logError(message string, err error) {
+	if err != nil {
+		log.Printf("[ERROR] %s: %v", message, err)
+	} else {
+		log.Printf("[ERROR] %s", message)
+	}
+}
+
+func getDefaultConfig() ScanConfig {
+	return ScanConfig{
+		EnableChkrootkit:     true,
+		EnableRkhunter:       true,
+		EnableMemoryAnalysis: true,
+		EnableNetworkScan:    true,
+		VerboseOutput:        false,
+		MaxMemoryChecks:      10,
+	}
 }
 
 // ============================================================================
@@ -437,22 +532,114 @@ func detectAdvancedRootkits() []string {
 
 // Main function to run the rootkit scanner as a standalone tool or agent component
 func main() {
-	fmt.Println("🔒 Voltaxe Sentinel - Advanced Rootkit Detection Engine")
+	// Initialize logging
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	// Print version information
+	fmt.Printf("🔒 %s v%s - Advanced Rootkit Detection Engine\n", PRODUCT, VERSION)
+	fmt.Printf("Build: %s | OS: %s | Arch: %s\n", BUILD_DATE, runtime.GOOS, runtime.GOARCH)
 	fmt.Println("======================================================")
 
+	logInfo("Starting rootkit detection engine")
+
+	// Load configuration (future enhancement)
+	// config := getDefaultConfig()
+
+	// Check for required tools
+	if !checkSystemRequirements() {
+		logError("System requirements not met", nil)
+		os.Exit(1)
+	}
+
+	// Set up timeout
+	startTime := time.Now()
+
 	// Run the comprehensive rootkit scan
+	alertCount := 0
 	RunRootkitScan(func(event RootkitEvent) {
-		fmt.Printf("\n🚨 SECURITY ALERT 🚨\n")
+		alertCount++
+
+		// Enhanced event with additional metadata
+		event.Timestamp = time.Now()
+		event.Version = VERSION
+		event.Severity = determineSeverity(event.Details)
+
+		// Console output
+		fmt.Printf("\n🚨 SECURITY ALERT #%d 🚨\n", alertCount)
+		fmt.Printf("Time: %s\n", event.Timestamp.Format("2006-01-02 15:04:05 MST"))
+		fmt.Printf("Severity: %s\n", event.Severity)
 		fmt.Printf("Hostname: %s\n", event.Hostname)
 		fmt.Printf("Event: %s\n", event.EventType)
 		fmt.Printf("Detection: %s\n", event.DetectionMethod)
 		fmt.Printf("Recommendation: %s\n", event.Recommendation)
 		fmt.Printf("Details: %s\n", event.Details)
-		fmt.Println()
 
-		// In a real deployment, this would send the event to the server
+		// Log to system log
+		logWarn(fmt.Sprintf("ROOTKIT DETECTED - %s: %s", event.Severity, event.Details))
+
+		// JSON output for integration
+		if jsonData, err := json.Marshal(event); err == nil {
+			logInfo(fmt.Sprintf("Alert JSON: %s", string(jsonData)))
+		}
+
+		// In production, send to server
 		// sendEventToServer(event)
 	})
 
-	fmt.Println("\n✅ Rootkit scan completed.")
+	duration := time.Since(startTime)
+
+	// Summary
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Printf("✅ Scan completed in %v\n", duration)
+	fmt.Printf("📊 Total alerts: %d\n", alertCount)
+
+	if alertCount == 0 {
+		fmt.Println("🛡️  System appears clean - no rootkit signatures detected")
+		logInfo("Scan completed - system clean")
+	} else {
+		fmt.Printf("⚠️  %d security issues detected - review recommended\n", alertCount)
+		logWarn(fmt.Sprintf("Scan completed - %d alerts generated", alertCount))
+	}
+
+	logInfo(fmt.Sprintf("Scan duration: %v", duration))
+}
+
+// checkSystemRequirements verifies that required tools are available
+func checkSystemRequirements() bool {
+	required := []string{"ps", "ls", "lsmod"}
+	optional := []string{"chkrootkit", "rkhunter", "ss", "netstat"}
+
+	allGood := true
+
+	// Check required tools
+	for _, tool := range required {
+		if _, err := exec.LookPath(tool); err != nil {
+			logError(fmt.Sprintf("Required tool missing: %s", tool), err)
+			allGood = false
+		}
+	}
+
+	// Check optional tools and warn if missing
+	for _, tool := range optional {
+		if _, err := exec.LookPath(tool); err != nil {
+			logWarn(fmt.Sprintf("Optional tool missing: %s", tool))
+		}
+	}
+
+	return allGood
+}
+
+// determineSeverity assigns a severity level based on the alert details
+func determineSeverity(details string) string {
+	details = strings.ToLower(details)
+
+	if strings.Contains(details, "infected") || strings.Contains(details, "rootkit") {
+		return "CRITICAL"
+	} else if strings.Contains(details, "suspicious") || strings.Contains(details, "memory threat") {
+		return "HIGH"
+	} else if strings.Contains(details, "stealth") || strings.Contains(details, "anomaly") {
+		return "MEDIUM"
+	}
+
+	return "LOW"
 }

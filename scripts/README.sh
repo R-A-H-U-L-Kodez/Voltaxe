@@ -1,0 +1,32 @@
+#!/bin/bash
+# Voltaxe Scripts Directory Index
+# ================================
+# This directory contains organized scripts for the Voltaxe project
+
+echo "🔒 Voltaxe Scripts Directory"
+echo "============================"
+echo ""
+echo "📁 Available Script Categories:"
+echo ""
+echo "🚀 deployment/    - Deployment and setup scripts"
+echo "   • build_agents.sh      - Build all agent binaries"
+echo "   • deploy.sh            - Deploy entire Voltaxe stack"
+echo "   • deploy_agents.sh     - Deploy agents to endpoints"
+echo "   • deploy_https.sh      - Configure HTTPS/TLS"
+echo "   • run.sh              - Quick start script"
+echo "   • start-voltaxe.sh    - Start Voltaxe services"
+echo ""
+echo "📊 monitoring/    - System monitoring and management"
+echo "   • check_status.sh     - Check system health"
+echo "   • status_dashboard.sh - Display status dashboard"
+echo "   • voltaxe_manager.sh  - Manage Voltaxe services"
+echo ""
+echo "🧪 testing/       - Testing and validation scripts"
+echo "   • run_api_tests.sh      - Run API test suite"
+echo "   • verify_no_mock_data.sh - Verify no mock data in production"
+echo "   • verify_reports.sh     - Verify report generation"
+echo ""
+echo "Usage: ./scripts/<category>/<script>.sh [options]"
+echo ""
+echo "For help with individual scripts, run:"
+echo "  ./scripts/<category>/<script>.sh --help"
