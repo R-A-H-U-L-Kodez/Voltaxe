@@ -10,6 +10,20 @@ LOG_DIR="/var/log/voltaxe"
 
 echo "🚀 Installing Voltaxe Sentinel Agent..."
 
+# Install dependencies (rootkit detection tool)
+echo "🛡️ Installing Rootkit Detection Engine..."
+if [ -f /etc/debian_version ]; then
+    sudo apt-get update && sudo apt-get install -y chkrootkit
+elif [ -f /etc/redhat-release ]; then
+    sudo yum install -y chkrootkit
+else
+    echo "⚠️  Unable to auto-install chkrootkit. Please install manually:"
+    echo "    Debian/Ubuntu: sudo apt install chkrootkit"
+    echo "    RHEL/CentOS: sudo yum install chkrootkit"
+fi
+
+echo "✅ Dependencies installed."
+
 # Create directories
 sudo mkdir -p "$INSTALL_DIR" "$LOG_DIR"
 

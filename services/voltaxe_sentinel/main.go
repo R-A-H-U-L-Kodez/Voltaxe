@@ -626,28 +626,63 @@ func respondJSON(w http.ResponseWriter, data interface{}, statusCode int) {
 	json.NewEncoder(w).Encode(data)
 }
 
-// NEW: This function simulates scanning for rootkits
+// Real rootkit detection using chkrootkit
 func runRootkitScan() {
-	fmt.Println("Performing deep system integrity scan for rootkits...")
+	fmt.Println("🔍 Performing deep system integrity scan using Chkrootkit...")
 
-	// --- SIMULATION ---
-	// In a real agent, this would involve complex checks like comparing the process
-	// list from the OS with a raw scan of system memory.
-	// For our test, we'll just pretend we found something.
-	const foundRootkit = true
+	// 1. Check if the tool exists
+	chkrootkitPath, err := exec.LookPath("chkrootkit")
+	if err != nil {
+		fmt.Println("⚠️  Chkrootkit not installed. Skipping rootkit scan.")
+		fmt.Println("    (Hint: sudo apt install chkrootkit)")
+		return
+	}
 
-	if foundRootkit {
+	// 2. Execute the scan
+	// chkrootkit scans for known rootkit signatures and suspicious binaries
+	cmd := exec.Command(chkrootkitPath)
+	outputBytes, err := cmd.CombinedOutput()
+
+	if err != nil {
+		// chkrootkit might return non-zero exit codes on some warnings,
+		// so we don't return immediately. We verify the output first.
+		fmt.Printf("⚠️  Scan completed with warnings: %v\n", err)
+	}
+
+	output := string(outputBytes)
+
+	// 3. Analyze the Output
+	// Chkrootkit prints "INFECTED" when it finds a confirmed signature
+	if strings.Contains(output, "INFECTED") {
 		hostname, _ := os.Hostname()
-		fmt.Printf("🚨💀🚨 CRITICAL: Rootkit signatures detected on host '%s'!\n", hostname)
 
+		// Extract the specific line causing the alert (simple parsing)
+		var threatDetails string
+		scanner := bufio.NewScanner(strings.NewReader(output))
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "INFECTED") {
+				threatDetails = line
+				break
+			}
+		}
+
+		fmt.Printf("🚨💀🚨 CRITICAL: Rootkit detected on '%s'!\n", hostname)
+		fmt.Printf("      Signature: %s\n", threatDetails)
+
+		// 4. Send Alert to Voltaxe API
 		event := RootkitEvent{
 			Hostname:        hostname,
 			EventType:       "ROOTKIT_DETECTED",
-			DetectionMethod: "Memory Process List Mismatch",
-			Recommendation:  "CRITICAL: Isolate this endpoint immediately and re-image from a known-good backup. System integrity cannot be trusted.",
+			DetectionMethod: "Chkrootkit Signature Scan",
+			Recommendation:  "CRITICAL: Isolate endpoint. " + threatDetails,
 		}
+
 		eventJSON, _ := json.Marshal(event)
 		sendDataToServer(eventJSON, "/ingest/rootkit_event")
+
+	} else {
+		fmt.Println("✅ System Clean. No rootkits detected.")
 	}
 }
 
