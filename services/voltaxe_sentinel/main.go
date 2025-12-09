@@ -2,934 +2,457 @@ package main
 
 import (
 	"bufio"
-	"bytes"
-	"crypto/tls"
-	_ "embed"
-	"encoding/json"
-	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/shirou/gopsutil/net"
-	"github.com/shirou/gopsutil/process"
 )
 
-// Embed default configuration into binary
-// This allows single-file deployment without requiring external config files
-//
-//go:embed default_agent.conf
-var defaultConfigContent string
+// ============================================================================
+// ROOTKIT EVENT STRUCT
+// ============================================================================
 
-// --- Configuration ---
-type Config struct {
-	APIServer          string
-	HeartbeatInterval  time.Duration
-	RetryAttempts      int
-	RetryDelay         time.Duration
-	ScanInterval       time.Duration
-	ProcessMonitoring  bool
-	VulnScanning       bool
-	BehavioralAnalysis bool
-	TLSSkipVerify      bool // Skip TLS verification for self-signed certificates
-}
-
-// Global configuration
-var config Config
-
-// Global HTTP client with TLS configuration
-var httpClient *http.Client
-
-// loadConfig reads configuration from agent.conf file or command-line flags
-// Falls back to embedded default configuration if no external config found
-func loadConfig() Config {
-	// Command-line flags take precedence
-	serverFlag := flag.String("server", "", "API server URL (e.g., https://192.168.1.50)")
-	configFileFlag := flag.String("config", "", "Path to configuration file (default: ./agent.conf)")
-	tlsSkipVerifyFlag := flag.Bool("tls-skip-verify", false, "Skip TLS certificate verification (for self-signed certs)")
-	flag.Parse()
-
-	// Default configuration - HTTPS by default
-	cfg := Config{
-		APIServer:          "https://localhost",
-		HeartbeatInterval:  30 * time.Second,
-		RetryAttempts:      3,
-		RetryDelay:         5 * time.Second,
-		ScanInterval:       60 * time.Second,
-		ProcessMonitoring:  true,
-		VulnScanning:       true,
-		BehavioralAnalysis: true,
-		TLSSkipVerify:      false,
-	}
-
-	// If server flag is provided, use it
-	if *serverFlag != "" {
-		cfg.APIServer = *serverFlag
-		fmt.Printf("[CONFIG] Using API server from command line: %s\n", cfg.APIServer)
-	}
-
-	// If TLS skip verify flag is provided
-	if *tlsSkipVerifyFlag {
-		cfg.TLSSkipVerify = true
-		fmt.Printf("[CONFIG] ⚠️  TLS certificate verification DISABLED\n")
-	}
-
-	// Try to load from external config file
-	configPath := *configFileFlag
-	configSource := "embedded defaults"
-	var configReader *bufio.Scanner
-
-	if configPath == "" {
-		// Try multiple locations for external config
-		possiblePaths := []string{
-			"agent.conf",
-			"./config/agent.conf",
-			"/etc/voltaxe/agent.conf",
-			filepath.Join(filepath.Dir(os.Args[0]), "agent.conf"),
-		}
-
-		for _, path := range possiblePaths {
-			if _, err := os.Stat(path); err == nil {
-				configPath = path
-				break
-			}
-		}
-	}
-
-	// Attempt to load external config file if found
-	if configPath != "" {
-		file, err := os.Open(configPath)
-		if err == nil {
-			defer file.Close()
-			configReader = bufio.NewScanner(file)
-			configSource = configPath
-			fmt.Printf("[CONFIG] ✓ Loading external configuration from: %s\n", configPath)
-		} else {
-			fmt.Printf("[CONFIG] Warning: Could not read external config file: %v\n", err)
-		}
-	}
-
-	// Fall back to embedded configuration if no external config
-	if configReader == nil {
-		fmt.Println("[CONFIG] ✓ Using embedded default configuration (no external config found)")
-		fmt.Println("[CONFIG] ℹ️  For custom configuration, create agent.conf in the same directory as the executable")
-		configReader = bufio.NewScanner(strings.NewReader(defaultConfigContent))
-	}
-
-	// Parse configuration (either from file or embedded defaults)
-	for configReader.Scan() {
-		line := strings.TrimSpace(configReader.Text())
-
-		// Skip empty lines and comments
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		// Parse key=value pairs
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-
-		switch key {
-		case "API_SERVER":
-			// Only override if not set by command-line flag
-			if *serverFlag == "" {
-				cfg.APIServer = value
-				fmt.Printf("[CONFIG] ✓ API Server: %s (from %s)\n", value, configSource)
-			}
-		case "TLS_SKIP_VERIFY":
-			// Only override if not set by command-line flag
-			if !*tlsSkipVerifyFlag {
-				cfg.TLSSkipVerify = strings.ToLower(value) == "true"
-				if cfg.TLSSkipVerify {
-					fmt.Printf("[CONFIG] ⚠️  TLS certificate verification DISABLED (from %s)\n", configSource)
-				}
-			}
-		case "HEARTBEAT_INTERVAL":
-			if duration, err := time.ParseDuration(value); err == nil {
-				cfg.HeartbeatInterval = duration
-			}
-		case "SCAN_INTERVAL":
-			if duration, err := time.ParseDuration(value); err == nil {
-				cfg.ScanInterval = duration
-			}
-		case "PROCESS_MONITORING":
-			cfg.ProcessMonitoring = strings.ToLower(value) == "true"
-		case "VULNERABILITY_SCANNING":
-			cfg.VulnScanning = strings.ToLower(value) == "true"
-		case "BEHAVIORAL_ANALYSIS":
-			cfg.BehavioralAnalysis = strings.ToLower(value) == "true"
-		}
-	}
-
-	// Auto-detect self-signed certificate scenarios (development mode)
-	// Skip TLS verification for localhost and .local domains if not explicitly set
-	if !cfg.TLSSkipVerify && (strings.Contains(cfg.APIServer, "localhost") ||
-		strings.Contains(cfg.APIServer, ".local") ||
-		strings.Contains(cfg.APIServer, "127.0.0.1")) {
-		cfg.TLSSkipVerify = true
-		fmt.Printf("[CONFIG] ✓ Auto-enabled TLS skip verification for development URL: %s\n", cfg.APIServer)
-	}
-
-	// Fallback warning if still using default
-	if cfg.APIServer == "https://localhost" {
-		fmt.Println("[CONFIG] ⚠️  WARNING: Using default https://localhost. This may not work on remote deployments!")
-		fmt.Println("[CONFIG] ⚠️  Set API_SERVER in agent.conf or use -server flag for production deployments.")
-	}
-
-	// Initialize HTTP client with TLS configuration
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: cfg.TLSSkipVerify,
-		MinVersion:         tls.VersionTLS12,
-	}
-
-	httpClient = &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-			MaxIdleConns:    10,
-			IdleConnTimeout: 90 * time.Second,
-		},
-	}
-
-	if cfg.TLSSkipVerify {
-		fmt.Println("[CONFIG] ⚠️  TLS Skip Verify: ENABLED (insecure - only use for development)")
-	} else {
-		fmt.Println("[CONFIG] ✓ TLS Skip Verify: DISABLED (secure - verifying certificates)")
-	}
-
-	return cfg
-}
-
-// --- Structs ---
-type ProcessInfo struct {
-	PID  int32  `json:"pid"`
-	Name string `json:"name"`
-}
-type SoftwareInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-type HardwareInfo struct {
-	Platform    string `json:"platform"`
-	CPUModel    string `json:"cpu_model"`
-	TotalRAM_GB uint64 `json:"total_ram_gb"`
-	TotalCores  int32  `json:"total_cores"`
-}
-type SystemInfoSnapshot struct {
-	Hostname          string         `json:"hostname"`
-	OS                string         `json:"os"`
-	Architecture      string         `json:"architecture"`
-	Hardware          HardwareInfo   `json:"hardware_info"`
-	Processes         []ProcessInfo  `json:"processes"`
-	InstalledSoftware []SoftwareInfo `json:"installed_software"`
-}
-type SuspiciousProcessEvent struct {
-	Hostname      string      `json:"hostname"`
-	EventType     string      `json:"event_type"`
-	ChildProcess  ProcessInfo `json:"child_process"`
-	ParentProcess ProcessInfo `json:"parent_process"`
-}
-type VulnerabilityEvent struct {
-	Hostname     string       `json:"hostname"`
-	EventType    string       `json:"event_type"`
-	VulnerableSW SoftwareInfo `json:"vulnerable_software"`
-	Reason       string       `json:"reason"`
-	CVE          string       `json:"cve"`
-}
 type RootkitEvent struct {
 	Hostname        string `json:"hostname"`
 	EventType       string `json:"event_type"`
 	DetectionMethod string `json:"detection_method"`
 	Recommendation  string `json:"recommendation"`
+	Details         string `json:"details"`
 }
 
-// NEW: Process snapshot for ML training (Phase 1)
-type ProcessSnapshot struct {
-	Hostname  string   `json:"hostname"`
-	Timestamp string   `json:"timestamp"`
-	Processes []string `json:"processes"`
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
+// RunRootkitScan performs a multi-engine rootkit scan and returns alerts
+// The callback function receives a RootkitEvent for reporting to the server.
+func RunRootkitScan(callback func(event RootkitEvent)) {
+	fmt.Println("🔍 Running complete rootkit detection...")
+
+	hostname, _ := os.Hostname()
+	var alerts []string
+
+	// ------------------------------
+	// 1. chkrootkit
+	// ------------------------------
+	if p, err := exec.LookPath("chkrootkit"); err == nil {
+		out, _ := exec.Command(p).CombinedOutput()
+		if strings.Contains(string(out), "INFECTED") {
+			alerts = append(alerts, "chkrootkit: "+extractInfectedLine(string(out)))
+		}
+	}
+
+	// ------------------------------
+	// 2. rkhunter
+	// ------------------------------
+	if p, err := exec.LookPath("rkhunter"); err == nil {
+		out, _ := exec.Command(p, "--check", "--sk").CombinedOutput()
+		if strings.Contains(string(out), "Warning:") || strings.Contains(string(out), "Rootkit") {
+			alerts = append(alerts, "rkhunter: suspicious activity detected")
+		}
+	}
+
+	// ------------------------------
+	// 3. Hidden /proc tasks
+	// ------------------------------
+	if hidden := detectHiddenProcesses(); len(hidden) > 0 {
+		alerts = append(alerts, "Hidden processes: "+strings.Join(hidden, ", "))
+	}
+
+	// ------------------------------
+	// 4. Suspicious kernel modules
+	// ------------------------------
+	if modules := detectSuspiciousKernelModules(); len(modules) > 0 {
+		alerts = append(alerts, modules...)
+	}
+
+	// ------------------------------
+	// 5. Stealth directories
+	// ------------------------------
+	if stealth := detectStealthDirectories(); len(stealth) > 0 {
+		alerts = append(alerts, stealth...)
+	}
+
+	// ------------------------------
+	// 6. LD_PRELOAD hooks
+	// ------------------------------
+	if preload := detectLDPreload(); preload != "" {
+		alerts = append(alerts, preload)
+	}
+
+	// ------------------------------
+	// 7. Network connection anomalies
+	// ------------------------------
+	if netAnomalies := detectNetworkAnomalies(); len(netAnomalies) > 0 {
+		for _, anomaly := range netAnomalies {
+			alerts = append(alerts, "Network anomaly: "+anomaly)
+		}
+	}
+
+	// ------------------------------
+	// 8. Binary tampering
+	// ------------------------------
+	if tampered := detectTamperedBinaries(); len(tampered) > 0 {
+		for _, t := range tampered {
+			alerts = append(alerts, "Binary integrity anomaly: "+t)
+		}
+	}
+
+	// ------------------------------
+	// 9. File timestamp anomalies
+	// ------------------------------
+	if timeAnomalies := detectTimestampAnomalies(); len(timeAnomalies) > 0 {
+		for _, anomaly := range timeAnomalies {
+			alerts = append(alerts, "Timestamp anomaly: "+anomaly)
+		}
+	}
+
+	// ------------------------------
+	// 10. Memory injection signatures
+	// ------------------------------
+	if memThreats := detectMemoryThreats(); len(memThreats) > 0 {
+		for _, threat := range memThreats {
+			alerts = append(alerts, "Memory threat: "+threat)
+		}
+	}
+
+	// ------------------------------
+	// 11. Advanced rootkit signatures
+	// ------------------------------
+	if advancedThreats := detectAdvancedRootkits(); len(advancedThreats) > 0 {
+		for _, threat := range advancedThreats {
+			alerts = append(alerts, "Advanced rootkit: "+threat)
+		}
+	}
+
+	// ========================================================================
+	// Final result processing
+	// ========================================================================
+	if len(alerts) == 0 {
+		fmt.Println("✅ System clean. No rootkit activity detected.")
+		return
+	}
+
+	fmt.Println("🚨 ROOTKIT INDICATORS FOUND 🚨")
+	for _, a := range alerts {
+		fmt.Println(" -", a)
+	}
+
+	event := RootkitEvent{
+		Hostname:        hostname,
+		EventType:       "ROOTKIT_DETECTED",
+		DetectionMethod: "multi-engine (chkrootkit + rkhunter + integrity + kernel + memory + network)",
+		Recommendation:  "Critical: isolate endpoint immediately",
+		Details:         strings.Join(alerts, " | "),
+	}
+
+	callback(event)
 }
 
-// NEW: Command handling structs
-type CommandRequest struct {
-	Command string                 `json:"command"`
-	Params  map[string]interface{} `json:"params"`
+// ============================================================================
+// SUPPORTING DETECTION FUNCTIONS
+// ============================================================================
+
+// Extract infected line from chkrootkit output
+func extractInfectedLine(out string) string {
+	sc := bufio.NewScanner(strings.NewReader(out))
+	for sc.Scan() {
+		line := sc.Text()
+		if strings.Contains(line, "INFECTED") {
+			return line
+		}
+	}
+	return "unknown infection"
 }
 
-type CommandResponse struct {
-	Success bool        `json:"success"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+// Detect hidden processes (/proc entry exists but process library cannot see it)
+func detectHiddenProcesses() []string {
+	var hidden []string
+
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return hidden
+	}
+
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+
+		// Validate that directory name is a number (PID)
+		_, err := strconv.Atoi(e.Name())
+		if err != nil {
+			continue
+		}
+
+		// If /proc/<pid>/stat exists but we cannot read the process name → hidden
+		statPath := "/proc/" + e.Name() + "/stat"
+		if _, err := os.Stat(statPath); err == nil {
+			// Try reading process name from cmdline
+			cmdlinePath := "/proc/" + e.Name() + "/cmdline"
+			if _, err := os.ReadFile(cmdlinePath); err != nil {
+				hidden = append(hidden, e.Name())
+			}
+		}
+	}
+
+	return hidden
 }
 
-// NEW: Command polling structs
-type PendingCommand struct {
-	ID        int                    `json:"id"`
-	Command   string                 `json:"command"`
-	Params    map[string]interface{} `json:"params"`
-	CreatedAt string                 `json:"created_at"`
-	Priority  int                    `json:"priority"`
+// Detect suspicious kernel modules
+func detectSuspiciousKernelModules() []string {
+	p, err := exec.LookPath("lsmod")
+	if err != nil {
+		return nil
+	}
+
+	out, _ := exec.Command(p).Output()
+	lines := strings.Split(string(out), "\n")
+
+	var bad []string
+	sigs := []string{"phalanx", "asp", "adore", "suckit", "knark", "fu_", "rootkit", "rkduck", "modhide"}
+
+	for _, line := range lines {
+		l := strings.ToLower(line)
+		for _, sig := range sigs {
+			if strings.Contains(l, sig) {
+				bad = append(bad, "Suspicious kernel module: "+line)
+			}
+		}
+	}
+
+	return bad
 }
 
-type CommandExecutionResult struct {
-	CommandID int                    `json:"command_id"`
-	Success   bool                   `json:"success"`
-	Message   string                 `json:"message"`
-	Data      map[string]interface{} `json:"data,omitempty"`
+// Detect well-known rootkit stealth directories
+func detectStealthDirectories() []string {
+	paths := []string{
+		"/dev/.udev",
+		"/dev/.tmp/.X11",
+		"/dev/.lib",
+		"/etc/.java",
+		"/usr/lib/.fx",
+		"/lib/.something",
+		"/var/tmp/.ICE-unix",
+		"/usr/share/.IceAuthority",
+		"/tmp/.ICE-unix/.X11-unix",
+	}
+
+	var found []string
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			found = append(found, "Stealth directory: "+p)
+		}
+	}
+	return found
 }
 
-// Global state
-var isIsolated = false
+// Detect LD_PRELOAD rootkit injection
+func detectLDPreload() string {
+	env := os.Getenv("LD_PRELOAD")
+	if env != "" {
+		return "LD_PRELOAD hook detected → " + env
+	}
+	return ""
+}
 
-// --- Main application logic ---
+// Detect suspicious tampering with core system binaries
+func detectTamperedBinaries() []string {
+	binaries := []string{
+		"/bin/ps", "/bin/ls", "/usr/bin/top", "/bin/netstat",
+		"/usr/bin/ss", "/bin/who", "/usr/bin/w", "/bin/df",
+		"/usr/bin/lsof", "/usr/bin/find", "/usr/bin/locate",
+	}
+
+	var tampered []string
+
+	for _, f := range binaries {
+		info, err := os.Stat(f)
+		if err != nil {
+			continue
+		}
+
+		// SUID bit on system monitoring tools = very suspicious
+		if info.Mode()&os.ModeSetuid != 0 {
+			tampered = append(tampered, f+" (unexpected SUID bit set)")
+		}
+	}
+	return tampered
+}
+
+// Detect network connection anomalies that may indicate rootkit activity
+func detectNetworkAnomalies() []string {
+	var anomalies []string
+
+	// Check for suspicious listening ports
+	cmd := exec.Command("ss", "-tulnp")
+	out, err := cmd.Output()
+	if err != nil {
+		// Fallback to netstat if ss is not available
+		cmd = exec.Command("netstat", "-tulnp")
+		out, _ = cmd.Output()
+	}
+
+	lines := strings.Split(string(out), "\n")
+	suspiciousPorts := []string{"31337", "12345", "6667", "6666", "1337", "4444", "5555", "8888"}
+
+	for _, line := range lines {
+		for _, port := range suspiciousPorts {
+			if strings.Contains(line, ":"+port) {
+				anomalies = append(anomalies, "Suspicious port "+port+" listening")
+			}
+		}
+	}
+
+	return anomalies
+}
+
+// Detect file timestamp anomalies that may indicate rootkit modification
+func detectTimestampAnomalies() []string {
+	var anomalies []string
+
+	// Check critical system files for recent modifications
+	criticalFiles := []string{
+		"/bin/ps", "/bin/ls", "/bin/netstat", "/usr/bin/top",
+		"/etc/passwd", "/etc/shadow", "/etc/hosts",
+		"/usr/bin/who", "/bin/who", "/usr/bin/w",
+	}
+
+	for _, file := range criticalFiles {
+		if info, err := os.Stat(file); err == nil {
+			// If file was modified in the last 24 hours (suspicious for system files)
+			if time.Since(info.ModTime()) < 24*time.Hour {
+				anomalies = append(anomalies, file+" recently modified")
+			}
+		}
+	}
+
+	return anomalies
+}
+
+// Detect memory-based threats and injection signatures
+func detectMemoryThreats() []string {
+	var threats []string
+
+	// Check /proc/*/maps for suspicious memory regions
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return threats
+	}
+
+	suspiciousCount := 0
+	for _, entry := range entries {
+		if !entry.IsDir() || suspiciousCount >= 5 { // Limit to prevent excessive output
+			continue
+		}
+
+		// Check if directory name is numeric (PID)
+		if _, err := strconv.Atoi(entry.Name()); err != nil {
+			continue
+		}
+
+		mapsPath := filepath.Join("/proc", entry.Name(), "maps")
+		if content, err := os.ReadFile(mapsPath); err == nil {
+			maps := string(content)
+
+			// Look for executable memory regions without file backing (potential code injection)
+			lines := strings.Split(maps, "\n")
+			hasExecutable := false
+			for _, line := range lines {
+				// More specific check - look for rwx permissions with no file path and significant size
+				if strings.Contains(line, "rwxp") && !strings.Contains(line, "/") && len(line) > 20 {
+					// Check if it's not just a small stack/heap region
+					fields := strings.Fields(line)
+					if len(fields) >= 1 {
+						addrRange := fields[0]
+						if strings.Contains(addrRange, "-") {
+							// Parse memory range to check size
+							parts := strings.Split(addrRange, "-")
+							if len(parts) == 2 {
+								// Only alert for larger suspicious regions (> 64KB)
+								start, err1 := strconv.ParseInt(parts[0], 16, 64)
+								end, err2 := strconv.ParseInt(parts[1], 16, 64)
+								if err1 == nil && err2 == nil && (end-start) > 65536 {
+									hasExecutable = true
+									break
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if hasExecutable {
+				threats = append(threats, "Process "+entry.Name()+": large executable memory region without file backing")
+				suspiciousCount++
+			}
+		}
+	}
+
+	return threats
+}
+
+// Detect advanced rootkit signatures and techniques
+func detectAdvancedRootkits() []string {
+	var threats []string
+
+	// Check for common rootkit file signatures
+	rootkitPaths := []string{
+		"/usr/lib/libproc.a",
+		"/usr/lib/lib.a",
+		"/dev/.backup",
+		"/tmp/.../",
+		"/var/log/arp",
+		"/usr/include/rpc/.. ",
+		"/etc/cron.d/core",
+		"/usr/bin/bkit",
+	}
+
+	for _, path := range rootkitPaths {
+		if _, err := os.Stat(path); err == nil {
+			threats = append(threats, "Known rootkit file: "+path)
+		}
+	}
+
+	// Check for rootkit configuration files
+	configFiles := []string{
+		"/etc/rc.d/arch",
+		"/usr/lib/.ark?",
+		"/usr/lib/ldlibps.so",
+		"/usr/lib/ldlibns.so",
+		"/usr/include/addr.h",
+	}
+
+	for _, config := range configFiles {
+		if _, err := os.Stat(config); err == nil {
+			threats = append(threats, "Rootkit config detected: "+config)
+		}
+	}
+
+	return threats
+}
+
+// Main function to run the rootkit scanner as a standalone tool or agent component
 func main() {
-	fmt.Println("--- Voltaxe Sentinel v2.0.0 (Strike Module Enabled) ---")
-
-	// Load configuration first
-	config = loadConfig()
-	fmt.Printf("[STARTUP] 🚀 Connecting to API Server: %s\n", config.APIServer)
-
-	// Start command receiver HTTP server in background (for direct commands)
-	go startCommandServer()
-
-	// NEW: Start command polling loop (for reliable delivery)
-	go startCommandPolling()
-
-	// NEW: Start process snapshot sender for ML training (Phase 1)
-	go startProcessSnapshotSender()
-
-	// NEW: Start network traffic sender for real endpoint monitoring
-	go startNetworkTrafficSender()
-
-	// NEW: Perform Rootkit Scan on startup
-	runRootkitScan()
-
-	snapshot := collectSnapshotData()
-	snapshotJSON, _ := json.Marshal(snapshot)
-	sendDataToServer(snapshotJSON, "/ingest/snapshot")
-	analyzeVulnerabilities(snapshot)
-	fmt.Println("\nSnapshot sent. Starting real-time behavioral monitoring...")
-	startRealtimeMonitoring(snapshot.Processes)
-}
-
-// NEW: HTTP server to receive commands from Strike Module
-func startCommandServer() {
-	http.HandleFunc("/command", handleCommand)
-	http.HandleFunc("/status", handleStatus)
-
-	fmt.Println("[STRIKE RECEIVER] Command server listening on :9090")
-	if err := http.ListenAndServe(":9090", nil); err != nil {
-		fmt.Printf("[ERROR] Command server failed: %v\n", err)
-	}
-}
-
-// NEW: Command polling loop - polls server for pending commands
-func startCommandPolling() {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	hostname, _ := os.Hostname()
-
-	fmt.Println("[COMMAND POLL] 🔄 Started command polling (every 10 seconds)")
-
-	// Poll immediately on startup
-	pollAndExecuteCommands(hostname)
-
-	// Then poll every 10 seconds
-	for range ticker.C {
-		pollAndExecuteCommands(hostname)
-	}
-}
-
-// Poll server for pending commands and execute them
-func pollAndExecuteCommands(hostname string) {
-	// Build poll URL
-	pollURL := fmt.Sprintf("%s/command/poll?hostname=%s", config.APIServer, hostname)
-
-	// Create HTTP client with timeout
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(pollURL)
-
-	if err != nil {
-		// Only log errors occasionally to avoid spam
-		// (network issues are common and expected)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return
-	}
-
-	// Parse response
-	var commands []PendingCommand
-	if err := json.NewDecoder(resp.Body).Decode(&commands); err != nil {
-		fmt.Printf("[COMMAND POLL] ❌ Failed to decode commands: %v\n", err)
-		return
-	}
-
-	if len(commands) == 0 {
-		// No pending commands (normal case)
-		return
-	}
-
-	// Execute each command
-	fmt.Printf("[COMMAND POLL] 📥 Received %d pending command(s)\n", len(commands))
-
-	for _, cmd := range commands {
-		fmt.Printf("[COMMAND POLL] 🎯 Executing command: %s (ID: %d, Priority: %d)\n", cmd.Command, cmd.ID, cmd.Priority)
-
-		// Execute the command
-		result := executeCommand(cmd.Command, cmd.Params)
-
-		// Report result back to server
-		reportCommandResult(cmd.ID, result)
-	}
-}
-
-// Report command execution result to server
-func reportCommandResult(commandID int, result CommandResponse) {
-	resultURL := fmt.Sprintf("%s/command/result", config.APIServer)
-
-	executionResult := CommandExecutionResult{
-		CommandID: commandID,
-		Success:   result.Success,
-		Message:   result.Message,
-		Data:      result.Data.(map[string]interface{}),
-	}
-
-	resultJSON, _ := json.Marshal(executionResult)
-
-	req, _ := http.NewRequest("POST", resultURL, bytes.NewBuffer(resultJSON))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		fmt.Printf("[COMMAND POLL] ⚠️  Failed to report result: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		fmt.Printf("[COMMAND POLL] ✅ Result reported for command ID %d\n", commandID)
-	}
-}
-
-// Execute a command (shared by both direct HTTP and polling)
-func executeCommand(command string, params map[string]interface{}) CommandResponse {
-	switch command {
-	case "network_isolate":
-		return executeNetworkIsolate(params)
-	case "network_restore":
-		return executeNetworkRestore(params)
-	case "kill_process":
-		return executeKillProcess(params)
-	case "collect_forensics":
-		return executeCollectForensics(params)
-	default:
-		return CommandResponse{Success: false, Message: fmt.Sprintf("Unknown command: %s", command)}
-	}
-}
-
-// NEW: Handle incoming commands from Strike Module
-func handleCommand(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var req CommandRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondJSON(w, CommandResponse{Success: false, Message: "Invalid request"}, http.StatusBadRequest)
-		return
-	}
-
-	fmt.Printf("[STRIKE RECEIVER] 🎯 Command received: %s\n", req.Command)
-
-	// Use the shared executeCommand function
-	response := executeCommand(req.Command, req.Params)
-
-	respondJSON(w, response, http.StatusOK)
-}
-
-// NEW: Status endpoint
-func handleStatus(w http.ResponseWriter, r *http.Request) {
-	hostname, _ := os.Hostname()
-	status := map[string]interface{}{
-		"hostname":  hostname,
-		"isolated":  isIsolated,
-		"version":   "2.0.0",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}
-	respondJSON(w, status, http.StatusOK)
-}
-
-// NEW: Execute network isolation
-func executeNetworkIsolate(params map[string]interface{}) CommandResponse {
-	hostname, _ := os.Hostname()
-	initiatedBy := params["initiated_by"].(string)
-	reason := params["reason"].(string)
-
-	fmt.Printf("🚨🚨🚨 STRIKE ACTION: NETWORK ISOLATION 🚨🚨🚨\n")
-	fmt.Printf("Hostname: %s\n", hostname)
-	fmt.Printf("Initiated by: %s\n", initiatedBy)
-	fmt.Printf("Reason: %s\n", reason)
-
-	// Execute network isolation based on OS
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "linux":
-		// Linux: Drop all network traffic using iptables
-		cmd = exec.Command("sudo", "iptables", "-P", "INPUT", "DROP")
-		cmd.Run()
-		cmd = exec.Command("sudo", "iptables", "-P", "OUTPUT", "DROP")
-		cmd.Run()
-		cmd = exec.Command("sudo", "iptables", "-P", "FORWARD", "DROP")
-		cmd.Run()
-	case "windows":
-		// Windows: Disable network adapters
-		cmd = exec.Command("netsh", "interface", "set", "interface", "Ethernet", "admin=disable")
-		cmd.Run()
-	case "darwin":
-		// macOS: Turn off Wi-Fi and Ethernet
-		cmd = exec.Command("networksetup", "-setairportpower", "en0", "off")
-		cmd.Run()
-	}
-
-	isIsolated = true
-
-	fmt.Printf("✅ Network isolation completed for %s\n", hostname)
-
-	return CommandResponse{
-		Success: true,
-		Message: fmt.Sprintf("Endpoint %s successfully isolated from network", hostname),
-		Data: map[string]interface{}{
-			"hostname":     hostname,
-			"isolated":     true,
-			"timestamp":    time.Now().Format(time.RFC3339),
-			"initiated_by": initiatedBy,
-		},
-	}
-}
-
-// NEW: Execute network restoration
-func executeNetworkRestore(params map[string]interface{}) CommandResponse {
-	hostname, _ := os.Hostname()
-	initiatedBy := params["initiated_by"].(string)
-
-	fmt.Printf("🔓 STRIKE ACTION: NETWORK RESTORATION 🔓\n")
-	fmt.Printf("Hostname: %s\n", hostname)
-	fmt.Printf("Initiated by: %s\n", initiatedBy)
-
-	// Restore network based on OS
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "linux":
-		// Linux: Restore iptables rules
-		cmd = exec.Command("sudo", "iptables", "-P", "INPUT", "ACCEPT")
-		cmd.Run()
-		cmd = exec.Command("sudo", "iptables", "-P", "OUTPUT", "ACCEPT")
-		cmd.Run()
-		cmd = exec.Command("sudo", "iptables", "-P", "FORWARD", "ACCEPT")
-		cmd.Run()
-	case "windows":
-		// Windows: Enable network adapters
-		cmd = exec.Command("netsh", "interface", "set", "interface", "Ethernet", "admin=enable")
-		cmd.Run()
-	case "darwin":
-		// macOS: Turn on Wi-Fi and Ethernet
-		cmd = exec.Command("networksetup", "-setairportpower", "en0", "on")
-		cmd.Run()
-	}
-
-	isIsolated = false
-
-	fmt.Printf("✅ Network access restored for %s\n", hostname)
-
-	return CommandResponse{
-		Success: true,
-		Message: fmt.Sprintf("Network access restored for %s", hostname),
-		Data: map[string]interface{}{
-			"hostname":     hostname,
-			"isolated":     false,
-			"timestamp":    time.Now().Format(time.RFC3339),
-			"initiated_by": initiatedBy,
-		},
-	}
-}
-
-// NEW: Execute process kill
-func executeKillProcess(params map[string]interface{}) CommandResponse {
-	pid := int32(params["pid"].(float64))
-
-	proc, err := process.NewProcess(pid)
-	if err != nil {
-		return CommandResponse{Success: false, Message: fmt.Sprintf("Process %d not found", pid)}
-	}
-
-	procName, _ := proc.Name()
-	fmt.Printf("💀 STRIKE ACTION: Killing process %d (%s)\n", pid, procName)
-
-	if err := proc.Kill(); err != nil {
-		return CommandResponse{Success: false, Message: fmt.Sprintf("Failed to kill process: %v", err)}
-	}
-
-	return CommandResponse{
-		Success: true,
-		Message: fmt.Sprintf("Process %d (%s) terminated", pid, procName),
-	}
-}
-
-// NEW: Execute forensics collection
-func executeCollectForensics(params map[string]interface{}) CommandResponse {
-	fmt.Println("📦 STRIKE ACTION: Collecting forensics data...")
-
-	// In production, this would collect:
-	// - Memory dump
-	// - Process list
-	// - Network connections
-	// - File system snapshot
-	// - System logs
-
-	hostname, _ := os.Hostname()
-	forensicsData := map[string]interface{}{
-		"hostname":  hostname,
-		"timestamp": time.Now().Format(time.RFC3339),
-		"collected": []string{"process_list", "network_connections", "system_logs"},
-	}
-
-	return CommandResponse{
-		Success: true,
-		Message: "Forensics data collected",
-		Data:    forensicsData,
-	}
-}
-
-// Helper function to send JSON response
-func respondJSON(w http.ResponseWriter, data interface{}, statusCode int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
-}
-
-// Real rootkit detection using chkrootkit
-func runRootkitScan() {
-	fmt.Println("🔍 Performing deep system integrity scan using Chkrootkit...")
-
-	// 1. Check if the tool exists
-	chkrootkitPath, err := exec.LookPath("chkrootkit")
-	if err != nil {
-		fmt.Println("⚠️  Chkrootkit not installed. Skipping rootkit scan.")
-		fmt.Println("    (Hint: sudo apt install chkrootkit)")
-		return
-	}
-
-	// 2. Execute the scan
-	// chkrootkit scans for known rootkit signatures and suspicious binaries
-	cmd := exec.Command(chkrootkitPath)
-	outputBytes, err := cmd.CombinedOutput()
-
-	if err != nil {
-		// chkrootkit might return non-zero exit codes on some warnings,
-		// so we don't return immediately. We verify the output first.
-		fmt.Printf("⚠️  Scan completed with warnings: %v\n", err)
-	}
-
-	output := string(outputBytes)
-
-	// 3. Analyze the Output
-	// Chkrootkit prints "INFECTED" when it finds a confirmed signature
-	if strings.Contains(output, "INFECTED") {
-		hostname, _ := os.Hostname()
-
-		// Extract the specific line causing the alert (simple parsing)
-		var threatDetails string
-		scanner := bufio.NewScanner(strings.NewReader(output))
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.Contains(line, "INFECTED") {
-				threatDetails = line
-				break
-			}
-		}
-
-		fmt.Printf("🚨💀🚨 CRITICAL: Rootkit detected on '%s'!\n", hostname)
-		fmt.Printf("      Signature: %s\n", threatDetails)
-
-		// 4. Send Alert to Voltaxe API
-		event := RootkitEvent{
-			Hostname:        hostname,
-			EventType:       "ROOTKIT_DETECTED",
-			DetectionMethod: "Chkrootkit Signature Scan",
-			Recommendation:  "CRITICAL: Isolate endpoint. " + threatDetails,
-		}
-
-		eventJSON, _ := json.Marshal(event)
-		sendDataToServer(eventJSON, "/ingest/rootkit_event")
-
-	} else {
-		fmt.Println("✅ System Clean. No rootkits detected.")
-	}
-}
-
-func getInstalledSoftware() []SoftwareInfo {
-	return []SoftwareInfo{
-		{Name: "Google Chrome", Version: "128.0.6613.119"},
-		{Name: "VS Code", Version: "1.92.0"},
-		{Name: "Docker Desktop", Version: "4.28.0"},
-	}
-}
-
-func analyzeVulnerabilities(snapshot SystemInfoSnapshot) {
-	fmt.Println("Analyzing software inventory for known vulnerabilities...")
-	mockVulnerabilityDB := map[string]string{"Docker Desktop": "CVE-2024-12345"}
-	for _, sw := range snapshot.InstalledSoftware {
-		if cve, found := mockVulnerabilityDB[sw.Name]; found {
-			fmt.Printf("??????? Vulnerability Found: %s is vulnerable (%s)\n", sw.Name, cve)
-			event := VulnerabilityEvent{Hostname: snapshot.Hostname, EventType: "VULNERABILITY_DETECTED", VulnerableSW: sw, Reason: fmt.Sprintf("Installed version %s is known to be vulnerable.", sw.Version), CVE: cve}
-			eventJSON, _ := json.Marshal(event)
-			sendDataToServer(eventJSON, "/ingest/vulnerability_event")
-		}
-	}
-}
-
-func collectSnapshotData() SystemInfoSnapshot {
-	hostname, _ := os.Hostname()
-	osType := runtime.GOOS
-	architecture := runtime.GOARCH
-	platformInfo, _ := host.Info()
-	cpuInfo, _ := cpu.Info()
-	memInfo, _ := mem.VirtualMemory()
-	hardware := HardwareInfo{Platform: fmt.Sprintf("%s %s", platformInfo.Platform, platformInfo.PlatformVersion), CPUModel: cpuInfo[0].ModelName, TotalRAM_GB: memInfo.Total / 1024 / 1024 / 1024, TotalCores: cpuInfo[0].Cores}
-	processList, _ := process.Processes()
-	var processes []ProcessInfo
-	for _, p := range processList {
-		name, _ := p.Name()
-		procInfo := ProcessInfo{PID: p.Pid, Name: name}
-		processes = append(processes, procInfo)
-	}
-	software := getInstalledSoftware()
-	return SystemInfoSnapshot{Hostname: hostname, OS: osType, Architecture: architecture, Hardware: hardware, Processes: processes, InstalledSoftware: software}
-}
-
-func startRealtimeMonitoring(initialProcesses []ProcessInfo) {
-	knownProcesses := make(map[int32]bool)
-	for _, p := range initialProcesses {
-		knownProcesses[p.PID] = true
-	}
-	hostname, _ := os.Hostname()
-	for {
-		currentProcs, _ := process.Processes()
-		for _, p := range currentProcs {
-			if _, exists := knownProcesses[p.Pid]; !exists {
-				processName, _ := p.Name()
-				if parentProc, err := p.Parent(); err == nil {
-					parentName, _ := parentProc.Name()
-					if isSuspiciousParentChild(parentName, processName) {
-						fmt.Printf("???? Suspicious Behavior Detected: Parent '%s' started Child '%s'\n", parentName, processName)
-						event := SuspiciousProcessEvent{Hostname: hostname, EventType: "SUSPICIOUS_PARENT_CHILD_PROCESS", ChildProcess: ProcessInfo{PID: p.Pid, Name: processName}, ParentProcess: ProcessInfo{PID: parentProc.Pid, Name: parentName}}
-						eventJSON, _ := json.Marshal(event)
-						sendDataToServer(eventJSON, "/ingest/suspicious_event")
-					}
-				}
-				knownProcesses[p.Pid] = true
-			}
-		}
-		time.Sleep(2 * time.Second)
-	}
-}
-
-func isSuspiciousParentChild(parentName string, childName string) bool {
-	if strings.Contains(parentName, "zsh") && strings.Contains(childName, "ping") {
-		return true
-	}
-	return false
-}
-
-func sendDataToServer(jsonData []byte, endpoint string) {
-	serverURL := config.APIServer + endpoint
-	req, _ := http.NewRequest("POST", serverURL, bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		fmt.Printf("[ERROR] Failed to send data to %s: %v\n", endpoint, err)
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		fmt.Printf("[WARN] Server responded to %s with status: %s\n", endpoint, resp.Status)
-	} else {
-		fmt.Printf("[SUCCESS] ✓ Data sent to %s\n", endpoint)
-	}
-}
-
-// ============================================================================
-// NETWORK TRAFFIC MONITORING - REAL ENDPOINT CONNECTIONS
-// ============================================================================
-
-// NetworkConnection represents a single network connection
-type NetworkConnection struct {
-	PID         int32  `json:"pid"`
-	ProcessName string `json:"process_name"`
-	LocalAddr   string `json:"local_addr"`
-	RemoteAddr  string `json:"remote_addr"`
-	Status      string `json:"status"`
-	Protocol    string `json:"protocol"`
-}
-
-// NetworkSnapshot represents all network connections at a point in time
-type NetworkSnapshot struct {
-	Hostname    string              `json:"hostname"`
-	Timestamp   string              `json:"timestamp"`
-	Connections []NetworkConnection `json:"connections"`
-}
-
-// getProtocolName converts protocol type number to name
-func getProtocolName(connType uint32) string {
-	switch connType {
-	case 1:
-		return "TCP"
-	case 2:
-		return "UDP"
-	default:
-		return "UNKNOWN"
-	}
-}
-
-// collectNetworkTraffic captures active network connections from THIS endpoint
-// This shows REAL connections from the monitored device, not from the server
-func collectNetworkTraffic() NetworkSnapshot {
-	hostname, _ := os.Hostname()
-	connections, err := net.Connections("all") // Get all TCP/UDP connections
-
-	if err != nil {
-		fmt.Printf("[NETWORK] Error getting network connections: %v\n", err)
-		return NetworkSnapshot{
-			Hostname:    hostname,
-			Timestamp:   time.Now().UTC().Format(time.RFC3339),
-			Connections: []NetworkConnection{},
-		}
-	}
-
-	var payload []NetworkConnection
-
-	for _, conn := range connections {
-		// Filter: Only capture connections with remote addresses (skip local/loopback)
-		if conn.Raddr.IP != "" && conn.Raddr.IP != "127.0.0.1" && conn.Raddr.IP != "::1" {
-
-			// Get process name from PID (if available)
-			procName := "unknown"
-			if conn.Pid > 0 {
-				p, err := process.NewProcess(conn.Pid)
-				if err == nil {
-					name, err := p.Name()
-					if err == nil {
-						procName = name
-					}
-				}
-			}
-
-			// Format addresses as "IP:PORT"
-			localAddr := conn.Laddr.IP + ":" + strconv.Itoa(int(conn.Laddr.Port))
-			remoteAddr := conn.Raddr.IP + ":" + strconv.Itoa(int(conn.Raddr.Port))
-
-			payload = append(payload, NetworkConnection{
-				PID:         conn.Pid,
-				ProcessName: procName,
-				LocalAddr:   localAddr,
-				RemoteAddr:  remoteAddr,
-				Status:      conn.Status,
-				Protocol:    getProtocolName(conn.Type),
-			})
-		}
-	}
-
-	return NetworkSnapshot{
-		Hostname:    hostname,
-		Timestamp:   time.Now().UTC().Format(time.RFC3339),
-		Connections: payload,
-	}
-}
-
-// startNetworkTrafficSender sends network snapshots every 30 seconds
-// This is faster than process snapshots because network state changes rapidly
-func startNetworkTrafficSender() {
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	fmt.Println("[NETWORK] 📡 Network traffic sender started (every 30 seconds)")
-
-	// Send immediately on startup
-	snapshot := collectNetworkTraffic()
-	data, _ := json.Marshal(snapshot)
-	sendDataToServer(data, "/ingest/network-snapshot")
-	fmt.Printf("[NETWORK] 🌐 Sent %d connections at %s\n", len(snapshot.Connections), snapshot.Timestamp)
-
-	// Then every 30 seconds
-	for range ticker.C {
-		snapshot := collectNetworkTraffic()
-		data, _ := json.Marshal(snapshot)
-		sendDataToServer(data, "/ingest/network-snapshot")
-		fmt.Printf("[NETWORK] 🌐 Sent %d connections at %s\n", len(snapshot.Connections), snapshot.Timestamp)
-	}
-}
-
-// ============================================================================
-// PHASE 1: ML ANOMALY DETECTION - PROCESS SNAPSHOT COLLECTION
-// ============================================================================
-
-// collectProcessSnapshot collects the current list of running processes
-func collectProcessSnapshot() ProcessSnapshot {
-	hostname, _ := os.Hostname()
-	processes, _ := process.Processes()
-
-	var processNames []string
-	for _, p := range processes {
-		name, err := p.Name()
-		if err == nil {
-			processNames = append(processNames, name)
-		}
-	}
-
-	return ProcessSnapshot{
-		Hostname:  hostname,
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Processes: processNames,
-	}
-}
-
-// startProcessSnapshotSender sends process snapshots every 5 minutes for ML training
-func startProcessSnapshotSender() {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-
-	fmt.Println("[ML PHASE 1] 🧠 Process snapshot sender started (every 5 minutes)")
-
-	// Send immediately on startup
-	snapshot := collectProcessSnapshot()
-	data, _ := json.Marshal(snapshot)
-	sendDataToServer(data, "/ingest/process-snapshot")
-	fmt.Printf("[ML PHASE 1] 📸 Sent %d processes at %s\n", len(snapshot.Processes), snapshot.Timestamp)
-
-	// Then every 5 minutes
-	for range ticker.C {
-		snapshot := collectProcessSnapshot()
-		data, _ := json.Marshal(snapshot)
-		sendDataToServer(data, "/ingest/process-snapshot")
-		fmt.Printf("[ML PHASE 1] 📸 Sent %d processes at %s\n", len(snapshot.Processes), snapshot.Timestamp)
-	}
+	fmt.Println("🔒 Voltaxe Sentinel - Advanced Rootkit Detection Engine")
+	fmt.Println("======================================================")
+
+	// Run the comprehensive rootkit scan
+	RunRootkitScan(func(event RootkitEvent) {
+		fmt.Printf("\n🚨 SECURITY ALERT 🚨\n")
+		fmt.Printf("Hostname: %s\n", event.Hostname)
+		fmt.Printf("Event: %s\n", event.EventType)
+		fmt.Printf("Detection: %s\n", event.DetectionMethod)
+		fmt.Printf("Recommendation: %s\n", event.Recommendation)
+		fmt.Printf("Details: %s\n", event.Details)
+		fmt.Println()
+
+		// In a real deployment, this would send the event to the server
+		// sendEventToServer(event)
+	})
+
+	fmt.Println("\n✅ Rootkit scan completed.")
 }
