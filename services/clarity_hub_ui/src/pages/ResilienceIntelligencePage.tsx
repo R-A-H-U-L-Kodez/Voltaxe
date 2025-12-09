@@ -3,7 +3,6 @@ import { Sidebar } from '../components/Sidebar';
 import { ResilienceDashboardComponent } from '../components/ResilienceDashboard.tsx';
 import { NorthStarScore } from '../components/NorthStarScore';
 import { RiskBreakdown } from '../components/RiskBreakdown';
-import { SecurityTrends } from '../components/SecurityTrends';
 import { AxonEngineMonitor } from '../components/AxonEngineMonitor';
 import { PathToGreen } from '../components/PathToGreen';
 import { Shield, Download, FileText } from 'lucide-react';
@@ -107,11 +106,6 @@ export const ResilienceIntelligencePage = () => {
             onScoreChange={handleScoreChange}
             onPriorityActionsUpdate={handlePriorityActionsUpdate}
           />
-        </div>
-
-        {/* Security Trends - Historical Analysis */}
-        <div className="mb-8 animate-fadeIn">
-          <SecurityTrends />
         </div>
 
         {/* Two Column: Axon Engine Monitor & Detailed Dashboard */}

@@ -1,6 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Target, CheckCircle, AlertTriangle, ArrowRight, Award } from 'lucide-react';
+import { Target, CheckCircle, AlertTriangle, ArrowRight, Award, Wrench, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { resilienceService, endpointService } from '../services/api';
+import axios from 'axios';
+
+interface VulnerabilityDetail {
+  cve_id: string;
+  severity: string;
+  cvss_score: number;
+  description: string;
+  affected_endpoints: string[];
+  patch_available: boolean;
+  detected_date: string;
+  status: string;
+  attack_vector?: string;
+  patch_info?: {
+    available: boolean;
+    recommendation: string;
+  };
+}
 
 interface Recommendation {
   id: number;
@@ -10,6 +28,13 @@ interface Recommendation {
   points: number;
   priority: number;
   completed: boolean;
+  cveIds?: string[];
+  affectedEndpoints?: string[];
+  fixable?: boolean;
+  actionType?: 'vulnerability' | 'endpoint' | 'config' | 'malware';
+  actionData?: any;
+  cvssScore?: number;
+  patchAvailable?: boolean;
 }
 
 interface PathToGreenProps {
@@ -21,6 +46,19 @@ export const PathToGreen: React.FC<PathToGreenProps> = ({ onScoreChange, onPrior
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [currentScore, setCurrentScore] = useState(0);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  // Helper function to group vulnerabilities by CVE
+  const groupByCVE = (vulnerabilities: VulnerabilityDetail[]) => {
+    const grouped: { [key: string]: VulnerabilityDetail[] } = {};
+    vulnerabilities.forEach(vuln => {
+      if (!grouped[vuln.cve_id]) {
+        grouped[vuln.cve_id] = [];
+      }
+      grouped[vuln.cve_id].push(vuln);
+    });
+    return grouped;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,36 +72,120 @@ export const PathToGreen: React.FC<PathToGreenProps> = ({ onScoreChange, onPrior
         // Set current score from dashboard
         setCurrentScore(Math.round(dashboard.summary.average_score));
         
-        // Generate recommendations based on real data
+        // Fetch vulnerabilities for all endpoints
+        const vulnPromises = endpoints.map(async (ep) => {
+          try {
+            const response = await axios.get(`/api/fleet/endpoints/${ep.id}/vulnerabilities`);
+            return response.data.vulnerabilities || [];
+          } catch (error) {
+            console.error(`Failed to fetch vulnerabilities for ${ep.hostname}:`, error);
+            return [];
+          }
+        });
+        
+        const allVulnerabilitiesNested = await Promise.all(vulnPromises);
+        const allVulnerabilities: VulnerabilityDetail[] = allVulnerabilitiesNested.flat();
+        
+        // Generate recommendations based on real vulnerability data
         const generatedRecommendations: Recommendation[] = [];
         let priorityCounter = 1;
 
-        // Check for critical/high vulnerabilities
-        const criticalCount = dashboard.summary.risk_distribution.CRITICAL || 0;
-        const highCount = dashboard.summary.risk_distribution.HIGH || 0;
+        // Group vulnerabilities by severity
+        const criticalVulns = allVulnerabilities.filter(v => v.severity === 'CRITICAL');
+        const highVulns = allVulnerabilities.filter(v => v.severity === 'HIGH');
+        const mediumVulns = allVulnerabilities.filter(v => v.severity === 'MEDIUM');
         
-        if (criticalCount > 0) {
+        // Generate CVE-specific recommendations for CRITICAL vulnerabilities
+        const criticalByCVE = groupByCVE(criticalVulns);
+        for (const [cveId, vulnList] of Object.entries(criticalByCVE)) {
+          const affectedHosts = [...new Set(vulnList.flatMap(v => v.affected_endpoints))];
+          const vuln = vulnList[0];
+          
           generatedRecommendations.push({
             id: priorityCounter++,
-            title: `Patch ${criticalCount} critical vulnerabilit${criticalCount > 1 ? 'ies' : 'y'}`,
-            description: `${criticalCount} critical CVE${criticalCount > 1 ? 's' : ''} detected across your endpoints. Apply security patches immediately.`,
+            title: `🚨 CRITICAL: Patch ${cveId}`,
+            description: vuln.description.length > 200 ? vuln.description.substring(0, 200) + '...' : vuln.description,
             impact: 'high',
-            points: Math.min(criticalCount * 3, 15),
+            points: 5,
             priority: priorityCounter - 1,
             completed: false,
+            cveIds: [cveId],
+            affectedEndpoints: affectedHosts,
+            fixable: vuln.patch_available,
+            actionType: 'vulnerability',
+            actionData: { 
+              cveId, 
+              severity: 'CRITICAL', 
+              patchAvailable: vuln.patch_available,
+              endpointIds: endpoints.filter(e => affectedHosts.includes(e.hostname)).map(e => e.id)
+            },
+            cvssScore: vuln.cvss_score,
+            patchAvailable: vuln.patch_available
           });
         }
 
-        if (highCount > 0) {
+        // Generate CVE-specific recommendations for HIGH vulnerabilities
+        const highByCVE = groupByCVE(highVulns);
+        for (const [cveId, vulnList] of Object.entries(highByCVE)) {
+          const affectedHosts = [...new Set(vulnList.flatMap(v => v.affected_endpoints))];
+          const vuln = vulnList[0];
+          
           generatedRecommendations.push({
             id: priorityCounter++,
-            title: `Remediate ${highCount} high-risk vulnerabilit${highCount > 1 ? 'ies' : 'y'}`,
-            description: `${highCount} high-severity CVE${highCount > 1 ? 's' : ''} require attention. Update affected systems to improve security posture.`,
+            title: `⚠️ HIGH: Patch ${cveId}`,
+            description: vuln.description.length > 200 ? vuln.description.substring(0, 200) + '...' : vuln.description,
             impact: 'high',
-            points: Math.min(highCount * 2, 10),
+            points: 3,
             priority: priorityCounter - 1,
             completed: false,
+            cveIds: [cveId],
+            affectedEndpoints: affectedHosts,
+            fixable: vuln.patch_available,
+            actionType: 'vulnerability',
+            actionData: { 
+              cveId, 
+              severity: 'HIGH', 
+              patchAvailable: vuln.patch_available,
+              endpointIds: endpoints.filter(e => affectedHosts.includes(e.hostname)).map(e => e.id)
+            },
+            cvssScore: vuln.cvss_score,
+            patchAvailable: vuln.patch_available
           });
+        }
+
+        // Generate CVE-specific recommendations for MEDIUM vulnerabilities (if space available)
+        if (generatedRecommendations.length < 5) {
+          const mediumByCVE = groupByCVE(mediumVulns);
+          let mediumAdded = 0;
+          for (const [cveId, vulnList] of Object.entries(mediumByCVE)) {
+            if (mediumAdded >= 2) break; // Limit to 2 medium vulns
+            
+            const affectedHosts = [...new Set(vulnList.flatMap(v => v.affected_endpoints))];
+            const vuln = vulnList[0];
+            
+            generatedRecommendations.push({
+              id: priorityCounter++,
+              title: `⚡ MEDIUM: Patch ${cveId}`,
+              description: vuln.description.length > 200 ? vuln.description.substring(0, 200) + '...' : vuln.description,
+              impact: 'medium',
+              points: 2,
+              priority: priorityCounter - 1,
+              completed: false,
+              cveIds: [cveId],
+              affectedEndpoints: affectedHosts,
+              fixable: vuln.patch_available,
+              actionType: 'vulnerability',
+              actionData: { 
+                cveId, 
+                severity: 'MEDIUM', 
+                patchAvailable: vuln.patch_available,
+                endpointIds: endpoints.filter(e => affectedHosts.includes(e.hostname)).map(e => e.id)
+              },
+              cvssScore: vuln.cvss_score,
+              patchAvailable: vuln.patch_available
+            });
+            mediumAdded++;
+          }
         }
 
         // Check for offline/at-risk endpoints
@@ -77,6 +199,11 @@ export const PathToGreen: React.FC<PathToGreenProps> = ({ onScoreChange, onPrior
             points: offlineEndpoints.length * 2,
             priority: priorityCounter - 1,
             completed: false,
+            actionType: 'endpoint',
+            actionData: { 
+              endpointIds: offlineEndpoints.map(e => e.id),
+              action: 'restore'
+            }
           });
         }
 
@@ -91,20 +218,11 @@ export const PathToGreen: React.FC<PathToGreenProps> = ({ onScoreChange, onPrior
             points: compromisedEndpoints.length * 4,
             priority: priorityCounter - 1,
             completed: false,
-          });
-        }
-
-        // Check for medium risk
-        const mediumCount = dashboard.summary.risk_distribution.MEDIUM || 0;
-        if (mediumCount > 0 && generatedRecommendations.length < 6) {
-          generatedRecommendations.push({
-            id: priorityCounter++,
-            title: `Address ${mediumCount} medium-risk vulnerabilit${mediumCount > 1 ? 'ies' : 'y'}`,
-            description: `${mediumCount} medium-severity finding${mediumCount > 1 ? 's' : ''} detected. Apply patches during next maintenance window.`,
-            impact: 'medium',
-            points: Math.min(mediumCount, 5),
-            priority: priorityCounter - 1,
-            completed: false,
+            actionType: 'endpoint',
+            actionData: { 
+              endpointIds: compromisedEndpoints.map(e => e.id),
+              action: 'isolate'
+            }
           });
         }
 
@@ -201,6 +319,23 @@ export const PathToGreen: React.FC<PathToGreenProps> = ({ onScoreChange, onPrior
       case 'medium': return 'hsl(var(--warning) / 0.1)';
       case 'low': return 'hsl(var(--success) / 0.1)';
       default: return 'hsl(var(--muted) / 0.1)';
+    }
+  };
+
+  const handleFixIt = (rec: Recommendation) => {
+    if (rec.actionType === 'vulnerability' && rec.cveIds) {
+      // Open NVD database for CVE research in new tab
+      window.open(`https://nvd.nist.gov/vuln/detail/${rec.cveIds[0]}`, '_blank');
+      
+      // Navigate to first affected endpoint for remediation
+      if (rec.actionData?.endpointIds?.[0]) {
+        setTimeout(() => {
+          navigate(`/endpoint/${rec.actionData.endpointIds[0]}`);
+        }, 500);
+      }
+    } else if (rec.actionType === 'endpoint' && rec.actionData?.endpointIds?.[0]) {
+      // Navigate directly to endpoint page
+      navigate(`/endpoint/${rec.actionData.endpointIds[0]}`);
     }
   };
 
@@ -364,14 +499,14 @@ export const PathToGreen: React.FC<PathToGreenProps> = ({ onScoreChange, onPrior
         {pendingRecommendations.map((rec) => (
           <div
             key={rec.id}
-            className="flex items-start gap-4 p-4 rounded-lg transition-smooth hover-lift cursor-pointer"
+            className="flex items-start gap-4 p-4 rounded-lg transition-smooth hover-lift"
             style={{ backgroundColor: 'hsl(var(--muted) / 0.2)', border: '1px solid hsl(var(--border))' }}
-            onClick={() => toggleComplete(rec.id)}
           >
             <div className="flex-shrink-0 pt-1">
               <div
-                className="w-6 h-6 rounded-full border-2 flex items-center justify-center"
+                className="w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer"
                 style={{ borderColor: 'hsl(var(--border))' }}
+                onClick={() => toggleComplete(rec.id)}
               >
                 {rec.completed && <CheckCircle className="h-5 w-5" style={{ color: 'hsl(var(--success))' }} />}
               </div>
@@ -379,14 +514,101 @@ export const PathToGreen: React.FC<PathToGreenProps> = ({ onScoreChange, onPrior
 
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-4 mb-2">
-                <div>
+                <div className="flex-1">
                   <h5 className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
                     #{rec.priority}. {rec.title}
                   </h5>
                   <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     {rec.description}
                   </p>
+                  
+                  {/* CVE and Endpoint Information */}
+                  {rec.cveIds && rec.cveIds.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {rec.cveIds.map(cve => (
+                        <a
+                          key={cve}
+                          href={`https://nvd.nist.gov/vuln/detail/${cve}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono hover:opacity-80 transition-opacity"
+                          style={{ 
+                            backgroundColor: 'hsl(var(--muted))',
+                            color: 'hsl(var(--primary-gold))'
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {cve}
+                          <ExternalLink size={10} />
+                        </a>
+                      ))}
+                      
+                      {rec.cvssScore && (
+                        <span
+                          className="px-2 py-1 rounded text-xs font-semibold"
+                          style={{
+                            backgroundColor: rec.cvssScore >= 9 ? 'hsl(var(--danger) / 0.2)' : rec.cvssScore >= 7 ? 'hsl(var(--warning) / 0.2)' : 'hsl(var(--muted))',
+                            color: rec.cvssScore >= 9 ? 'hsl(var(--danger))' : rec.cvssScore >= 7 ? 'hsl(var(--warning))' : 'hsl(var(--muted-foreground))'
+                          }}
+                        >
+                          CVSS: {rec.cvssScore.toFixed(1)}/10
+                        </span>
+                      )}
+                      
+                      {rec.patchAvailable && (
+                        <span
+                          className="px-2 py-1 rounded text-xs font-semibold"
+                          style={{
+                            backgroundColor: 'hsl(var(--success) / 0.2)',
+                            color: 'hsl(var(--success))'
+                          }}
+                        >
+                          ✓ Patch Available
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Affected Endpoints */}
+                  {rec.affectedEndpoints && rec.affectedEndpoints.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        Affected:
+                      </span>
+                      {rec.affectedEndpoints.map((host, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-1 rounded text-xs font-mono"
+                          style={{ 
+                            backgroundColor: 'hsl(var(--muted) / 0.5)',
+                            color: 'hsl(var(--foreground))'
+                          }}
+                        >
+                          {host}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Fix It Button */}
+                  {rec.fixable && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFixIt(rec);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg mt-3"
+                      style={{
+                        backgroundColor: 'hsl(var(--primary-gold))',
+                        color: 'hsl(var(--background))'
+                      }}
+                    >
+                      <Wrench size={16} />
+                      Fix It Now
+                    </button>
+                  )}
                 </div>
+                
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span
                     className="px-3 py-1 rounded-full text-xs font-semibold"

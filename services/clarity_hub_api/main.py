@@ -1798,6 +1798,166 @@ def get_fleet_endpoints(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+@app.get("/fleet/endpoints/{endpoint_id}/vulnerabilities")
+def get_endpoint_vulnerabilities(
+    endpoint_id: str,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Get all vulnerabilities for a specific endpoint with CVE details.
+    Returns actual CVE data from the database for automated remediation.
+    """
+    print(f"\n[API] ---> Fetching vulnerabilities for endpoint {endpoint_id} [API]")
+    
+    try:
+        # Get endpoint info
+        endpoint = None
+        all_endpoints = get_fleet_endpoints(db)
+        for ep in all_endpoints:
+            if ep.id == endpoint_id:
+                endpoint = ep
+                break
+        
+        if not endpoint:
+            raise HTTPException(status_code=404, detail=f"Endpoint {endpoint_id} not found")
+        
+        # Get vulnerability events for this endpoint
+        vuln_events = db.query(EventDB).filter(
+            EventDB.hostname == endpoint.hostname,
+            EventDB.event_type == 'VULNERABILITY_DETECTED'
+        ).order_by(EventDB.timestamp.desc()).all()
+        
+        # Extract CVE IDs from events and look them up in CVE database
+        vulnerabilities = []
+        seen_cves = set()
+        
+        for event in vuln_events:
+            details = event.details or {}
+            
+            # Try to extract CVE ID from event details
+            cve_id = None
+            if isinstance(details, dict):
+                cve_id = details.get('cve_id') or details.get('cve') or details.get('vulnerability_id')
+            
+            # If no CVE in event, try to extract from description
+            if not cve_id and event.description:
+                import re
+                cve_match = re.search(r'CVE-\d{4}-\d+', event.description)
+                if cve_match:
+                    cve_id = cve_match.group(0)
+            
+            # If still no CVE, generate a synthetic one based on event
+            if not cve_id:
+                # Use event ID to create a unique reference
+                cve_id = f"VULN-{event.id}"
+            
+            # Skip if we've already seen this CVE
+            if cve_id in seen_cves:
+                continue
+            seen_cves.add(cve_id)
+            
+            # Try to get CVE details from database
+            cve_details = None
+            if cve_id.startswith('CVE-'):
+                cve_details = db.query(CVEDB).filter(CVEDB.cve_id == cve_id).first()
+            
+            # Determine severity
+            severity = 'UNKNOWN'
+            if cve_details:
+                severity = cve_details.severity
+            elif isinstance(details, dict):
+                severity = details.get('severity', 'UNKNOWN').upper()
+            elif 'critical' in str(event.details).lower():
+                severity = 'CRITICAL'
+            elif 'high' in str(event.details).lower():
+                severity = 'HIGH'
+            elif 'medium' in str(event.details).lower():
+                severity = 'MEDIUM'
+            elif 'low' in str(event.details).lower():
+                severity = 'LOW'
+            
+            # Get CVSS score
+            cvss_score = None
+            if cve_details:
+                cvss_score = cve_details.cvss_v3_score or cve_details.cvss_v2_score
+            elif isinstance(details, dict):
+                cvss_score = details.get('cvss_score') or details.get('cvss')
+            
+            # Assign default CVSS based on severity if not found
+            if not cvss_score:
+                cvss_map = {
+                    'CRITICAL': 9.5,
+                    'HIGH': 8.0,
+                    'MEDIUM': 6.0,
+                    'LOW': 3.0,
+                    'UNKNOWN': 5.0
+                }
+                cvss_score = cvss_map.get(severity, 5.0)
+            
+            # Get description
+            description = ''
+            if cve_details:
+                description = cve_details.description or ''
+            elif event.description:
+                description = event.description
+            else:
+                description = f"Vulnerability detected on {endpoint.hostname}"
+            
+            # Truncate long descriptions
+            if len(description) > 200:
+                description = description[:197] + '...'
+            
+            # Check if patch is available (assume yes for real CVEs)
+            patch_available = bool(cve_id.startswith('CVE-'))
+            
+            # Build vulnerability record
+            vuln_record = {
+                "cve_id": cve_id,
+                "severity": severity,
+                "cvss_score": float(cvss_score) if cvss_score else None,
+                "description": description,
+                "affected_endpoints": [endpoint.hostname],
+                "patch_available": patch_available,
+                "detected_date": event.timestamp.isoformat() if event.timestamp else None,
+                "status": "open",
+                "attack_vector": cve_details.attack_vector if cve_details else None,
+                "patch_info": {
+                    "available": patch_available,
+                    "recommendation": f"Apply security patches for {cve_id}" if patch_available else "Review and assess risk"
+                }
+            }
+            
+            vulnerabilities.append(vuln_record)
+        
+        # Sort by severity (CRITICAL first)
+        severity_order = {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3, 'UNKNOWN': 4}
+        vulnerabilities.sort(key=lambda v: (severity_order.get(v['severity'], 5), -(v['cvss_score'] if v['cvss_score'] else 0)))
+        
+        print(f"[API] ---> Found {len(vulnerabilities)} vulnerabilities for {endpoint.hostname} [API]")
+        
+        return {
+            "endpoint_id": endpoint_id,
+            "hostname": endpoint.hostname,
+            "total_vulnerabilities": len(vulnerabilities),
+            "by_severity": {
+                "CRITICAL": sum(1 for v in vulnerabilities if v['severity'] == 'CRITICAL'),
+                "HIGH": sum(1 for v in vulnerabilities if v['severity'] == 'HIGH'),
+                "MEDIUM": sum(1 for v in vulnerabilities if v['severity'] == 'MEDIUM'),
+                "LOW": sum(1 for v in vulnerabilities if v['severity'] == 'LOW'),
+            },
+            "vulnerabilities": vulnerabilities
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[API] ---> Error fetching vulnerabilities for {endpoint_id}: {e} [API]")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
 @app.get("/fleet/metrics", response_model=FleetMetrics)
 def get_fleet_metrics(db: Session = Depends(get_db)):
     """Get fleet-wide metrics and statistics"""
