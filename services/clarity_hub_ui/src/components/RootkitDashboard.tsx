@@ -112,8 +112,8 @@ export const RootkitDashboard = ({ onManualScanTriggered }: RootkitDashboardProp
 
   const filteredAlerts = recentAlerts.filter(alert =>
     alert.hostname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    alert.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    alert.detectionMethod.toLowerCase().includes(searchTerm.toLowerCase())
+    (alert.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    alert.threat_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -125,9 +125,9 @@ export const RootkitDashboard = ({ onManualScanTriggered }: RootkitDashboardProp
             <h3 className="text-sm font-medium text-muted-foreground">Total Scans</h3>
             <Activity className="h-4 w-4 text-primary-gold" />
           </div>
-          <div className="text-2xl font-bold text-primary-gold">{stats?.totalScans || 0}</div>
+          <div className="text-2xl font-bold text-primary-gold">{stats?.total_scans || 0}</div>
           <p className="text-xs text-muted-foreground mt-1">
-            {stats?.scansToday || 0} today
+            All time scans
           </p>
         </div>
 
@@ -136,9 +136,9 @@ export const RootkitDashboard = ({ onManualScanTriggered }: RootkitDashboardProp
             <h3 className="text-sm font-medium text-muted-foreground">Active Threats</h3>
             <AlertTriangle className="h-4 w-4 text-red-500" />
           </div>
-          <div className="text-2xl font-bold text-red-500">{stats?.activeAlerts || 0}</div>
+          <div className="text-2xl font-bold text-red-500">{stats?.active_alerts || 0}</div>
           <p className="text-xs text-muted-foreground mt-1">
-            {stats?.totalAlertsFound || 0} total found
+            {stats?.resolved_alerts || 0} resolved
           </p>
         </div>
 
@@ -147,9 +147,14 @@ export const RootkitDashboard = ({ onManualScanTriggered }: RootkitDashboardProp
             <h3 className="text-sm font-medium text-muted-foreground">Clean Systems</h3>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </div>
-          <div className="text-2xl font-bold text-green-500">{stats?.cleanSystems || 0}</div>
+          <div className="text-2xl font-bold text-green-500">
+            {stats?.severity_distribution 
+              ? Object.values(stats.severity_distribution).reduce((a, b) => a + b, 0) 
+              : 0
+            }
+          </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {stats?.infectedSystems || 0} infected
+            threat types detected
           </p>
         </div>
 
@@ -159,13 +164,13 @@ export const RootkitDashboard = ({ onManualScanTriggered }: RootkitDashboardProp
             <Clock className="h-4 w-4 text-accent-gold" />
           </div>
           <div className="text-lg font-bold text-accent-gold">
-            {stats?.nextScheduledScan 
-              ? new Date(stats.nextScheduledScan).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : 'Not scheduled'
+            {stats?.last_scan 
+              ? new Date(stats.last_scan).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : 'Never'
             }
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Interval: {stats?.scanInterval || 'N/A'}
+            Last scan time
           </p>
         </div>
       </div>
@@ -257,13 +262,13 @@ export const RootkitDashboard = ({ onManualScanTriggered }: RootkitDashboardProp
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>{new Date(scan.timestamp).toLocaleString()}</span>
-                      <span>{scan.duration}ms</span>
-                      <span>{scan.alertsFound} alerts</span>
-                      <span className="capitalize">{scan.scanType}</span>
+                      <span>{new Date(scan.started_at).toLocaleString()}</span>
+                      <span>{scan.duration ? `${scan.duration}s` : 'N/A'}</span>
+                      <span>{scan.threats_found} threats</span>
+                      <span className="capitalize">{scan.scan_type}</span>
                     </div>
                   </div>
-                  {scan.alertsFound > 0 && (
+                  {scan.threats_found > 0 && (
                     <AlertTriangle className="h-4 w-4 text-red-500" />
                   )}
                 </div>
@@ -313,19 +318,19 @@ export const RootkitDashboard = ({ onManualScanTriggered }: RootkitDashboardProp
                   </div>
                   
                   <div className="text-sm text-foreground mb-2">
-                    <span className="font-medium">Method:</span> {alert.detectionMethod}
+                    <span className="font-medium">Threat:</span> {alert.threat_name}
                   </div>
                   
                   <div className="text-xs text-muted-foreground mb-2">
-                    {alert.details.length > 100 
-                      ? `${alert.details.substring(0, 100)}...` 
-                      : alert.details
+                    {alert.description && alert.description.length > 100 
+                      ? `${alert.description.substring(0, 100)}...` 
+                      : alert.description || 'No description available'
                     }
                   </div>
                   
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
-                      {new Date(alert.timestamp).toLocaleString()}
+                      {new Date(alert.detected_at).toLocaleString()}
                     </span>
                     <button className="text-primary-gold hover:text-accent-gold transition-colors flex items-center gap-1">
                       <Eye className="h-3 w-3" />
@@ -348,30 +353,30 @@ export const RootkitDashboard = ({ onManualScanTriggered }: RootkitDashboardProp
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="flex items-center gap-2">
-            {stats?.scanningEnabled ? (
+            {stats?.total_scans && stats.total_scans > 0 ? (
               <CheckCircle className="h-4 w-4 text-green-500" />
             ) : (
               <XCircle className="h-4 w-4 text-red-500" />
             )}
             <span className="text-sm text-foreground">
-              Daemon {stats?.scanningEnabled ? 'Active' : 'Inactive'}
+              Scanner {stats?.total_scans && stats.total_scans > 0 ? 'Active' : 'Inactive'}
             </span>
           </div>
           
           <div className="text-sm text-muted-foreground">
             <span className="font-medium">Last Scan:</span> {' '}
-            {stats?.lastScanTime 
-              ? new Date(stats.lastScanTime).toLocaleString()
+            {stats?.last_scan 
+              ? new Date(stats.last_scan).toLocaleString()
               : 'Never'
             }
           </div>
           
           <div className="text-sm text-muted-foreground">
-            <span className="font-medium">Scan Interval:</span> {stats?.scanInterval || 'N/A'}
+            <span className="font-medium">Active Alerts:</span> {stats?.active_alerts || 0}
           </div>
           
           <div className="text-sm text-muted-foreground">
-            <span className="font-medium">Total Systems:</span> {(stats?.cleanSystems || 0) + (stats?.infectedSystems || 0)}
+            <span className="font-medium">Resolved:</span> {stats?.resolved_alerts || 0}
           </div>
         </div>
       </div>

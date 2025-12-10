@@ -5,9 +5,11 @@ import { CVEDetailsModal } from '../components/CVEDetailsModal';
 import { RootkitDashboard } from '../components/RootkitDashboard';
 import { alertService } from '../services/api';
 import { Alert } from '../types';
-import { Search, AlertCircle, Download, TrendingUp, Clock, Activity, Shield } from 'lucide-react';
+import { Search, AlertCircle, Download, TrendingUp, Clock, Activity, Shield, AlertTriangle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 export const AlertsPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,13 +19,26 @@ export const AlertsPage = () => {
   const [endDate, setEndDate] = useState('');
   const [selectedCVE, setSelectedCVE] = useState<string | null>(null);
   const [isCVEModalOpen, setIsCVEModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'alerts' | 'rootkit'>('alerts'); // New tab state
+  
+  // Initialize activeTab based on URL params
+  const initialTab = searchParams.get('tab') === 'rootkit' ? 'rootkit' : 'alerts';
+  const [activeTab, setActiveTab] = useState<'alerts' | 'rootkit'>(initialTab);
   
   // Metrics state
   const [criticalCount, setCriticalCount] = useState(0);
   const [avgResponseTime, setAvgResponseTime] = useState('--');
   const [todayVolume, setTodayVolume] = useState(0);
   const [volumeTrend, setVolumeTrend] = useState(0);
+
+  // Update tab when URL params change
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'rootkit') {
+      setActiveTab('rootkit');
+    } else {
+      setActiveTab('alerts');
+    }
+  }, [searchParams]);
 
   const fetchAlerts = async () => {
     try {
@@ -45,37 +60,40 @@ export const AlertsPage = () => {
 
       const data = await alertService.getAlerts(params);
       
+      // Ensure data is an array
+      const safeData = Array.isArray(data) ? data : [];
+      
       // Filter by status on client side
-      let filteredData = data;
+      let filteredData = safeData;
       if (selectedStatus === 'active') {
-        filteredData = data.filter(a => a.status === 'new');
+        filteredData = safeData.filter(a => a.status === 'new');
       } else if (selectedStatus === 'acknowledged') {
-        filteredData = data.filter(a => a.status === 'acknowledged');
+        filteredData = safeData.filter(a => a.status === 'acknowledged');
       }
       
       setAlerts(filteredData);
       
       // Calculate metrics from fetched data
-      const criticalAlerts = data.filter(a => 
+      const criticalAlerts = safeData.filter(a => 
         a.severity === 'critical' && a.status === 'new'
       );
       setCriticalCount(criticalAlerts.length);
       
       // Calculate today's volume
       const today = new Date().toDateString();
-      const todayAlerts = data.filter(a => 
+      const todayAlerts = safeData.filter(a => 
         new Date(a.timestamp).toDateString() === today
       );
       setTodayVolume(todayAlerts.length);
       
       // Calculate average volume for trend
-      const uniqueDays = new Set(data.map(a => new Date(a.timestamp).toDateString())).size;
-      const avgDaily = uniqueDays > 0 ? data.length / uniqueDays : 0;
+      const uniqueDays = new Set(safeData.map(a => new Date(a.timestamp).toDateString())).size;
+      const avgDaily = uniqueDays > 0 ? safeData.length / uniqueDays : 0;
       const trend = avgDaily > 0 ? ((todayAlerts.length - avgDaily) / avgDaily) * 100 : 0;
       setVolumeTrend(Math.round(trend));
       
       // Calculate average response time (time from alert creation to acknowledgment)
-      const acknowledgedAlerts = data.filter(a => a.status === 'acknowledged');
+      const acknowledgedAlerts = safeData.filter(a => a.status === 'acknowledged');
       if (acknowledgedAlerts.length > 0) {
         // This is a simplified calculation - in real scenario, you'd have acknowledgment timestamp
         // For now, we'll estimate based on current time
@@ -92,6 +110,8 @@ export const AlertsPage = () => {
       }
     } catch (error) {
       console.error('Failed to fetch alerts:', error);
+      // Set empty array on error to prevent undefined errors
+      setAlerts([]);
     } finally {
       setLoading(false);
     }
@@ -127,16 +147,16 @@ export const AlertsPage = () => {
         <div className="mb-8 animate-fadeIn">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 gradient-danger rounded-2xl flex items-center justify-center shadow-xl">
-                <AlertCircle size={32} style={{ color: 'hsl(var(--background))' }} />
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl" style={{ background: 'linear-gradient(135deg, hsl(var(--primary-gold)) 0%, hsl(var(--accent-gold)) 100%)' }}>
+                <AlertTriangle size={32} style={{ color: 'hsl(var(--background))' }} />
               </div>
               <div>
                 <h1 className="text-4xl font-bold text-gradient-gold mb-2">
-                  Security Monitoring
+                  Threats
                 </h1>
                 <p className="text-muted-foreground flex items-center">
-                  <AlertCircle className="h-4 w-4 mr-2" style={{ color: 'hsl(var(--danger))' }} />
-                  Monitor alerts and rootkit detection across your infrastructure
+                  <AlertTriangle className="h-4 w-4 mr-2" style={{ color: 'hsl(var(--primary-gold))' }} />
+                  Unified threat monitoring - General alerts & Rootkit detection
                 </p>
               </div>
             </div>
@@ -146,7 +166,10 @@ export const AlertsPage = () => {
           <div className="mt-6 border-b border-border">
             <nav className="-mb-px flex space-x-8">
               <button
-                onClick={() => setActiveTab('alerts')}
+                onClick={() => {
+                  setActiveTab('alerts');
+                  setSearchParams({}); // Remove tab param for alerts
+                }}
                 className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                   activeTab === 'alerts'
                     ? 'border-primary-gold text-primary-gold'
@@ -155,11 +178,17 @@ export const AlertsPage = () => {
               >
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4" />
-                  Security Alerts
+                  General Alerts
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+                    Events & CVEs
+                  </span>
                 </div>
               </button>
               <button
-                onClick={() => setActiveTab('rootkit')}
+                onClick={() => {
+                  setActiveTab('rootkit');
+                  setSearchParams({ tab: 'rootkit' });
+                }}
                 className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                   activeTab === 'rootkit'
                     ? 'border-primary-gold text-primary-gold'
@@ -169,6 +198,9 @@ export const AlertsPage = () => {
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
                   Rootkit Detection
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'hsl(var(--primary-gold) / 0.2)', color: 'hsl(var(--primary-gold))' }}>
+                    Advanced
+                  </span>
                 </div>
               </button>
             </nav>

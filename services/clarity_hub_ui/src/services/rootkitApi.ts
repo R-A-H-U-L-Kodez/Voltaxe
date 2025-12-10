@@ -22,41 +22,56 @@ api.interceptors.request.use(
 );
 
 export interface RootkitScan {
-  id: string;
+  id: number;
   hostname: string;
-  timestamp: string;
+  scan_type: string;
   status: 'completed' | 'running' | 'failed';
-  duration: number; // in milliseconds
-  alertsFound: number;
-  scanType: 'manual' | 'scheduled';
-  details?: string;
+  started_at: string;
+  completed_at: string | null;
+  duration: number | null;
+  files_scanned: number;
+  threats_found: number;
+  scan_result: string;
+  signature_version: string | null;
+  engine_version: string | null;
+  initiated_by: string | null;
+  // UI compatibility
+  timestamp?: string;
+  alertsFound?: number;
+  scanType?: string;
 }
 
 export interface RootkitAlert {
-  id: string;
+  id: number;
+  scan_id: number;
   hostname: string;
-  eventType: string;
-  detectionMethod: string;
-  recommendation: string;
-  details: string;
-  timestamp: string;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  scanId: string;
-  status: 'active' | 'investigating' | 'resolved';
+  alert_type: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  threat_name: string;
+  file_path: string | null;
+  description: string | null;
+  remediation: string | null;
+  status: 'active' | 'resolved' | 'ignored';
+  detected_at: string;
+  resolved_at: string | null;
+  // UI compatibility  
+  eventType?: string;
+  detectionMethod?: string;
+  recommendation?: string;
+  details?: string;
+  timestamp?: string;
+  scanId?: string;
 }
 
 export interface RootkitStats {
-  totalScans: number;
-  scansToday: number;
-  lastScanTime: string | null;
-  nextScheduledScan: string | null;
-  totalAlertsFound: number;
-  activeAlerts: number;
-  resolvedAlerts: number;
-  scanningEnabled: boolean;
-  scanInterval: string; // e.g., "6h", "1h", "30m"
-  cleanSystems: number;
-  infectedSystems: number;
+  total_scans: number;
+  active_alerts: number;
+  resolved_alerts: number;
+  last_scan: string | null;
+  threat_types: Record<string, number>;
+  severity_distribution: Record<string, number>;
+  scan_success_rate: number;
+  avg_scan_duration: number | null;
 }
 
 export const rootkitService = {

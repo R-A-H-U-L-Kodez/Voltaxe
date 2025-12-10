@@ -1,13 +1,13 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request, BackgroundTasks
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_, Float, Text, Boolean, text
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, or_, Float, Text, Boolean, text, ForeignKey
+from sqlalchemy.orm import sessionmaker, Session, Mapped, mapped_column
 from pydantic import BaseModel
 import datetime
 from datetime import timedelta
 import os
 import tempfile
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, cast
 from fastapi.middleware.cors import CORSMiddleware
 from auth_service import auth_service, get_current_user, LoginRequest, RegisterRequest, LoginResponse, RegisterResponse
 from dotenv import load_dotenv
@@ -621,15 +621,15 @@ def poll_commands(hostname: str, db: Session = Depends(get_db)) -> List[CommandQ
     command_responses = []
     
     for cmd in pending_commands:
-        cmd.status = "delivered"
-        cmd.delivered_at = current_time
+        cmd.status = "delivered"  # type: ignore
+        cmd.delivered_at = current_time  # type: ignore
         
         command_responses.append(CommandQueueResponse(
-            id=cmd.id,
-            command=cmd.command,
-            params=cmd.params,
+            id=cast(int, cmd.id),
+            command=cast(str, cmd.command),
+            params=cast(Optional[Dict[str, Any]], cmd.params),
             created_at=cmd.created_at.isoformat(),
-            priority=cmd.priority
+            priority=cast(int, cmd.priority)
         ))
         
         print(f"[COMMAND POLL] 📤 Delivered command '{cmd.command}' (ID: {cmd.id}) to agent '{hostname}'")
@@ -658,9 +658,9 @@ def report_command_result(result: CommandExecutionResult, db: Session = Depends(
         raise HTTPException(status_code=404, detail=f"Command ID {result.command_id} not found")
     
     # Update command with execution result
-    command.status = "executed" if result.success else "failed"
-    command.executed_at = datetime.datetime.utcnow()
-    command.result = {
+    command.status = "executed" if result.success else "failed"  # type: ignore
+    command.executed_at = datetime.datetime.utcnow()  # type: ignore
+    command.result = {  # type: ignore
         "success": result.success,
         "message": result.message,
         "data": result.data
@@ -1083,14 +1083,16 @@ def get_network_traffic(
             # Calculate proper confidence score (0-100 percentage)
             # For BENIGN: high confidence (85-95%)
             # For SUSPICIOUS/MALICIOUS: threat_score * 100
-            if conn.ml_verdict == "BENIGN":
-                confidence = 90.0 - (conn.threat_score * 10)  # 90% for clean, slightly lower if any risk
+            ml_verdict = cast(str, conn.ml_verdict)
+            if ml_verdict == "BENIGN":
+                confidence = 90.0 - (float(cast(float, conn.threat_score)) * 10)  # 90% for clean, slightly lower if any risk
             else:
-                confidence = conn.threat_score * 100  # Convert 0.0-1.0 to 0-100%
+                confidence = float(cast(float, conn.threat_score)) * 100  # Convert 0.0-1.0 to 0-100%
             
+            timestamp = cast(datetime.datetime, conn.timestamp)
             traffic_entry = {
                 "id": idx,
-                "timestamp": conn.timestamp.isoformat() if conn.timestamp else datetime.datetime.utcnow().isoformat(),
+                "timestamp": timestamp.isoformat() if timestamp else datetime.datetime.utcnow().isoformat(),
                 "hostname": conn.hostname,
                 "source_ip": conn.local_addr,
                 "source_port": 0,  # Not tracked separately
@@ -1102,9 +1104,9 @@ def get_network_traffic(
                 "process_pid": conn.process_pid,
                 "parent_process": "system",  # Not tracked yet
                 "status": conn.connection_status,
-                "ml_verdict": conn.ml_verdict,
+                "ml_verdict": ml_verdict,
                 "confidence": confidence,
-                "threat_indicators": f"Port {conn.remote_port} analysis" if conn.ml_verdict != "BENIGN" else "None detected",
+                "threat_indicators": f"Port {conn.remote_port} analysis" if ml_verdict != "BENIGN" else "None detected",
                 "ml_models": "Port Analysis Model, Network Pattern Model",
                 "event_type": "NETWORK_CONNECTION"
             }
@@ -1963,7 +1965,7 @@ def get_endpoint_vulnerabilities(
                 cvss_score = details.get('cvss_score') or details.get('cvss')
             
             # Assign default CVSS based on severity if not found
-            if not cvss_score:
+            if not cvss_score:  # type: ignore
                 cvss_map = {
                     'CRITICAL': 9.5,
                     'HIGH': 8.0,
@@ -1971,33 +1973,35 @@ def get_endpoint_vulnerabilities(
                     'LOW': 3.0,
                     'UNKNOWN': 5.0
                 }
-                cvss_score = cvss_map.get(severity, 5.0)
+                severity_str = cast(str, severity)
+                cvss_score = cvss_map.get(severity_str, 5.0)
             
             # Get description
             description = ''
             if cve_details:
                 description = cve_details.description or ''
             elif event.description:
-                description = event.description
+                description = cast(str, event.description)
             else:
                 description = f"Vulnerability detected on {endpoint.hostname}"
             
             # Truncate long descriptions
-            if len(description) > 200:
+            if len(str(description)) > 200:
                 description = description[:197] + '...'
             
             # Check if patch is available (assume yes for real CVEs)
             patch_available = bool(cve_id.startswith('CVE-'))
             
+            timestamp_val = cast(datetime.datetime, event.timestamp)
             # Build vulnerability record
             vuln_record = {
                 "cve_id": cve_id,
                 "severity": severity,
-                "cvss_score": float(cvss_score) if cvss_score else None,
+                "cvss_score": float(cvss_score) if cvss_score else None,  # type: ignore
                 "description": description,
                 "affected_endpoints": [endpoint.hostname],
                 "patch_available": patch_available,
-                "detected_date": event.timestamp.isoformat() if event.timestamp else None,
+                "detected_date": timestamp_val.isoformat() if timestamp_val else None,
                 "status": "open",
                 "attack_vector": cve_details.attack_vector if cve_details else None,
                 "patch_info": {
@@ -3420,19 +3424,19 @@ def get_rootkit_scans(
         scan_responses = []
         for scan in scans:
             scan_responses.append(RootkitScanResponse(
-                id=scan.id,
-                hostname=scan.hostname,
-                scan_type=scan.scan_type,
-                status=scan.status,
+                id=scan.id,  # type: ignore
+                hostname=scan.hostname,  # type: ignore
+                scan_type=scan.scan_type,  # type: ignore
+                status=scan.status,  # type: ignore
                 started_at=scan.started_at.isoformat(),
-                completed_at=scan.completed_at.isoformat() if scan.completed_at else None,
-                duration=scan.duration,
-                files_scanned=scan.files_scanned,
-                threats_found=scan.threats_found,
-                scan_result=scan.scan_result,
-                signature_version=scan.signature_version,
-                engine_version=scan.engine_version,
-                initiated_by=scan.initiated_by
+                completed_at=scan.completed_at.isoformat() if scan.completed_at else None,  # type: ignore
+                duration=scan.duration,  # type: ignore
+                files_scanned=scan.files_scanned,  # type: ignore
+                threats_found=scan.threats_found,  # type: ignore
+                scan_result=scan.scan_result,  # type: ignore
+                signature_version=scan.signature_version,  # type: ignore
+                engine_version=scan.engine_version,  # type: ignore
+                initiated_by=scan.initiated_by  # type: ignore
             ))
         
         print(f"[API] ---> Returning {len(scan_responses)} rootkit scans [API]")
@@ -3495,18 +3499,18 @@ def get_rootkit_alerts(
         alert_responses = []
         for alert in alerts:
             alert_responses.append(RootkitAlertResponse(
-                id=alert.id,
-                scan_id=alert.scan_id,
-                hostname=alert.hostname,
-                alert_type=alert.alert_type,
-                severity=alert.severity,
-                threat_name=alert.threat_name,
-                file_path=alert.file_path,
-                description=alert.description,
-                remediation=alert.remediation,
-                status=alert.status,
+                id=alert.id,  # type: ignore
+                scan_id=alert.scan_id,  # type: ignore
+                hostname=alert.hostname,  # type: ignore
+                alert_type=alert.alert_type,  # type: ignore
+                severity=alert.severity,  # type: ignore
+                threat_name=alert.threat_name,  # type: ignore
+                file_path=alert.file_path,  # type: ignore
+                description=alert.description,  # type: ignore
+                remediation=alert.remediation,  # type: ignore
+                status=alert.status,  # type: ignore
                 detected_at=alert.detected_at.isoformat(),
-                resolved_at=alert.resolved_at.isoformat() if alert.resolved_at else None
+                resolved_at=alert.resolved_at.isoformat() if alert.resolved_at else None  # type: ignore
             ))
         
         print(f"[API] ---> Returning {len(alert_responses)} rootkit alerts [API]")
@@ -3599,8 +3603,8 @@ def resolve_rootkit_alert(
             raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
         
         # Update alert status
-        alert.status = "resolved"
-        alert.resolved_at = datetime.datetime.utcnow()
+        alert.status = "resolved"  # type: ignore
+        alert.resolved_at = datetime.datetime.utcnow()  # type: ignore
         
         db.commit()
         

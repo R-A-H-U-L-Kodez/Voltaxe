@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-  AlertTriangle, 
   LogOut, 
   Settings, 
   Shield,
@@ -12,12 +11,47 @@ import {
   Layers,
   Network,
   Rocket,
-  Bug
+  Bug,
+  AlertTriangle
 } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
+import { useState, useEffect } from 'react';
+import { threatsService, ThreatStats } from '../services/threatsApi';
 
 export const Sidebar = () => {
   const { logout } = useAuth();
+  const [threatStats, setThreatStats] = useState<ThreatStats>({
+    totalThreats: 0,
+    criticalThreats: 0,
+    generalAlerts: 0,
+    rootkitAlerts: 0,
+    activeAlerts: 0,
+    resolvedAlerts: 0
+  });
+
+  useEffect(() => {
+    const fetchThreatStats = async () => {
+      try {
+        const stats = await threatsService.getStats();
+        setThreatStats(stats);
+      } catch (error) {
+        console.error('Failed to fetch threat statistics:', error);
+        setThreatStats({
+          totalThreats: 0,
+          criticalThreats: 0,
+          generalAlerts: 0,
+          rootkitAlerts: 0,
+          activeAlerts: 0,
+          resolvedAlerts: 0
+        });
+      }
+    };
+
+    fetchThreatStats();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchThreatStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col overflow-y-auto z-50" style={{ pointerEvents: 'auto' }}>
@@ -94,22 +128,28 @@ export const Sidebar = () => {
           <span>Fleet Command</span>
         </NavLink>
 
+        {/* Unified Threats Section */}
         <NavLink
           to="/alerts"
           className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer ${
+            `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-smooth cursor-pointer relative ${
               isActive
-                ? 'bg-primary-gold/10 text-primary-gold'
+                ? 'bg-primary-gold/10 text-primary-gold glow-gold'
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
             }`
           }
-          style={({ isActive}) => ({
+          style={({ isActive }) => ({
             color: isActive ? 'hsl(var(--primary-gold))' : undefined,
             backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
           })}
         >
           <AlertTriangle size={20} />
-          <span>Alerts</span>
+          <span className="font-medium">Threats</span>
+          {threatStats.activeAlerts > 0 && (
+            <span className="ml-auto bg-danger text-white text-xs px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center font-semibold">
+              {threatStats.activeAlerts > 99 ? '99+' : threatStats.activeAlerts}
+            </span>
+          )}
         </NavLink>
 
         <NavLink
@@ -121,7 +161,7 @@ export const Sidebar = () => {
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
             }`
           }
-          style={({ isActive}) => ({
+          style={({ isActive }) => ({
             color: isActive ? 'hsl(var(--primary-gold))' : undefined,
             backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
           })}
@@ -139,7 +179,7 @@ export const Sidebar = () => {
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
             }`
           }
-          style={({ isActive}) => ({
+          style={({ isActive }) => ({
             color: isActive ? 'hsl(var(--primary-gold))' : undefined,
             backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
           })}
@@ -157,7 +197,7 @@ export const Sidebar = () => {
                 : 'text-foreground hover:text-accent-gold hover:bg-white/5'
             }`
           }
-          style={({ isActive}) => ({
+          style={({ isActive }) => ({
             color: isActive ? 'hsl(var(--primary-gold))' : undefined,
             backgroundColor: isActive ? 'hsl(var(--primary-gold) / 0.1)' : undefined
           })}
