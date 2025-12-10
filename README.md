@@ -1,102 +1,64 @@
-# 🛡️ Voltaxe Clarity Hub# �️ Voltaxe Clarity Hub - Production-Ready Cybersecurity Platform
+# 🛡️ Voltaxe Clarity Hub - Enterprise Cybersecurity Platform
 
+**Production-ready cybersecurity monitoring, threat intelligence, and endpoint protection**
 
-
-**Enterprise Cybersecurity Monitoring & Threat Intelligence Platform****Enterprise-grade cybersecurity monitoring, threat intelligence, and vulnerability management**
-
-
-
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)](https://github.com/R-A-H-U-L-Kodez/Voltaxe)[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)](https://github.com/R-A-H-U-L-Kodez/Voltaxe)
-
-[![NIST NVD](https://img.shields.io/badge/NIST%20NVD-Integrated-blue)](https://nvd.nist.gov/)[![NIST NVD](https://img.shields.io/badge/NIST%20NVD-Integrated-blue)](https://nvd.nist.gov/)
-
-[![Go](https://img.shields.io/badge/Go-Agent-00ADD8)](https://golang.org/)[![Supabase](https://img.shields.io/badge/Supabase-Authentication-orange)](https://supabase.com/)
-
-[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)](https://fastapi.tiangolo.com/)[![Go](https://img.shields.io/badge/Go-Sentinel%20Agent-00ADD8)](https://golang.org/)
-
-[![React](https://img.shields.io/badge/React-Frontend-61DAFB)](https://reactjs.org/)[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)](https://fastapi.tiangolo.com/)
-
+[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)](https://github.com/R-A-H-U-L-Kodez/Voltaxe)
+[![NIST NVD](https://img.shields.io/badge/NIST%20NVD-Integrated-blue)](https://nvd.nist.gov/)
+[![Supabase](https://img.shields.io/badge/Supabase-Authentication-orange)](https://supabase.com/)
+[![Go](https://img.shields.io/badge/Go-Sentinel%20Agent-00ADD8)](https://golang.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-Frontend-61DAFB)](https://reactjs.org/)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED)](https://www.docker.com/)
 
 ---
 
 ![Voltaxe Banner](https://via.placeholder.com/800x200/1a1a1a/F4C430?text=VOLTAXE+CLARITY+HUB+-+CYBERSECURITY+PLATFORM)
 
-## 🎯 What is Voltaxe Clarity Hub?
-
 ## 🎯 Overview
 
-**Voltaxe Clarity Hub** is a comprehensive cybersecurity platform that provides real-time threat monitoring, vulnerability intelligence, and endpoint security management for enterprise environments. It combines intelligent behavioral analysis with real-time CVE intelligence to give organizations complete visibility into their security posture.
-
-**Voltaxe Clarity Hub** is a comprehensive cybersecurity platform that provides enterprise-grade threat monitoring, vulnerability intelligence, and endpoint security management. Built with modern technologies and production-ready architecture.
+**Voltaxe Clarity Hub** is a comprehensive cybersecurity platform that provides enterprise-grade threat monitoring, vulnerability intelligence, rootkit detection, and endpoint security management. Built with modern technologies and production-ready architecture, it combines real-time behavioral analysis with NIST NVD CVE intelligence.
 
 ---
 
-### ✨ Key Features
-
 ## 🌟 Core Capabilities
 
-- 🛡️ **Real-time Threat Monitoring** - Live event tracking with behavioral analysis
+### 🛡️ Real-Time Endpoint Monitoring
+Voltaxe continuously monitors endpoints across your infrastructure:
+- **Process Activity**: Tracks all running processes with parent-child relationship analysis
+- **Network Connections**: Real-time network traffic monitoring with ML-based anomaly detection
+- **System Snapshots**: Comprehensive system state collection every scan cycle
+- **Behavioral Analysis**: Identifies suspicious patterns and anomalous behavior
 
-### 🛡️ Real-Time Endpoint Monitoring- 🔍 **Enhanced CVE Intelligence** - Fast NIST NVD integration (50 req/30s with API key)  
+### 🔍 Advanced Threat Detection
+Multi-layered security scanning:
+- **Rootkit Detection**: Integrated scanning with real-time alert generation
+- **Malware Scanning**: YARA-based detection with custom rule sets
+- **Vulnerability Analysis**: Cross-references installed software against 312,000+ CVE records
+- **ML Anomaly Detection**: Machine learning-based threat identification
 
-Voltaxe continuously monitors endpoints across your infrastructure, capturing:- 🖥️ **Cross-platform Agent Deployment** - Linux, Windows, macOS support
+### 📊 CVE Intelligence & Vulnerability Management
+Integrated NIST NVD intelligence:
+- **312,000+ CVE Records**: Complete vulnerability database with real-time synchronization
+- **Fast API Integration**: 50 requests per 30 seconds with API key
+- **CVSS Scoring**: Industry-standard severity ratings (v3.1 and v2.0)
+- **Patch Tracking**: Identifies available patches and remediation paths
+- **Exploit Intelligence**: Links to known exploits and mitigation strategies
 
-- **Process Activity**: Tracks all running processes and detects suspicious parent-child relationships- 🔐 **Production Authentication** - Supabase integration with JWT tokens
+### 🚨 Unified Threats Dashboard
+Comprehensive threat monitoring interface:
+- **General Alerts**: CVE vulnerabilities and security events
+- **Rootkit Detection**: Dedicated rootkit scanning and alert management
+- **Real-time Statistics**: Active threats, scan history, and detection metrics
+- **Alert Management**: Mark threats as resolved, investigate details
 
-- **Network Connections**: Monitors active network traffic and connection patterns- 📊 **Professional Dashboard** - React-based security monitoring interface
+### 🎮 Security Gamification
+Transforms security monitoring into engaging experience:
+- **North Star Score**: Single metric (0-100) representing security health
+- **Risk Breakdown**: Visual security factor analysis
+- **Path to Green**: Actionable remediation steps
+- **Vulnerability Landscape**: Interactive threat distribution visualization
 
-- **System Snapshots**: Collects comprehensive system state information every scan cycle- 📱 **PDF Report Generation** - Comprehensive security reporting
-
-- **Behavioral Analysis**: Identifies anomalous behavior patterns in real-time- 🚀 **Scalable Architecture** - Docker containerization with microservices
-
-- 🔄 **Automated CVE Synchronization** - Real-time vulnerability database updates
-
-### 🔍 Intelligent Threat Detection
-
-The platform employs multiple detection mechanisms:## 🏗️ System Architecture
-
-- **Rootkit Detection**: Uses `chkrootkit` to scan for known rootkit signatures and system compromises
-
-- **Malware Scanning**: YARA-based malware detection with custom rule sets```
-
-- **Vulnerability Analysis**: Cross-references installed software against CVE databases                    🌐 Web Dashboard (React + TypeScript)
-
-- **ML Anomaly Detection**: Collects process snapshots for machine learning-based anomaly identification                              │ Port 5173 │
-
-                              ▼          ▼
-
-### 📊 CVE Intelligence & Vulnerability Management    ┌─────────────────────────────────────────────────────────────┐
-
-Integrated NIST NVD intelligence provides:    │                🔧 FastAPI Backend                           │
-
-- **312,000+ CVE Records**: Complete vulnerability database synchronized from NIST    │     Authentication • CVE Intelligence • Monitoring API      │
-
-- **Real-Time Updates**: Automatic CVE synchronization keeps threat intelligence current    │                    Port 8000                                │
-
-- **CVSS Scoring**: Industry-standard severity ratings for prioritization    └─────────────────────────┬───────────────────────────────────┘
-
-- **Patch Tracking**: Identifies available patches and remediation paths                              │
-
-- **Exploit Intelligence**: Links to known exploits and mitigation strategies          ┌───────────────────┼───────────────────┐
-
-          ▼                   ▼                   ▼
-
-### 🎮 Gamification Engine    ┌─────────────┐  ┌─────────────────┐  ┌─────────────────┐
-
-Transforms security monitoring into an engaging experience:    │ 🛡️ Voltaxe   │  │ 🔄 CVE Sync     │  │ 🔐 Supabase     │
-
-- **North Star Score**: Single metric (0-100) representing overall security health    │   Sentinel   │  │   Service       │  │   Auth          │
-
-- **Risk Breakdown**: Visualizes security factors across vulnerabilities, patches, configuration, and behavior    │ (Go Agent)   │  │ (NIST NVD API)  │  │                 │
-
-- **Path to Green**: Provides actionable steps to improve security posture with "Fix It" buttons    │ Real-time    │  │ 50 req/30s      │  │ Production      │
-
-- **Vulnerability Landscape**: Interactive visualization of threat distribution across endpoints    │ Monitoring   │  │ 312K+ CVEs      │  │ Authentication  │
-
-    └─────────────┘  └─────────────────┘  └─────────────────┘
-
-### 🚨 Strike Module - Remote Command Execution           │
+### � Strike Module - Remote Command Execution
 
 Two-way communication system for incident response:           ▼
 
@@ -130,111 +92,129 @@ Two-way communication system for incident response:           ▼
 
 └───────────────────────────┬─────────────────────────────────────┘- **Optional**: Docker for containerized deployment
 
-                            │
+Secure command queue system for remote operations:
+- **Command Queue**: Agents poll for pending commands
+- **Execution Reporting**: Results sent back with success/failure status
+- **Priority Management**: Critical commands executed first
+- **Audit Trail**: Complete logging of all remote operations
 
-                            ▼### ⚡ Quick Start (Development)
+---
 
+## 🏗️ System Architecture
+
+```
+                    🌐 Web Dashboard (React + TypeScript)
+                       Vite • TailwindCSS • Port 3000
+                              │
+                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-
-│                  🔧 FastAPI Backend API                         │Get up and running in under 2 minutes:
-
-│   Authentication • CVE Intel • Fleet Management • Commands     │
-
-│              SQLAlchemy ORM • Supabase Auth • JWT              │```bash
-
-└──────┬──────────────────┬────────────────────┬──────────────────┘# Clone the repository
-
-       │                  │                    │git clone https://github.com/R-A-H-U-L-Kodez/Voltaxe.git
-
-       ▼                  ▼                    ▼cd Voltaxe
-
+│                  🔧 FastAPI Backend API                         │
+│   Authentication • CVE Intel • Monitoring • Strike Commands    │
+│              SQLAlchemy ORM • Supabase Auth • JWT              │
+└──────┬──────────────────┬────────────────────┬──────────────────┘
+       │                  │                    │
+       ▼                  ▼                    ▼
 ┌─────────────┐  ┌──────────────────┐  ┌─────────────────┐
-
-│ PostgreSQL  │  │  CVE Sync        │  │   Supabase      │# Start all services
-
-│  Database   │  │  Service         │  │   Auth          │./scripts/start_services.sh
-
+│ PostgreSQL  │  │  CVE Sync        │  │   Supabase      │
+│  Database   │  │  Service         │  │   Auth          │
 │             │  │                  │  │                 │
-
-│ Endpoints   │  │ NIST NVD API     │  │ User Management │# Open dashboard
-
-│ Telemetry   │  │ 50 req/30s       │  │ JWT Tokens      │open http://localhost:5173
-
-│ CVEs        │  │ 312K+ Records    │  │ RLS Policies    │```
-
+│ Endpoints   │  │ NIST NVD API     │  │ User Management │
+│ Telemetry   │  │ 50 req/30s       │  │ JWT Tokens      │
+│ CVEs        │  │ 312K+ Records    │  │ Production RLS  │
+│ Rootkits    │  │ Auto-sync        │  │                 │
 └─────────────┘  └──────────────────┘  └─────────────────┘
-
-       ▲### 🏭 Production Deployment
-
+       ▲
+       │ Telemetry & Alert Ingestion
        │
-
-       │ Telemetry IngestionFor production environments with Docker:
-
-       │
-
-┌──────┴──────────────────────────────────────────────────────────┐```bash
-
-│            🛡️ Voltaxe Sentinel Agent (Go)                      │# Full production setup with Docker
-
-│  Cross-Platform • Lightweight • Real-Time • Secure             │./deploy.sh
-
-│                                                                 │```
-
+┌──────┴──────────────────────────────────────────────────────────┐
+│            🛡️ Voltaxe Sentinel Agent (Go)                      │
+│  Cross-Platform • Lightweight • Real-Time • Secure             │
+│                                                                 │
 │  • Process Monitoring    • Network Traffic Analysis            │
-
-│  • Rootkit Detection     • Malware Scanning (YARA)            │The deployment includes:
-
-│  • Vulnerability Check   • Command Execution (Strike)          │- ✅ **Automated service orchestration**
-
-│  • ML Data Collection    • Behavioral Analysis                 │- ✅ **Database initialization with optimizations** 
-
-└─────────────────────────────────────────────────────────────────┘- ✅ **SSL certificate setup**
-
-       │- ✅ **Production security configurations**
-
-       ▼- ✅ **Automated backup strategies**
-
-┌─────────────────────────────────────────────────────────────────┐- ✅ **Health monitoring and alerting**
-
-│          📊 Monitored Endpoints (Linux/Windows/macOS)          │
-
-│   Servers • Workstations • Cloud Instances • IoT Devices       │## ⚙️ Configuration & Setup
-
+│  • Rootkit Detection     • Malware Scanning (YARA)            │
+│  • Vulnerability Check   • Command Execution (Strike)          │
+│  • ML Data Collection    • Behavioral Analysis                 │
 └─────────────────────────────────────────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│          📊 Monitored Endpoints (Linux/Windows/macOS)          │
+│   Servers • Workstations • Cloud Instances • Edge Devices      │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-```### 🔐 Authentication (Supabase Integration)
+---
 
+## ⚡ Quick Start (Development)
 
+Get up and running in under 5 minutes:
 
----**Production-ready authentication with user management:**
+```bash
+# Clone the repository
+git clone https://github.com/R-A-H-U-L-Kodez/Voltaxe.git
+cd Voltaxe
 
+# Start all services with Docker
+docker-compose up -d
 
+# Open dashboard
+open http://localhost:3000
 
-## 🎯 How It Works1. **Create Supabase Project**: Visit [supabase.com](https://supabase.com)
+# Default credentials
+# Email: admin@voltaxe.com
+# Password: admin123
+```
 
-2. **Get API Keys**: Settings > API > Copy URL and anon key  
+---
 
-### 1️⃣ Agent Deployment3. **Configure Environment**:
+## 🏭 Production Deployment
 
-The **Voltaxe Sentinel** agent is deployed to endpoints across your infrastructure. It's a lightweight Go binary (~10MB) that runs continuously in the background, consuming minimal system resources.   ```bash
+For production environments:
 
+```bash
+# Full production setup with automated configuration
+./deploy.sh
+```
+
+**The deployment includes:**
+- ✅ Automated service orchestration with Docker
+- ✅ Database initialization with optimizations
+- ✅ SSL certificate setup (optional)
+- ✅ Production security configurations
+- ✅ Automated backup strategies
+- ✅ Health monitoring and logging
+- ✅ Nginx reverse proxy configuration
+
+---
+
+## ⚙️ Configuration & Setup
+
+### 🔐 Authentication (Supabase Integration)
+
+**Production-ready authentication with user management:**
+
+1. **Create Supabase Project**: Visit [supabase.com](https://supabase.com)
+2. **Get API Keys**: Settings > API > Copy URL and anon key
+3. **Configure Environment**:
+   ```bash
    # In services/clarity_hub_api/.env
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
+4. **User Registration**: Self-service registration via dashboard or API
 
-### 2️⃣ Data Collection   SUPABASE_URL=https://your-project.supabase.co
+### 🔍 CVE Intelligence (NIST NVD Integration)
 
-Every agent collects multiple data streams:   SUPABASE_ANON_KEY=your-supabase-anon-key
+**Enhanced vulnerability synchronization (10x faster):**
 
-- **System Snapshots**: Full system state including OS, hardware, installed software, running processes   ```
-
-- **Process Snapshots**: List of all running processes sent every 5 minutes for ML training
-
-- **Network Traffic**: Active connections, protocols, addresses sent every 30 seconds### 🔍 CVE Intelligence (NIST NVD Integration) 
-
-- **Security Events**: Real-time alerts for rootkits, malware, suspicious behavior, and vulnerabilities
-
-**Enhanced vulnerability synchronization (10x faster!):**
-
-### 3️⃣ Threat Intelligence
+1. **Get API Key**: Visit [NVD API Key Request](https://nvd.nist.gov/developers/request-an-api-key)
+2. **Configure Service**:
+   ```bash
+   # In services/cve_sync_service/.env
+   NVD_API_KEY=your-api-key-here
+   ```
+3. **Start Sync**: Service automatically syncs 312,000+ CVE records
+4. **Monitoring**: Track sync progress via API logs
 
 The platform cross-references collected data against:1. **Get API Key**: [nvd.nist.gov/developers/request-an-api-key](https://nvd.nist.gov/developers/request-an-api-key)
 
@@ -268,650 +248,688 @@ The dashboard presents security data through:3. **Performance Boost**:
 
 Security teams can:
 
-- **Execute Commands**: Push commands to agents via Strike Module```bash
+### 🛡️ Sentinel Agent Deployment
 
-- **Isolate Endpoints**: Emergency "Panic Button" for compromised systems# Generate cross-platform deployment package
+**Deploy agents to all monitored endpoints:**
 
-- **Patch Guidance**: Direct links to NVD entries and patch information./deploy_agents.sh
-
-- **Audit Logging**: Complete audit trail of all security actions
+```bash
+# Generate cross-platform deployment package
+./deploy_agents.sh
 
 # Deploy to Linux systems
+cd deployment && sudo ./install_linux.sh
 
----cd deployment && sudo ./install_linux.sh
-
-
-
-## 🔬 Detection Capabilities# Deploy to Windows systems (Run as Administrator)  
-
+# Deploy to Windows systems (Run as Administrator)
 cd deployment && .\install_windows.ps1
+```
 
-### Rootkit Detection```
+**Agent Features:**
+- 🚀 Lightweight Go binary (~10MB)
+- 🔄 Automatic reconnection and retry logic
+- 🔐 Secure communication with TLS
+- 📊 Configurable scan intervals
+- 💾 Local buffering for offline resilience
 
-- **Technology**: `chkrootkit` integration
+---
 
-- **Detection**: Scans for known rootkit signatures in system binaries and kernel modules### 🔧 Development Setup
+## 🔬 Detection Capabilities
 
-- **Output**: "INFECTED" markers trigger immediate critical alerts
+### 🦠 Rootkit Detection
+- **Engine**: Integrated scanning with automated alerts
+- **Detection**: Known rootkit signatures and system compromises
+- **Output**: "INFECTED" markers trigger critical alerts
+- **Coverage**: 70+ rootkit families
+- **Dashboard**: Dedicated rootkit monitoring interface
 
-- **Coverage**: 70+ rootkit families detected**Start services for development:**
-
-
-
-### Malware Scanning```bash
-
-- **Technology**: YARA rule engine# Start backend and frontend
-
-- **Detection**: Pattern-based malware signature matching./scripts/start_services.sh
-
+### 🔍 Malware Scanning
+- **Engine**: YARA rule-based detection
+- **Detection**: Pattern-based malware signature matching
 - **Rules**: Custom and community rule sets
+- **Scope**: Files, memory, processes
+- **History**: Complete scan history with timestamps
 
-- **Scope**: Files, memory, processes# Populate sample data for testing
+### 🔓 Vulnerability Analysis
+- **Database**: 312,000+ CVE records from NIST NVD
+- **Detection**: Software inventory correlation with CVE database
+- **Scoring**: CVSS v3.1 and v2.0 severity ratings
+- **Intelligence**: Direct links to exploit information
+- **Updates**: Real-time synchronization (50 req/30s)
 
-- **History**: Complete scan history with timestamps and resultspython3 populate_sample_data.py
-
-
-
-### Vulnerability Analysis# Check system status
-
-- **Technology**: Software inventory + CVE database correlation./status_dashboard.sh
-
-- **Detection**: Matches installed software versions against known CVEs```
-
-- **Scoring**: CVSS 3.1 severity ratings
-
-- **Intelligence**: Direct links to NIST NVD for detailed exploit information## 🌐 System Access
-
-
-
-### Behavioral Analysis### 📊 Web Dashboard
-
-- **Technology**: Process monitoring + ML baseline comparison- **URL**: [http://localhost:5173](http://localhost:5173)
-
-- **Detection**: Suspicious parent-child process relationships- **Features**: Real-time monitoring, threat analysis, endpoint management
-
-- **ML Phase 1**: Data collection for training (process snapshots every 5 minutes)- **Default Login**: `admin@voltaxe.com` / `password`
-
+### 🧠 Behavioral Analysis
+- **Technology**: Process monitoring + ML baseline comparison
+- **Detection**: Suspicious parent-child process relationships
+- **ML Phase**: Data collection for training (snapshots every 5 min)
 - **Future**: Anomaly scoring and deviation detection
 
-### 📡 API Documentation  
+### 📡 Network Monitoring
+- **Tracking**: Real-time connection monitoring
+- **Detection**: All active network connections tracked
+- **Granularity**: PID, process name, addresses, protocols, states
+- **ML Analysis**: Port-based threat scoring
+- **Frequency**: Snapshots every 30 seconds
 
-### Network Monitoring- **URL**: [http://localhost:8000/docs](http://localhost:8000/docs)
+---
 
-- **Technology**: Real-time connection tracking- **Interactive Swagger UI** with full API documentation
+## 🌐 System Access
 
-- **Detection**: Monitors all active network connections- **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
+### 📊 Web Dashboard
+- **URL**: [http://localhost:3000](http://localhost:3000)
+- **Features**: 
+  - Real-time monitoring and threat analysis
+  - Unified threats dashboard (Alerts + Rootkit)
+  - Endpoint fleet management
+  - Security gamification with North Star Score
+  - Strike module for remote commands
+- **Default Login**: `admin@voltaxe.com` / `admin123`
 
-- **Granularity**: PID, process name, local/remote addresses, protocols, connection states
+### 📡 API Documentation
+- **URL**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Features**:
+  - Interactive Swagger UI
+  - Complete API documentation
+  - Test endpoints directly
+- **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
 
-- **Frequency**: Snapshots every 30 seconds### 🛡️ Security Features
+---
 
+## 🛡️ Security Features
 
-
----**Production Security:**
-
+### Production Security
 - ✅ **JWT Authentication** with Supabase integration
-
-## 📊 Dashboard Features- ✅ **CORS Protection** with configurable origins
-
+- ✅ **CORS Protection** with configurable origins
 - ✅ **Rate Limiting** on authentication endpoints
+- ✅ **Input Validation** with Pydantic models
+- ✅ **SQL Injection Prevention** with SQLAlchemy ORM
+- ✅ **XSS Protection** with security headers
+- ✅ **HTTPS Support** with SSL certificate management
 
-### Resilience Intelligence (Gamification Engine)- ✅ **Input Validation** with Pydantic models
-
-**North Star Score**: Your organization's security health in one number (0-100)- ✅ **SQL Injection Prevention** with SQLAlchemy ORM
-
-- Calculated from: vulnerability exposure, patch compliance, configuration hardening, behavioral risk- ✅ **XSS Protection** with security headers
-
-- Color-coded: Green (90-100), Yellow (70-89), Orange (50-69), Red (<50)
-
-- Trend indicators show improvement or degradation**Monitoring Security:**
-
+### Monitoring Security
 - ✅ **Real-time Vulnerability Detection**
+- ✅ **Rootkit Scanning** with automated alerts
+- ✅ **Behavioral Anomaly Detection**
+- ✅ **Network Traffic Analysis**
+- ✅ **Complete Audit Logging**
 
-**Risk Breakdown**: Visual factor analysis- ✅ **Behavioral Analysis** for suspicious processes
+---
 
-- Vulnerability Exposure (0-40 points)- ✅ **CVE Database Synchronization** (312K+ vulnerabilities)
+## 🎮 Dashboard Features
 
-- Patch Compliance (0-25 points)- ✅ **Automated Threat Intelligence**
+### Resilience Intelligence (Security Gamification)
 
-- Configuration Hardening (0-20 points)- ✅ **Endpoint Isolation Capabilities**
+**North Star Score**: Your security health in one metric (0-100)
+- **Calculation**: Vulnerability exposure, patch compliance, configuration, behavioral risk
+- **Color Coding**: 
+  - 🟢 Green (90-100) - Excellent
+  - 🟡 Yellow (70-89) - Good
+  - 🟠 Orange (50-69) - Needs Attention
+  - 🔴 Red (<50) - Critical
+- **Trends**: Shows improvement or degradation over time
 
-- Behavioral Risk (0-15 points)
+**Risk Breakdown**: Visual analysis of security factors
+- Vulnerability exposure percentage
+- Patch compliance status
+- Configuration hardening score
+- Behavioral risk assessment
 
-- Top offenders list with click-to-navigate## 🚀 Performance & Scale
+**Path to Green**: Actionable remediation steps
+- Prioritized "Fix It" buttons
+- Step-by-step guidance
+- Direct links to patches and documentation
+
+**Vulnerability Landscape**: Interactive threat visualization
+- Geographic distribution (if applicable)
+- Severity distribution pie charts
+- Timeline of detection events
+- Affected endpoint mapping
 
 
 
-**Path to Green**: Actionable remediation roadmap### 📈 System Capabilities
+### ⚡ Strike Module (Command Execution)
 
-- Auto-generates steps based on endpoint vulnerabilities- **CVE Sync**: 50 requests/30s (with API key) vs 5 req/30s (public)
+**Remote Command Capabilities:**
+- **Command Queue**: Push commands to agents via polling mechanism
+- **Status Tracking**: Pending → Running → Completed with timestamps
+- **Result Capture**: Full stdout/stderr capture from agents
+- **Panic Button**: Emergency endpoint isolation
+- **Use Cases**: 
+  - Emergency patching
+  - Configuration changes
+  - Forensic data collection
+  - Service restarts
+  - Endpoint isolation
 
-- CVE-specific recommendations with CVSS scores- **Concurrent Users**: Scalable with multiple API workers  
+**How It Works:**
+1. Admin creates command in dashboard
+2. Command stored in database with "pending" status
+3. Agent polls every 30 seconds
+4. Agent executes command and reports result
+5. Dashboard displays real-time status updates
 
-- "Fix It" buttons link to NVD entries and affected endpoints- **Database**: Optimized indexes for sub-second queries
+---
 
-- Prioritized by CVSS score (critical first)- **Agent Support**: Cross-platform deployment (Linux/Windows/macOS)
+## 🔧 Technology Stack
 
-- **Real-time**: WebSocket connections for live monitoring
+### Frontend
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite 5 (lightning-fast HMR)
+- **Styling**: TailwindCSS 3 with custom gold theme
+- **Charts**: Recharts for data visualization
+- **Routing**: React Router DOM v6
+- **HTTP**: Axios with JWT interceptors
+- **Icons**: Lucide React
+- **State**: React Context + Hooks
 
-### Fleet Management
+### Backend
+- **Framework**: FastAPI 0.104+ (async Python)
+- **ORM**: SQLAlchemy 2.x with async support
+- **Validation**: Pydantic v2 models
+- **Authentication**: Supabase JWT integration
+- **Security**: CORS, rate limiting, input validation
+- **API Docs**: Auto-generated Swagger/ReDoc
+- **Python**: 3.11+ required
 
-- **Endpoint Inventory**: All monitored systems with metadata## 🛠️ Management & Operations
+### Database
+- **Engine**: PostgreSQL 15+
+- **Schema**: 10+ tables (endpoints, scans, alerts, CVEs, rootkit_scans, etc.)
+- **Features**: Row-level security, indexes, foreign keys
+- **Migrations**: Alembic for version control
+- **Performance**: Optimized indexes for sub-second queries
 
-- **Risk Distribution**: Visual breakdown by severity (Critical/High/Medium/Low)
+### Agent (Sentinel)
+- **Language**: Go 1.21+
+- **Size**: ~10MB compiled binary
+- **Features**: 
+  - Cross-platform (Linux, Windows, macOS)
+  - TLS encrypted communication
+  - Auto-reconnect with exponential backoff
+  - Local buffering for offline resilience
+  - 30-second command polling
+- **Dependencies**: Minimal (standard library + HTTP client)
 
-- **Agent Status**: Online/offline indicators with last heartbeat### 📋 Service Management
+### Infrastructure
+- **Containerization**: Docker + Docker Compose
+- **Services**: 4 containers (frontend, api, postgres, cve_sync)
+- **Networking**: Custom bridge network for inter-service communication
+- **Volumes**: Persistent storage for database
+- **Deployment**: Nginx reverse proxy with HTTPS support
 
-- **Vulnerability Counts**: Per-endpoint CVE tallies
+### External Integrations
+- **CVE Database**: NIST NVD API (312,000+ vulnerabilities)
+- **Authentication**: Supabase cloud platform
+- **Sync Frequency**: CVE updates every 6 hours
+- **Rate Limits**: 50 req/30s with API key
 
-- **Quick Actions**: Navigate to endpoint details, execute commands```bash
+---
 
+## 📡 API Endpoints
+
+### Authentication
+```bash
+# Login
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@voltaxe.com",
+  "password": "admin123"
+}
+
+# Response
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer",
+  "user": {
+    "id": "uuid",
+    "email": "admin@voltaxe.com"
+  }
+}
+```
+
+### Rootkit Detection
+```bash
+# Get Rootkit Statistics
+GET /rootkit/stats
+Authorization: Bearer <token>
+
+# Response
+{
+  "total_scans": 142,
+  "active_alerts": 3,
+  "resolved_alerts": 17,
+  "last_scan": "2024-01-15T14:30:00Z",
+  "threat_types": {
+    "kernel_modules": 2,
+    "system_binaries": 1
+  },
+  "severity_distribution": {
+    "critical": 3,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  }
+}
+
+# Get Recent Scans
+GET /rootkit/scans?limit=10
+Authorization: Bearer <token>
+
+# Trigger New Scan
+POST /rootkit/scan
+Authorization: Bearer <token>
+{
+  "endpoint_id": "endpoint-uuid"
+}
+
+# Get Alerts
+GET /rootkit/alerts?status=active
+Authorization: Bearer <token>
+
+# Resolve Alert
+PATCH /rootkit/alerts/{alert_id}
+Authorization: Bearer <token>
+{
+  "status": "resolved",
+  "notes": "False positive - legitimate kernel module"
+}
+```
+
+### Endpoint Management
+```bash
+# List All Endpoints
+GET /endpoints
+Authorization: Bearer <token>
+
+# Response
+[
+  {
+    "id": "uuid",
+    "hostname": "web-server-01",
+    "ip_address": "192.168.1.100",
+    "os": "Ubuntu 22.04",
+    "status": "online",
+    "last_heartbeat": "2024-01-15T14:35:00Z",
+    "vulnerability_count": 12,
+    "risk_score": 75
+  }
+]
+
+# Get Endpoint Details
+GET /endpoints/{endpoint_id}
+Authorization: Bearer <token>
+
+# Update Endpoint
+PATCH /endpoints/{endpoint_id}
+Authorization: Bearer <token>
+{
+  "status": "isolated",
+  "notes": "Compromised - awaiting forensics"
+}
+```
+
+### Command Execution (Strike Module)
+```bash
+# Create Command
+POST /commands
+Authorization: Bearer <token>
+{
+  "endpoint_id": "uuid",
+  "command": "systemctl restart nginx",
+  "description": "Restart web server"
+}
+
+# Poll Pending Commands (Agent)
+GET /commands/poll/{endpoint_id}
+Authorization: Bearer <agent-token>
+
+# Update Command Status (Agent)
+PATCH /commands/{command_id}
+Authorization: Bearer <agent-token>
+{
+  "status": "completed",
+  "output": "nginx.service restarted successfully",
+  "exit_code": 0
+}
+
+# Panic Button (Emergency Isolation)
+POST /endpoints/{endpoint_id}/isolate
+Authorization: Bearer <token>
+{
+  "reason": "Detected rootkit activity"
+}
+```
+
+### CVE Intelligence
+```bash
+# Search CVEs
+GET /cves?keyword=apache&limit=20
+Authorization: Bearer <token>
+
+# Get CVE Details
+GET /cves/{cve_id}
+Authorization: Bearer <token>
+
+# Response
+{
+  "cve_id": "CVE-2024-12345",
+  "description": "Remote code execution in Apache...",
+  "cvss_v3_score": 9.8,
+  "severity": "CRITICAL",
+  "published": "2024-01-10T00:00:00Z",
+  "affected_endpoints": [
+    {"id": "uuid", "hostname": "web-01"}
+  ],
+  "references": [
+    "https://nvd.nist.gov/vuln/detail/CVE-2024-12345"
+  ]
+}
+```
+
+### Health Check
+```bash
+# System Health
+GET /health
+
+# Response
+{
+  "status": "healthy",
+  "database": "connected",
+  "cve_sync": "active",
+  "timestamp": "2024-01-15T14:40:00Z"
+}
+```
+
+---
+
+## 🚀 Performance & Scale
+
+### System Capabilities
+- **CVE Sync**: 50 requests/30s (with API key) vs 5 req/30s (public)
+- **Concurrent Users**: Scalable with multiple Uvicorn workers
+- **Database**: Optimized indexes for sub-second queries on 312K+ CVEs
+- **Agent Support**: 100+ endpoints per instance (tested)
+- **Real-time**: 30-second agent polling for command execution
+- **Storage**: ~2GB for full CVE database + logs
+
+### Optimization Tips
+- Enable PostgreSQL query logging for slow queries
+- Increase Uvicorn workers for high traffic: `uvicorn main:app --workers 4`
+- Use Redis for session caching (future enhancement)
+- Configure agent polling interval based on network constraints
+- Implement database partitioning for large-scale deployments
+
+---
+
+## 🛠️ Management & Operations
+
+### Service Management
+```bash
 # Development Services
+./scripts/start_services.sh          # Start backend + frontend
+./scripts/stop_services.sh           # Stop all services
+./status_dashboard.sh                # Check system status
 
-### Malware Scanner./scripts/start_services.sh          # Start backend + frontend  
-
-- **On-Demand Scanning**: Trigger YARA scans from dashboard./scripts/stop_services.sh           # Stop all services
-
-- **Real-Time Results**: Rule matches, file paths, threat levels./status_dashboard.sh                # Check system status
-
-- **Scan History**: Complete audit trail with timestamps
-
-- **Auto-Delete**: Remove scan results to clean up history# Production Services (Docker)
-
+# Production Services (Docker)
 docker-compose up -d                 # Start all containers
+docker-compose down                  # Stop all containers
+docker-compose logs -f [service]     # View service logs
+./scripts/health_check.sh            # Comprehensive health check
+```
 
-### CVE Intelligencedocker-compose down                  # Stop all containers  
+### Agent Management
+```bash
+# Build agents for all platforms
+./build_agents.sh
 
-- **Search**: Query 312,000+ CVE recordsdocker-compose logs -f [service]     # View service logs
+# Deploy to Linux endpoint
+cd deployment && sudo ./install_linux.sh
 
-- **Details**: CVSS scores, descriptions, references, exploit availability./scripts/health_check.sh            # Comprehensive health check
+# Deploy to Windows endpoint (PowerShell as Admin)
+cd deployment && .\install_windows.ps1
 
-- **Affected Endpoints**: See which systems are vulnerable```
+# Check agent status on endpoint
+sudo systemctl status voltaxe-sentinel    # Linux
+Get-Service VoltaxeSentinel               # Windows PowerShell
+```
 
-- **Remediation**: Direct links to patches and mitigation guidance
-
-### 🔧 Agent Management
+### Database Management
 
 ---
 
 ```bash
 
-## 🎮 Gamification System# Build agent deployment package
+```bash
+# Access PostgreSQL database
+docker exec -it voltaxe_postgres psql -U voltaxe -d voltaxe_db
 
-./deploy_agents.sh
+# Backup database
+docker exec voltaxe_postgres pg_dump -U voltaxe voltaxe_db > backup.sql
 
-### Scoring Algorithm
+# Restore database
+docker exec -i voltaxe_postgres psql -U voltaxe voltaxe_db < backup.sql
 
-```# Deploy to Linux endpoints
+# Monitor database size
+docker exec voltaxe_postgres psql -U voltaxe -d voltaxe_db -c "SELECT pg_size_pretty(pg_database_size('voltaxe_db'));"
+```
 
-North Star Score = weighted_sum([sudo deployment/install_linux.sh
+### CVE Synchronization
+```bash
+# Force immediate sync
+cd services/cve_sync_service && python3 sync_cves.py
 
-    vulnerability_factor * 0.40,  # 40% weight
+# Check sync status
+curl http://localhost:8000/health
 
-    patch_factor * 0.25,          # 25% weight# Deploy to Windows endpoints (as Administrator)
+# View sync logs
+docker-compose logs -f cve_sync
 
-    config_factor * 0.20,         # 20% weightdeployment/install_windows.ps1
+# Test API performance
+python3 test_cve_performance.py
+```
 
-    behavior_factor * 0.15        # 15% weight
+---
 
-])# Check agent connectivity
+## 🚨 Troubleshooting Guide
 
-curl http://localhost:8000/snapshots
-
-Risk Level:```
-
-- 90-100: LOW (Green)
-
-- 70-89:  MEDIUM (Yellow)### 📊 Monitoring & Maintenance
-
-- 50-69:  HIGH (Orange)
-
-- 0-49:   CRITICAL (Red)```bash
-
-```# Real-time system status
-
+### Quick Diagnostics
+```bash
+# Run comprehensive system check
 ./status_dashboard.sh
 
-### Engagement Features
-
-- **Visual Progress**: Circular gauge with animated transitions# CVE synchronization status  
-
-- **Trend Indicators**: Up/down arrows show score changescd services/cve_sync_service && tail -f cve_sync*.log
-
-- **Leaderboards**: Compare endpoints by security score
-
-- **Achievements**: Reach security milestones (future)# Sentinel agent monitoring
-
-cd services/voltaxe_sentinel && tail -f sentinel.log
-
----
-
-# Populate sample data for testing
-
-## 🔐 Security Featurespython3 populate_sample_data.py
-
-```
-
-### Authentication & Authorization
-
-- **Supabase Integration**: Production-grade user management## 📊 Technology Stack
-
-- **JWT Tokens**: Secure API authentication
-
-- **Row-Level Security**: Database-enforced access control### 🏗️ Backend Infrastructure
-
-- **Password Policies**: Strong password requirements- **API Framework**: FastAPI 2.0+ (Python 3.11+)
-
-- **Authentication**: Supabase + JWT tokens
-
-### Data Protection- **Database**: SQLite/PostgreSQL with optimized indexes  
-
-- **Encrypted Communications**: TLS for all agent-to-server traffic- **CVE Intelligence**: NIST NVD API integration (50 req/30s)
-
-- **Secure Storage**: Encrypted sensitive data at rest- **Agent Communication**: Go-based Voltaxe Sentinel
-
-- **Audit Logging**: Complete action trail for compliance- **Containerization**: Docker + Docker Compose
-
-- **Input Validation**: Pydantic models prevent injection attacks
-
-### 🎨 Frontend Technology
-
-### Network Security- **Framework**: React 18+ with TypeScript
-
-- **CORS Protection**: Configurable origin restrictions- **Styling**: Tailwind CSS with professional components
-
-- **Rate Limiting**: Authentication endpoint throttling- **State Management**: React Hooks + Context API
-
-- **Content Security**: CSP headers prevent XSS- **Routing**: React Router DOM v7
-
-- **SQL Injection Prevention**: Parameterized queries via SQLAlchemy ORM- **PDF Generation**: jsPDF + html2canvas
-
-- **API Client**: Axios with authentication interceptors
-
----
-
-### 🛡️ Security & Monitoring
-
-## 📈 Performance & Scale- **Agent Language**: Go 1.24+ (cross-platform compilation)
-
-- **Monitoring**: Real-time system snapshots and event tracking
-
-### System Metrics- **Vulnerability DB**: Local CVE database with 312K+ records
-
-- **CVE Sync**: 50 requests/30 seconds with NIST API key (10x faster than public)- **Authentication**: Production-ready Supabase integration
-
-- **Agent Efficiency**: <2% CPU, <50MB RAM per endpoint- **Security Headers**: CORS, XSS protection, content security policy
-
-- **API Response**: Sub-100ms for most queries (indexed database)
-
-- **Concurrent Agents**: Supports 1000+ endpoints per API instance### 📈 Performance & Scale
-
-- **Real-Time Updates**: WebSocket support for live dashboard- **API Performance**: Async FastAPI with SQLAlchemy ORM
-
-- **Database Optimization**: Indexed queries, connection pooling
-
-### Scalability- **Caching**: Redis integration for high-frequency data
-
-- **Horizontal**: Multiple API workers for load distribution- **Agent Efficiency**: Lightweight Go binaries (~10MB)
-
-- **Database**: PostgreSQL with optimized indexes and connection pooling- **Real-time Updates**: WebSocket support for live monitoring
-
-- **Caching**: Redis integration for high-frequency queries
-
-- **Agent**: Lightweight Go binaries with minimal system impact## 🔧 Configuration Reference
-
-
-
----### Core Environment Variables
-
-
-
-## 🛠️ Technology Stack| Variable | Purpose | Example | Required |
-
-|----------|---------|---------|-----------|
-
-### Backend| `SUPABASE_URL` | Authentication service | `https://xyz.supabase.co` | ✅ Production |
-
-- **FastAPI 2.0+** (Python 3.11): Modern async API framework| `SUPABASE_ANON_KEY` | Public API key | `eyJhbGciOi...` | ✅ Production |
-
-- **SQLAlchemy**: ORM with PostgreSQL/SQLite support| `NVD_API_KEY` | CVE sync performance | `b4167123-3c6a...` | ⚠️ Recommended |
-
-- **Supabase**: Authentication and user management| `JWT_SECRET_KEY` | Token signing | `your-secret-key` | ✅ Production |
-
-- **Pydantic**: Data validation and serialization| `DATABASE_URL` | Database connection | `sqlite:///voltaxe.db` | Auto-configured |
-
-
-
-### Frontend### Service Ports
-
-- **React 18+**: Component-based UI framework
-
-- **TypeScript**: Type-safe development| Service | Development Port | Production Port | Purpose |
-
-- **Tailwind CSS**: Utility-first styling|---------|------------------|-----------------|---------|
-
-- **React Router v7**: Client-side routing| Frontend | 5173 | 80/443 | React dashboard |
-
-- **Axios**: HTTP client with interceptors| Backend API | 8000 | 8000 | FastAPI server |
-
-- **jsPDF + html2canvas**: PDF report generation| Database | - | 5432 | PostgreSQL (Docker) |
-
-| Redis Cache | - | 6379 | Caching layer |
-
-### Agent
-
-- **Go 1.24+**: Cross-platform compiled binary## 🚨 Troubleshooting Guide
-
-- **gopsutil**: System metrics collection
-
-- **net/http**: Command execution server### Quick Diagnostics
-
-- **chkrootkit**: Rootkit detection
-
-- **YARA**: Malware scanning engine```bash
-
-# Run comprehensive system check  
-
-### Infrastructure./status_dashboard.sh
-
-- **Docker**: Containerized deployment
-
-- **PostgreSQL**: Production database# Test CVE API performance
-
-- **Redis**: Caching layerpython3 test_cve_performance.py
-
-- **Nginx**: Reverse proxy and static file serving
-
 # Check service logs
+docker-compose logs -f [frontend|api|postgres|cve_sync]
 
----tail -f services/*/logs/*.log
+# Verify all services are running
+docker-compose ps
 
+# Test API connectivity
+curl http://localhost:8000/health
+
+# Check frontend build
+cd services/clarity_hub_ui && npm run build
 ```
-
-## 📚 Use Cases
 
 ### Common Issues & Solutions
 
-### Enterprise Security Operations Center (SOC)
+| Issue | Symptoms | Solution |
+|-------|----------|----------|
+| **Backend API not responding** | 502/503 errors, dashboard blank | `docker-compose restart api` or `./scripts/start_services.sh` |
+| **CVE sync slow** | Long sync times, outdated data | Configure `NVD_API_KEY` in `.env` (50 req/30s vs 5 req/30s) |
+| **No monitoring data** | Empty dashboard, no endpoints | Deploy Voltaxe Sentinel agent to endpoints |
+| **Auth failures** | Login errors, 401/403 responses | Verify `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `.env` |
+| **Port conflicts** | Service start failures | Stop conflicting services: `sudo lsof -i :3000`, `sudo lsof -i :8000` |
+| **Database connection errors** | `sqlalchemy.exc.OperationalError` | Check PostgreSQL container: `docker-compose logs postgres` |
+| **Agent not connecting** | No heartbeats, offline status | Verify `agent.conf` API_URL and check firewall rules |
+| **Frontend build errors** | White screen, console errors | Clear cache: `cd services/clarity_hub_ui && rm -rf node_modules dist && npm install` |
 
-- Monitor hundreds of endpoints from single dashboard| Issue | Symptoms | Solution |
-
-- Prioritize threats by CVSS severity and exploit availability|-------|----------|----------|
-
-- Generate compliance reports with PDF export| **Backend not responding** | 502/503 errors | `./scripts/start_services.sh` |
-
-- Respond to incidents with Strike Module commands| **CVE sync slow** | Long sync times | Configure NIST API key |
-
-| **No monitoring data** | Empty dashboard | Start Voltaxe Sentinel agent |
-
-### DevOps Security (DevSecOps)| **Auth failures** | Login errors | Check Supabase configuration |
-
-- Continuous vulnerability scanning of cloud instances| **Port conflicts** | Service start failures | Stop conflicting services |
-
-- Automated patch compliance monitoring
-
-- Behavioral analysis of containerized workloads### Performance Optimization
-
-- Integration-ready API for CI/CD pipelines
+### Performance Optimization
 
 **For High-Volume Environments:**
+```bash
+# Scale API workers (production)
+uvicorn main:app --workers 4 --host 0.0.0.0 --port 8000
 
-### Managed Security Service Providers (MSSP)```bash
-
-- Multi-tenant architecture (with RLS configuration)# Scale API workers
-
-- Per-customer fleet management and reportinguvicorn main:app --workers 4 --host 0.0.0.0 --port 8000
-
-- White-label dashboard customization
-
-- Audit logging for compliance# Enable Redis caching  
-
+# Enable Redis caching (future enhancement)
 docker-compose up -d redis
 
-### Incident Response Teams
+# Optimize database
+docker exec voltaxe_postgres psql -U voltaxe -d voltaxe_db -c "VACUUM ANALYZE;"
 
-- Real-time threat detection across infrastructure# Database tuning
-
-- Emergency endpoint isolation with Panic Button# Increase shared_buffers, optimize work_mem
-
-- Forensic data collection via system snapshots```
-
-- Command execution for evidence gathering
-
-**CVE Sync Performance:**
-
----- ✅ **With API Key**: 50 requests/30s = ~6000 CVEs/hour
-
-- 🐌 **Without API Key**: 5 requests/30s = ~600 CVEs/hour
-
-## 🎯 Project Vision- 📈 **Recommendation**: Always use NIST API key for production
-
-
-
-**Voltaxe Clarity Hub** aims to democratize enterprise cybersecurity by providing:## 🛡️ Production Security
-
-- **Accessibility**: Free and open-source security monitoring
-
-- **Intelligence**: Real-time CVE integration for vulnerability awareness### Essential Security Configurations
-
-- **Automation**: ML-driven anomaly detection and threat prioritization
-
-- **Engagement**: Gamification to make security tangible and actionable1. **🔐 Authentication Security**
-
-- **Scalability**: Architecture that grows from startup to enterprise   ```bash
-
-   # Use strong JWT secrets (32+ characters)
-
----   JWT_SECRET_KEY=$(openssl rand -base64 32)
-
-   
-
-## 📖 Documentation   # Enable Supabase RLS (Row Level Security)
-
-   # Configure in Supabase dashboard
-
-For detailed setup, configuration, and deployment instructions, please refer to:   ```
-
-- **[Deployment Guide](docs/deployment/)** - Installation and production setup
-
-- **[Development Guide](docs/development/)** - Contributing and building from source2. **🌐 Network Security**  
-
-- **[User Guide](docs/guides/)** - Dashboard navigation and feature usage   ```bash
-
-- **[API Reference](http://localhost:8000/docs)** - Interactive Swagger documentation (when running)   # Configure firewall rules
-
-   sudo ufw allow 22    # SSH only
-
----   sudo ufw allow 80    # HTTP
-
-   sudo ufw allow 443   # HTTPS  
-
-## 📄 License   sudo ufw deny 8000   # Block direct API access
-
-   ```
-
-**MIT License** - Open source cybersecurity platform
-
-3. **📊 Monitoring Security**
-
-Copyright (c) 2025 Voltaxe Clarity Hub   - All agent communications encrypted
-
-   - API endpoints require authentication  
-
----   - Rate limiting on sensitive endpoints
-
-   - Audit logs for all security actions
-
-## 🌐 Links
-
-## 📋 Project Structure
-
-- **GitHub Repository**: [R-A-H-U-L-Kodez/Voltaxe](https://github.com/R-A-H-U-L-Kodez/Voltaxe)
-
-- **Issues & Feature Requests**: [GitHub Issues](https://github.com/R-A-H-U-L-Kodez/Voltaxe/issues)```
-
-- **NIST NVD**: [nvd.nist.gov](https://nvd.nist.gov/)Voltaxe/
-
-├── 📊 Dashboard & API
-
----│   ├── services/clarity_hub_ui/          # React TypeScript frontend
-
-│   ├── services/clarity_hub_api/         # FastAPI backend + auth
-
-**🛡️ Voltaxe Clarity Hub - Enterprise cybersecurity monitoring for everyone**│   └── services/mock_ingestion_server/   # Development mock server
-
-├── 🛡️ Monitoring & Intelligence  
-│   ├── services/voltaxe_sentinel/        # Go monitoring agent
-│   └── services/cve_sync_service/        # NIST NVD integration
-├── 🚀 Deployment & Operations
-│   ├── scripts/                          # Service management scripts
-│   ├── deployment/                       # Cross-platform agent builds  
-│   ├── docker-compose.yml               # Production orchestration
-│   └── deploy.sh                         # One-command deployment
-├── 📚 Documentation & Config
-│   ├── README.md                         # This comprehensive guide
-│   ├── DEPLOYMENT_GUIDE.md              # Agent deployment instructions
-│   └── .env.example                     # Configuration template
-└── 🔧 Utilities & Testing
-    ├── populate_sample_data.py          # Sample data generation
-    ├── test_cve_performance.py          # API performance testing
-    └── status_dashboard.sh              # System status monitoring
+# Monitor resource usage
+docker stats
 ```
 
-## 🤝 Contributing & Support
+**Agent Optimization:**
+- Increase polling interval for low-priority endpoints (default: 30s)
+- Reduce snapshot frequency for stable systems (default: 5 min)
+- Use bandwidth throttling for remote locations
 
-### 📖 Documentation
+---
 
-- **📘 API Reference**: Available at `/docs` endpoint when running
-- **🏗️ Architecture Guide**: See system architecture section above
-- **🔧 Development Setup**: Follow development configuration steps
-- **📊 Performance Metrics**: Use built-in status dashboard
+## 🔧 Configuration Reference
 
-### 🐛 Issues & Feature Requests
+### Core Environment Variables
 
-- **GitHub Issues**: [Report bugs and request features](https://github.com/R-A-H-U-L-Kodez/Voltaxe/issues)
-- **Security Issues**: Email security@voltaxe.com for vulnerabilities
-- **Performance Issues**: Include `status_dashboard.sh` output
+| Variable | Purpose | Example | Required |
+|----------|---------|---------|-----------|
+| `SUPABASE_URL` | Authentication service | `https://xyz.supabase.co` | ✅ Production |
+| `SUPABASE_ANON_KEY` | Public API key | `eyJhbGciOi...` | ✅ Production |
+| `NVD_API_KEY` | CVE sync performance | `b4167123-3c6a...` | ⚠️ Recommended |
+| `JWT_SECRET_KEY` | Token signing | `your-secret-key` | ✅ Production |
+| `DATABASE_URL` | Database connection | `postgresql://user:pass@db:5432/voltaxe_db` | Auto-configured |
 
-### 💡 Development
+### Service Ports
 
+| Service | Development Port | Production Port | Purpose |
+|---------|------------------|-----------------|---------|
+| Frontend | 3000 (Vite dev) | 80/443 (Nginx) | React dashboard |
+| Backend API | 8000 | 8000 | FastAPI server |
+| PostgreSQL | 5432 | 5432 | Database (Docker) |
+| CVE Sync | - | - | Background service |
+
+---
+
+## 📚 Use Cases
+
+### 🏢 Enterprise Security Operations Center (SOC)
+- Monitor hundreds of endpoints from single dashboard
+- Prioritize threats by CVSS severity and exploit availability
+- Generate compliance reports with PDF export
+- Respond to incidents with Strike Module commands
+- Track security posture with North Star scoring
+
+### 🚀 DevOps Security (DevSecOps)
+- Continuous vulnerability scanning of cloud instances
+- Automated patch compliance monitoring
+- Behavioral analysis of containerized workloads
+- Integration-ready API for CI/CD pipelines
+- Real-time alerting for critical vulnerabilities
+
+### 🛡️ Managed Security Service Providers (MSSP)
+- Multi-tenant architecture (with RLS configuration)
+- Per-customer fleet management and reporting
+- White-label dashboard customization
+- Audit logging for compliance (SOC 2, ISO 27001)
+- Scalable infrastructure for 1000+ endpoints
+
+### 🏥 Critical Infrastructure Protection
+- Air-gapped deployment support (offline CVE database)
+- Rootkit detection for compromised systems
+- Emergency isolation capabilities (Panic Button)
+- Forensic data collection via Strike Module
+- Real-time threat intelligence correlation
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these guidelines:
+
+1. **Fork the repository** and create a feature branch
+2. **Write clean code** with TypeScript/Python type hints
+3. **Add tests** for new features (Pytest, Jest)
+4. **Update documentation** in README and docstrings
+5. **Submit a pull request** with clear description
+
+**Development Setup:**
 ```bash
-# Fork the repository and create a feature branch
-git checkout -b feature/your-feature-name
+# Clone your fork
+git clone https://github.com/yourusername/voltaxe.git
+cd voltaxe
 
-# Set up development environment
+# Install dependencies
+cd services/clarity_hub_ui && npm install
+cd ../clarity_hub_api && pip install -r requirements.txt
+cd ../voltaxe_sentinel && go mod download
+
+# Start development environment
 ./scripts/start_services.sh
 
-# Run tests and validation
-python3 test_cve_performance.py
-./status_dashboard.sh
-
-# Submit pull request with detailed description
+# Run tests
+npm test                    # Frontend tests
+pytest                      # Backend tests
+go test ./...               # Agent tests
 ```
 
-## 📊 Current Status & Achievements
-
-### ✅ **Production Ready Features**
-- **🛡️ Real-time Monitoring**: Voltaxe Sentinel agent actively collecting data
-- **🔍 CVE Intelligence**: NIST NVD integration with authenticated API (50 req/30s)
-- **🔐 Enterprise Auth**: Supabase production authentication system
-- **📱 Professional UI**: React dashboard with TypeScript and Tailwind CSS
-- **🚀 Cross-platform**: Agent deployment for Linux/Windows/macOS
-- **📊 Performance Monitoring**: Real-time system status and health checks
-
-### 🎯 **Live Deployment Metrics**
-- **API Endpoints**: 15+ production-ready endpoints with authentication
-- **CVE Database**: 312,000+ vulnerability records synchronized  
-- **Agent Support**: Cross-platform binaries generated and ready
-- **Security Events**: Real-time behavioral analysis and threat detection
-- **Performance**: Sub-second API responses with optimized database queries
-
-### 🔧 **Development Tools Included**
-- `./status_dashboard.sh` - Comprehensive system status monitoring
-- `./test_cve_performance.py` - API performance validation and testing
-- `./populate_sample_data.py` - Sample data generation for development
-- `./deploy_agents.sh` - Cross-platform agent deployment system
+**Code Standards:**
+- Frontend: ESLint + Prettier
+- Backend: Black + Pylint
+- Agent: gofmt + golangci-lint
 
 ---
 
-## 📄 License & Legal
+## 📝 License
 
-**MIT License** - Open source cybersecurity platform
+This project is licensed under the **MIT License**.
 
 ```
-Copyright (c) 2025 Voltaxe Clarity Hub
-Permission is hereby granted, free of charge, to any person obtaining a copy...
-```
+MIT License
 
-**Third-Party Integrations:**
-- **NIST NVD**: Government vulnerability database (public domain)
-- **Supabase**: Authentication service (subject to Supabase terms)
-- **React/FastAPI**: Open source frameworks (MIT/Apache licenses)
+Copyright (c) 2024 Voltaxe Security Platform
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ---
 
-## 🚀 **Ready for Enterprise Deployment**
+## 📞 Support & Contact
 
-**Voltaxe Clarity Hub** is production-ready with enterprise-grade security monitoring, real-time threat intelligence, and scalable architecture. Perfect for organizations needing comprehensive cybersecurity visibility across their infrastructure.
+**Documentation**: See `/docs` folder for detailed guides
+- `QUICK_START.md` - Fast deployment guide
+- `PRODUCTION_GUIDE.md` - Production deployment
+- `API_DOCUMENTATION.md` - Complete API reference
+- `TROUBLESHOOTING.md` - Common issues and solutions
 
-### 🌟 **Get Started Now:**
+**System Health**: Monitor status with `./status_dashboard.sh`
 
-1. **⚡ Quick Demo**: `./scripts/start_services.sh` → [http://localhost:5173](http://localhost:5173)
-2. **🏭 Production**: `./deploy.sh` for full Docker deployment
-3. **🛡️ Monitoring**: Deploy agents with `./deploy_agents.sh`
-
-**For the latest updates and enterprise support:**  
-📧 **Contact**: [security@voltaxe.com](mailto:security@voltaxe.com)  
-🌐 **Website**: [https://github.com/R-A-H-U-L-Kodez/Voltaxe](https://github.com/R-A-H-U-L-Kodez/Voltaxe)
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+**Community**:
+- Report issues on GitHub Issues
+- Feature requests via GitHub Discussions
+- Security vulnerabilities: See SECURITY.md
 
 ---
 
-**🚀 Voltaxe Clarity Hub - Professional cybersecurity monitoring for the enterprise**
+<div align="center">
 
-For the latest updates and documentation, visit: https://github.com/R-A-H-U-L-Kodez/Voltaxe
-  
-## Project Structure
+**Built with ❤️ for Security Teams**
 
+🔐 Protect · 🔍 Detect · 🛡️ Defend
 
-```
-Voltaxe/
-├── README.md
-└── services/
-	├── clarity_hub_api/
-	│   ├── main.py
-	│   └── venv/
-	│       ├── .gitignore
-	│       ├── bin/
-	│       ├── include/
-	│       ├── lib/
-	│       ├── lib64/
-	│       └── pyvenv.cfg
-	├── mock_ingestion_server/
-	│   ├── main.py
-	│   └── venv/
-	│       ├── .gitignore
-	│       ├── bin/
-	│       ├── include/
-	│       ├── lib/
-	│       ├── lib64/
-	│       └── pyvenv.cfg
-	└── voltaxe_sentinel/
-		├── go.mod
-		├── go.sum
-		└── main.go
-```
+[⬆ Back to Top](#voltaxe-security-platform)
 
-
-### Services
-
-- **clarity_hub_api**: Python FastAPI backend for database and API.
-	- `main.py`: Main API and database logic.
-	- `venv/`: Python virtual environment.
-- **mock_ingestion_server**: Python-based mock ingestion server.
-	- `main.py`: Entry point for the server.
-	- `venv/`: Python virtual environment.
-- **voltaxe_sentinel**: Go-based Sentinel service.
-	- `main.go`: Main entry point for the Sentinel service.
-	- `go.mod`, `go.sum`: Go module files.
+</div>
